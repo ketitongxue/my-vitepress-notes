@@ -1,5 +1,12 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, symlink, writeFile } from 'node:fs/promises'
+import {
+  mkdtemp,
+  mkdir,
+  rm,
+  symlink,
+  unlink,
+  writeFile,
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -12,8 +19,9 @@ import {
   sha256,
 } from './core.mjs'
 
-async function temporaryWiki() {
+async function temporaryWiki(t) {
   const root = await mkdtemp(path.join(tmpdir(), 'wiki-publish-'))
+  t.after(() => rm(root, { recursive: true, force: true }))
   await Promise.all(
     ['entities', 'concepts/nested', 'comparisons', 'raw', 'queries'].map((section) =>
       mkdir(path.join(root, section), { recursive: true }),
@@ -22,8 +30,8 @@ async function temporaryWiki() {
   return root
 }
 
-test('scanWiki inventories markdown only from public sections with POSIX paths', async () => {
-  const root = await temporaryWiki()
+test('scanWiki inventories markdown only from public sections with POSIX paths', async (t) => {
+  const root = await temporaryWiki(t)
   await Promise.all([
     writeFile(path.join(root, 'entities', 'z.md'), 'entity'),
     writeFile(path.join(root, 'concepts', 'nested', 'a.md'), 'concept'),
@@ -64,13 +72,51 @@ test('publicPath maps allowed source paths and rejects paths outside them', () =
   assert.throws(() => publicPath('/concepts/a.md'), /relative/i)
 })
 
-test('scanWiki rejects symlinks in allowed directories', async () => {
-  const root = await temporaryWiki()
+test('scanWiki rejects symlinks in allowed directories', async (t) => {
+  const root = await temporaryWiki(t)
   const target = path.join(root, 'outside.md')
   await writeFile(target, 'outside')
   await symlink(target, path.join(root, 'concepts', 'linked.md'))
 
   await assert.rejects(scanWiki(root), /symbolic link/i)
+})
+
+test('scanWiki rejects a symlinked directory', async (t) => {
+  const root = await temporaryWiki(t)
+  const outside = await mkdtemp(path.join(tmpdir(), 'wiki-outside-'))
+  t.after(() => rm(outside, { recursive: true, force: true }))
+  await writeFile(path.join(outside, 'secret.md'), 'secret')
+  await symlink(outside, path.join(root, 'entities', 'linked-directory'))
+
+  await assert.rejects(scanWiki(root), /symbolic link/i)
+})
+
+test('scanWiki rejects a symlinked wiki root', async (t) => {
+  const root = await temporaryWiki(t)
+  const linkedRoot = `${root}-link`
+  t.after(() => rm(linkedRoot, { recursive: true, force: true }))
+  await writeFile(path.join(root, 'concepts', 'a.md'), 'concept')
+  await symlink(root, linkedRoot)
+
+  await assert.rejects(scanWiki(linkedRoot), /symbolic link/i)
+})
+
+test('scanWiki never reads a file replaced by an outside symlink', async (t) => {
+  const root = await temporaryWiki(t)
+  const outside = path.join(root, 'outside.md')
+  const victim = path.join(root, 'concepts', 'z.md')
+  await Promise.all([
+    writeFile(path.join(root, 'concepts', 'a.md'), Buffer.alloc(32 * 1024 * 1024)),
+    writeFile(outside, 'outside secret'),
+    writeFile(victim, 'safe'),
+  ])
+
+  const scanning = scanWiki(root)
+  await new Promise((resolve) => setTimeout(resolve, 2))
+  await unlink(victim)
+  await symlink(outside, victim)
+
+  await assert.rejects(scanning, /symbolic link|changed|outside/i)
 })
 
 test('diffInventory sorts added, changed, unchanged, and deleted paths', () => {
