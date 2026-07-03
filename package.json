@@ -1,0 +1,16 @@
+{
+  "name": "my-vitepress-notes",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
+    "test:content": "node scripts/content-validator.test.mjs && node scripts/check-content.mjs",
+    "test:theme": "node scripts/theme-validator.test.mjs && node scripts/theme-config.test.mjs && node scripts/check-theme.mjs",
+    "test": "npm run test:content && npm run test:theme && npm run docs:build"
+  },
+  "devDependencies": {
+    "vitepress": "latest"
+  }
+}
