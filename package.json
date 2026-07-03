@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "wiki:sync": "node scripts/wiki-publish/sync.mjs",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
