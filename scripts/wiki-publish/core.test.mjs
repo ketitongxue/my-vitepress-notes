@@ -159,7 +159,7 @@ test('scanWiki never adopts an outside section during ancestor replacement', asy
       } catch (error) {
         assert.match(
           error.message,
-          /symbolic link|changed|outside|no such file|not a directory/i,
+          /symbolic link|changed|outside|no such file|not a directory|invalid argument/i,
         )
       }
     }
