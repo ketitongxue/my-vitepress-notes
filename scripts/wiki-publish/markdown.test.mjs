@@ -110,11 +110,16 @@ test('detects private metadata, raw references, absolute paths, and remaining wi
     '路径：/Users/alice/wiki/private.md',
     'path=/custom/path/file.md',
     String.raw`See C:\Users\alice\wiki\private.md`,
+    String.raw`路径：C:\Users\alice\wiki\private.md`,
+    String.raw`path=C:\Users\alice\wiki\private.md`,
+    'See file:///Users/alice/wiki/private.md',
     'See [[private-note]]',
   ]) assert.equal(containsPrivateData(markdown), true, markdown)
 
   assert.equal(containsPrivateData('See [public note](/wiki/concepts/public-note).'), false)
   assert.equal(containsPrivateData('See /wiki/concepts/public-note.'), false)
   assert.equal(containsPrivateData('See https://example.com/custom/path.'), false)
+  assert.equal(containsPrivateData('See http://example.com/Users/alice/wiki.'), false)
+  assert.equal(containsPrivateData('See //example.com/Users/alice/wiki.'), false)
   assert.equal(containsPrivateData('See <https://example.com/Users/alice/wiki>. also.'), false)
 })

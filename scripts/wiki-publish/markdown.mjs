@@ -103,7 +103,11 @@ export function convertWikilinks(markdown, known) {
 }
 
 export function containsPrivateData(markdown) {
-  const withoutUrls = markdown.replace(/\b[a-z][a-z0-9+.-]*:\/\/[^\s<>)]+/gi, '')
+  const withoutUrls = markdown.replace(
+    /https?:\/\/[^\s<>)]+|(^|[\s(<])\/\/[^\s<>)]+/gim,
+    (_url, protocolRelativePrefix) => protocolRelativePrefix || '',
+  )
+  const hasNonWebUrl = /\b(?!https?:)[a-z][a-z0-9+.-]*:(?:\/\/)?[\\/]+/i.test(markdown)
   const hasUnixAbsolutePath = [...withoutUrls.matchAll(/(?:^|[^\p{L}\p{N}_/])\/(?!\/)([^\s)\]}>]+)/gu)]
     .some((match) => {
       const path = `/${match[1]}`
@@ -112,7 +116,8 @@ export function containsPrivateData(markdown) {
 
   return /(^|\n)\s*sources\s*:/i.test(markdown)
     || /(?:^|[\s\\/])raw[\\/]/i.test(withoutUrls)
+    || hasNonWebUrl
     || hasUnixAbsolutePath
-    || /(?:^|[\s('"`])[A-Za-z]:[\\/]/.test(markdown)
+    || /(?:^|[^\p{L}\p{N}_])[A-Za-z]:[\\/]/u.test(withoutUrls)
     || markdown.includes('[[')
 }
