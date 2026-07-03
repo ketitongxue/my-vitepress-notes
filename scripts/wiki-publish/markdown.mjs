@@ -68,9 +68,15 @@ export function convertWikilinks(markdown, known) {
 }
 
 export function containsPrivateData(markdown) {
+  const hasUnixAbsolutePath = [...markdown.matchAll(/(?:^|[\s('"`])\/(?!\/)([^\s)\]}>]+)/g)]
+    .some((match) => {
+      const path = `/${match[1]}`
+      return path !== '/wiki' && !path.startsWith('/wiki/')
+    })
+
   return /(^|\n)\s*sources\s*:/i.test(markdown)
-    || /(?:^|[\s(])raw[\\/]/i.test(markdown)
-    || /(?:^|[\s('"`])\/(?:Users|home|private|var|tmp|etc|opt|root|usr|bin|sbin|dev|proc|sys|srv|mnt)\//.test(markdown)
+    || /(?:^|[\s\\/])raw[\\/]/i.test(markdown)
+    || hasUnixAbsolutePath
     || /(?:^|[\s('"`])[A-Za-z]:[\\/]/.test(markdown)
     || markdown.includes('[[')
 }
