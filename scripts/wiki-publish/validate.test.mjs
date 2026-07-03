@@ -52,7 +52,15 @@ test('rejects sources metadata and raw paths', async (t) => {
 test('rejects macOS, Linux, and Windows absolute paths', async (t) => {
   assert.match(await errorsFor(t, `${CHINESE_BODY}\n/Users/alice/private.md`), /absolute path/i)
   assert.match(await errorsFor(t, `${CHINESE_BODY}\n/home/alice/private.md`), /absolute path/i)
+  assert.match(await errorsFor(t, `${CHINESE_BODY}\n/etc/passwd\n/tmp/private.md\n/var/log/private.log`), /absolute path/i)
   assert.match(await errorsFor(t, `${CHINESE_BODY}\nC:\\Users\\alice\\private.md`), /absolute path/i)
+})
+
+test('allows wiki links and HTTP(S) URLs without treating them as absolute paths', async (t) => {
+  const input = await fixture(t, {
+    content: `${CHINESE_BODY}\n[本站页面](/wiki/concepts/good)\nhttps://example.com/private/path\nhttp://example.com/Users/alice`,
+  })
+  assert.doesNotMatch((await validatePublishedWiki(input)).errors.join('\n'), /absolute path/i)
 })
 
 test('rejects residual wikilinks', async (t) => {

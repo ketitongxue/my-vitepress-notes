@@ -72,12 +72,25 @@ function linkTarget(source, href) {
   return target.endsWith('.md') ? target : `${target}.md`
 }
 
+function containsAbsolutePath(markdown) {
+  const withoutUrls = markdown.replace(
+    /https?:\/\/[^\s<>)]+|(^|[\s(<])\/\/[^\s<>)]+/gim,
+    (_url, protocolRelativePrefix) => protocolRelativePrefix || '',
+  )
+  const hasUnixAbsolutePath = [...withoutUrls.matchAll(/(?:^|[^\p{L}\p{N}_/])\/(?!\/)([^\s)\]}>]+)/gu)]
+    .some((match) => {
+      const candidate = `/${match[1]}`
+      return candidate !== '/wiki' && !candidate.startsWith('/wiki/')
+    })
+  return hasUnixAbsolutePath
+    || /(?:^|[^\p{L}\p{N}_])[A-Za-z]:[\\/]/u.test(withoutUrls)
+}
+
 function contentErrors(source, markdown, knownFiles) {
   const errors = []
   if (/(^|\n)\s*sources\s*:/i.test(markdown)) errors.push(`${source}: contains sources: metadata`)
   if (/(?:^|[\s\\/])raw[\\/]/i.test(markdown)) errors.push(`${source}: contains raw/ path`)
-  if (/(?:^|[^\p{L}\p{N}_])[A-Za-z]:[\\/]/u.test(markdown)
-    || /(?:^|[\s(<])\/(?:Users|home)(?:\/|\b)/i.test(markdown)) {
+  if (containsAbsolutePath(markdown)) {
     errors.push(`${source}: contains an absolute path`)
   }
   if (markdown.includes('[[')) errors.push(`${source}: contains a residual wikilink`)
