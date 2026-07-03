@@ -8,6 +8,7 @@ import {
   rename,
   rm,
   symlink,
+  utimes,
   writeFile,
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -26,7 +27,7 @@ async function temporaryDirectory(t, prefix) {
   return directory
 }
 
-async function run(site, args = [], env = {}) {
+async function run(site, args = [], env = {}, timeout = 10_000) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [cli, ...args], {
       cwd: site,
@@ -36,7 +37,11 @@ async function run(site, args = [], env = {}) {
     let stderr = ''
     child.stdout.on('data', (chunk) => { stdout += chunk })
     child.stderr.on('data', (chunk) => { stderr += chunk })
-    child.on('close', (code) => resolve({ code, stderr, stdout }))
+    const timer = setTimeout(() => child.kill('SIGKILL'), timeout)
+    child.on('close', (code) => {
+      clearTimeout(timer)
+      resolve({ code, stderr, stdout })
+    })
   })
 }
 
@@ -174,4 +179,45 @@ test('startup restores an orphaned backup and a failed sync preserves it', async
   const result = await run(site, ['--wiki', wiki])
   assert.equal(result.code, 1)
   assert.equal(await readFile(path.join(site, '.wiki-work', 'report.json'), 'utf8'), oldReport)
+})
+
+test('sync recovers an ownerless lock left by initialization crash', async (t) => {
+  const wiki = await temporaryDirectory(t, 'sync-wiki-')
+  const site = await temporaryDirectory(t, 'sync-site-')
+  const lock = path.join(site, '.wiki-sync.lock')
+  await Promise.all([
+    mkdir(path.join(wiki, 'concepts'), { recursive: true }),
+    mkdir(lock),
+  ])
+  await writeFile(path.join(wiki, 'concepts', 'a.md'), 'a\n')
+  const old = new Date(Date.now() - 60_000)
+  await utimes(lock, old, old)
+
+  const result = await run(site, ['--wiki', wiki], {}, 2_000)
+  assert.equal(result.code, 0, result.stderr)
+  assert.match(result.stdout, /1 added/)
+})
+
+test('two stale-lock reclaimers do not delete a replacement lock', async (t) => {
+  const wiki = await temporaryDirectory(t, 'sync-wiki-')
+  const site = await temporaryDirectory(t, 'sync-site-')
+  const lock = path.join(site, '.wiki-sync.lock')
+  await Promise.all([
+    mkdir(path.join(wiki, 'concepts'), { recursive: true }),
+    mkdir(lock),
+  ])
+  await Promise.all([
+    writeFile(path.join(wiki, 'concepts', 'large.md'), Buffer.alloc(32 * 1024 * 1024, 99)),
+    writeFile(path.join(lock, 'owner.json'), JSON.stringify({ pid: 999_999_999, token: 'stale' })),
+  ])
+
+  const [first, second] = await Promise.all([
+    run(site, ['--wiki', wiki]),
+    run(site, ['--wiki', wiki]),
+  ])
+  assert.equal(first.code, 0, first.stderr)
+  assert.equal(second.code, 0, second.stderr)
+  const outputs = [first.stdout, second.stdout]
+  assert.equal(outputs.filter((output) => /1 added/.test(output)).length, 1)
+  assert.equal(outputs.filter((output) => /1 unchanged/.test(output)).length, 1)
 })

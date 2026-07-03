@@ -6,6 +6,7 @@ import {
   readdir,
   rename,
   rm,
+  stat,
   writeFile,
 } from 'node:fs/promises'
 import path from 'node:path'
@@ -59,32 +60,101 @@ async function copySnapshots(contents, destination) {
   }
 }
 
+async function readLockOwner(directory) {
+  try {
+    return JSON.parse(await readFile(path.join(directory, 'owner.json'), 'utf8'))
+  } catch (error) {
+    if (error?.code === 'ENOENT' || error instanceof SyntaxError) return null
+    throw error
+  }
+}
+
+function sameOwner(left, right) {
+  return left?.pid === right?.pid && left?.token === right?.token
+}
+
+function processIsAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (error) {
+    if (error?.code === 'ESRCH') return false
+    throw error
+  }
+}
+
+async function reclaimStaleLock(lock, observedOwner) {
+  if (!observedOwner) {
+    let metadata
+    try {
+      metadata = await stat(lock)
+    } catch (error) {
+      if (error?.code === 'ENOENT') return true
+      throw error
+    }
+    if (Date.now() - metadata.mtimeMs < 500) return false
+  } else if (processIsAlive(observedOwner.pid)) {
+    return false
+  }
+
+  const claim = `${lock}.claim-${randomUUID()}`
+  try {
+    await rename(lock, claim)
+  } catch (error) {
+    if (error?.code === 'ENOENT') return true
+    throw error
+  }
+
+  const claimedOwner = await readLockOwner(claim)
+  if (sameOwner(observedOwner, claimedOwner)) {
+    await rm(claim, { recursive: true, force: true })
+    return true
+  }
+
+  try {
+    await rename(claim, lock)
+  } catch (error) {
+    if (!['EEXIST', 'ENOTEMPTY'].includes(error?.code)) throw error
+    await rm(claim, { recursive: true, force: true })
+  }
+  return false
+}
+
 async function acquireLock(site) {
   const lock = path.join(site, '.wiki-sync.lock')
   for (;;) {
+    const token = randomUUID()
+    const candidate = path.join(site, `.wiki-sync.candidate-${token}`)
     try {
-      await mkdir(lock)
-      await writeFile(path.join(lock, 'owner.json'), JSON.stringify({ pid: process.pid }))
-      return async () => rm(lock, { recursive: true, force: true })
+      await mkdir(candidate)
+      await writeFile(
+        path.join(candidate, 'owner.json'),
+        JSON.stringify({ pid: process.pid, token }),
+      )
+      await rename(candidate, lock)
     } catch (error) {
-      if (error?.code !== 'EEXIST') throw error
-      try {
-        const owner = JSON.parse(await readFile(path.join(lock, 'owner.json'), 'utf8'))
-        try {
-          process.kill(owner.pid, 0)
-        } catch (signalError) {
-          if (signalError?.code === 'ESRCH') {
-            await rm(lock, { recursive: true, force: true })
-            continue
-          }
-          throw signalError
-        }
-      } catch (ownerError) {
-        if (!['ENOENT', 'EISDIR'].includes(ownerError?.code) && !(ownerError instanceof SyntaxError)) {
-          throw ownerError
-        }
-      }
+      await rm(candidate, { recursive: true, force: true })
+      if (!['EEXIST', 'ENOTEMPTY'].includes(error?.code)) throw error
+      const observedOwner = await readLockOwner(lock)
+      if (await reclaimStaleLock(lock, observedOwner)) continue
       await new Promise((resolve) => setTimeout(resolve, 25))
+      continue
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    if (!sameOwner(await readLockOwner(lock), { pid: process.pid, token })) continue
+    return {
+      assertOwned: async () => {
+        if (!sameOwner(await readLockOwner(lock), { pid: process.pid, token })) {
+          throw new Error('Wiki sync lock ownership was lost')
+        }
+      },
+      release: async () => {
+        if (sameOwner(await readLockOwner(lock), { pid: process.pid, token })) {
+          await rm(lock, { recursive: true, force: true })
+        }
+      },
     }
   }
 }
@@ -123,8 +193,9 @@ async function replaceDirectory(temp, target) {
 export async function sync({ argv = process.argv.slice(2), env = process.env, site = process.cwd() } = {}) {
   const wiki = wikiPath(argv, env)
   const workDirectory = path.join(site, '.wiki-work')
-  const releaseLock = await acquireLock(site)
+  const lock = await acquireLock(site)
   try {
+    await lock.assertOwned()
     await recoverWorkspace(site, workDirectory)
     const previous = await previousInventory(workDirectory)
     const { contents, inventory } = await scanWikiSnapshot(wiki)
@@ -143,6 +214,7 @@ export async function sync({ argv = process.argv.slice(2), env = process.env, si
       if (JSON.stringify(verified.inventory) !== JSON.stringify(inventory)) {
         throw new Error('Wiki changed while snapshots were being staged')
       }
+      await lock.assertOwned()
       await writeFile(path.join(temp, 'report.json'), `${JSON.stringify(report, null, 2)}\n`)
       await replaceDirectory(temp, workDirectory)
     } catch (error) {
@@ -151,7 +223,7 @@ export async function sync({ argv = process.argv.slice(2), env = process.env, si
     }
     return report
   } finally {
-    await releaseLock()
+    await lock.release()
   }
 }
 

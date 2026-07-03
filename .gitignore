@@ -3,6 +3,8 @@
 .wiki-work.backup-*/
 .wiki-work.tmp-*/
 .wiki-sync.lock/
+.wiki-sync.candidate-*/
+.wiki-sync.lock.claim-*/
 node_modules/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
