@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -129,4 +129,46 @@ test('recovers a publication directory backup left by a crash before finalizing'
   const result = await finalize({ site })
   assert.equal(result.pages, 1)
   assert.match(await readFile(path.join(site, 'docs', 'wiki', source), 'utf8'), /完整的中文知识页面/)
+})
+
+test('rejects an intermediate directory symlink before confirmed deletion can touch external files', async (t) => {
+  const source = 'concepts/link/victim.md'
+  const outside = await mkdtemp(path.join(tmpdir(), 'wiki-finalize-outside-'))
+  t.after(() => rm(outside, { recursive: true, force: true }))
+  const victim = path.join(outside, 'victim.md')
+  await writeFile(victim, 'must survive\n')
+  const site = await fixture(t, { pages: [page(source)], report: { deleted: [source] } })
+  await mkdir(path.join(site, 'docs', 'wiki', 'concepts'))
+  await symlink(outside, path.join(site, 'docs', 'wiki', 'concepts', 'link'))
+
+  await assert.rejects(finalize({ site, argv: ['--confirm-delete', source] }), /symbolic link/i)
+  assert.equal(await readFile(victim, 'utf8'), 'must survive\n')
+})
+
+test('sorts manifest and generated index by locale-independent Unicode code points', async (t) => {
+  const sources = ['entities/é.md', 'entities/z.md']
+  const inventory = Object.fromEntries(sources.map((source) => [source, { hash: sha256(source), publicPath: `docs/wiki/${source}` }]))
+  const site = await fixture(t, { report: { added: sources, inventory } })
+  await put(site, sources[0], '重音页面')
+  await put(site, sources[1], '字母页面')
+
+  await finalize({ site })
+  const manifest = JSON.parse(await readFile(path.join(site, 'wiki-manifest.json'), 'utf8'))
+  assert.deepEqual(manifest.pages.map(({ source }) => source), ['entities/z.md', 'entities/é.md'])
+  const index = await readFile(path.join(site, 'docs', 'wiki', 'index.md'), 'utf8')
+  assert.ok(index.indexOf('/wiki/entities/z') < index.indexOf('/wiki/entities/é'))
+})
+
+test('rolls back a newly installed wiki when a crash occurs before manifest installation', async (t) => {
+  const source = 'concepts/same.md'
+  const site = await fixture(t, { pages: [page(source)], report: { unchanged: [source], inventory: { [source]: { hash: 'a'.repeat(64), publicPath: `docs/wiki/${source}` } } } })
+  const original = await put(site, source, '原始页面')
+  await rename(path.join(site, 'docs', 'wiki'), path.join(site, '.wiki-publish.backup-wiki-crash'))
+  await rename(path.join(site, 'wiki-manifest.json'), path.join(site, '.wiki-publish.backup-manifest-crash'))
+  await mkdir(path.join(site, 'docs', 'wiki', 'concepts'), { recursive: true })
+  await writeFile(path.join(site, 'docs', 'wiki', source), 'partially installed wiki\n')
+
+  await finalize({ site })
+  assert.equal(await readFile(path.join(site, 'docs', 'wiki', source), 'utf8'), original)
+  assert.equal(JSON.parse(await readFile(path.join(site, 'wiki-manifest.json'), 'utf8')).pages.length, 1)
 })

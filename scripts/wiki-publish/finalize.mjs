@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto'
-import { access, cp, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
+import { access, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { parseFrontmatter } from './markdown.mjs'
-import { publicPath } from './core.mjs'
+import { publicPath, scanWikiSnapshot } from './core.mjs'
 import { acquireLock } from './sync.mjs'
 import { validatePublishedWiki } from './validate.mjs'
 
@@ -67,6 +67,20 @@ async function indexMarkdown(docsRoot, pages, date) {
     lines.push('')
   }
   return `${lines.join('\n').trimEnd()}\n`
+}
+
+function compareCodePoints(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0
+}
+
+async function stageVerifiedSnapshot(snapshot, destination, deleted) {
+  await mkdir(destination)
+  for (const [source, markdown] of Object.entries(snapshot.contents)) {
+    if (deleted.has(source)) continue
+    const target = path.join(destination, ...source.split('/'))
+    await mkdir(path.dirname(target), { recursive: true })
+    await writeFile(target, markdown)
+  }
 }
 
 async function replacePublication({ site, stagedWiki, stagedManifest }) {
@@ -150,8 +164,8 @@ export async function finalize({ argv = process.argv.slice(2), site = process.cw
     staging = path.join(site, `.wiki-publish.tmp-${randomUUID()}`)
     const stagedWiki = path.join(staging, 'wiki')
     await mkdir(staging)
-    await cp(docsRoot, stagedWiki, { recursive: true, force: false, errorOnExist: true })
-    for (const source of report.deleted) await rm(path.join(stagedWiki, ...source.split('/')), { force: true })
+    const publishedSnapshot = await scanWikiSnapshot(docsRoot)
+    await stageVerifiedSnapshot(publishedSnapshot, stagedWiki, deleted)
 
     const bySource = new Map(manifest.pages.map((page) => [page.source, page]))
     for (const source of report.deleted) bySource.delete(source)
@@ -167,7 +181,7 @@ export async function finalize({ argv = process.argv.slice(2), site = process.cw
         syncedAt,
       })
     }
-    const pages = [...bySource.values()].sort((a, b) => a.source.localeCompare(b.source))
+    const pages = [...bySource.values()].sort((a, b) => compareCodePoints(a.source, b.source))
     const nextManifest = { version: 1, pages }
     await writeFile(path.join(stagedWiki, 'index.md'), await indexMarkdown(stagedWiki, pages, syncedAt.slice(0, 10)))
     const validation = await validatePublishedWiki({ docsRoot: stagedWiki, manifest: nextManifest })
