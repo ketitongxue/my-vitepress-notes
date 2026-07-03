@@ -1,0 +1,113 @@
+import assert from 'node:assert/strict'
+import { mkdtemp, mkdir, symlink, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import test from 'node:test'
+
+import {
+  ALLOWED_SECTIONS,
+  diffInventory,
+  publicPath,
+  scanWiki,
+  sha256,
+} from './core.mjs'
+
+async function temporaryWiki() {
+  const root = await mkdtemp(path.join(tmpdir(), 'wiki-publish-'))
+  await Promise.all(
+    ['entities', 'concepts/nested', 'comparisons', 'raw', 'queries'].map((section) =>
+      mkdir(path.join(root, section), { recursive: true }),
+    ),
+  )
+  return root
+}
+
+test('scanWiki inventories markdown only from public sections with POSIX paths', async () => {
+  const root = await temporaryWiki()
+  await Promise.all([
+    writeFile(path.join(root, 'entities', 'z.md'), 'entity'),
+    writeFile(path.join(root, 'concepts', 'nested', 'a.md'), 'concept'),
+    writeFile(path.join(root, 'comparisons', 'b.md'), 'comparison'),
+    writeFile(path.join(root, 'concepts', 'ignore.txt'), 'not markdown'),
+    writeFile(path.join(root, 'raw', 'secret.md'), 'raw'),
+    writeFile(path.join(root, 'queries', 'private.md'), 'query'),
+  ])
+
+  const inventory = await scanWiki(root)
+
+  assert.deepEqual(ALLOWED_SECTIONS, ['comparisons', 'concepts', 'entities'])
+  assert.deepEqual(Object.keys(inventory), [
+    'comparisons/b.md',
+    'concepts/nested/a.md',
+    'entities/z.md',
+  ])
+  assert.deepEqual(inventory['concepts/nested/a.md'], {
+    hash: sha256('concept'),
+    publicPath: 'docs/wiki/concepts/nested/a.md',
+  })
+  assert.ok(Object.keys(inventory).every((name) => !name.includes('\\')))
+})
+
+test('sha256 is stable and content-sensitive', () => {
+  assert.equal(
+    sha256('hello'),
+    '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824',
+  )
+  assert.equal(sha256('hello'), sha256('hello'))
+  assert.notEqual(sha256('hello'), sha256('Hello'))
+})
+
+test('publicPath maps allowed source paths and rejects paths outside them', () => {
+  assert.equal(publicPath('concepts/a.md'), 'docs/wiki/concepts/a.md')
+  assert.throws(() => publicPath('raw/a.md'), /allowed/i)
+  assert.throws(() => publicPath('../concepts/a.md'), /allowed/i)
+  assert.throws(() => publicPath('/concepts/a.md'), /relative/i)
+})
+
+test('scanWiki rejects symlinks in allowed directories', async () => {
+  const root = await temporaryWiki()
+  const target = path.join(root, 'outside.md')
+  await writeFile(target, 'outside')
+  await symlink(target, path.join(root, 'concepts', 'linked.md'))
+
+  await assert.rejects(scanWiki(root), /symbolic link/i)
+})
+
+test('diffInventory sorts added, changed, unchanged, and deleted paths', () => {
+  const previous = {
+    'concepts/a.md': { hash: 'old' },
+    'entities/gone.md': { hash: 'x' },
+  }
+  const current = {
+    'concepts/a.md': { hash: 'new' },
+    'concepts/b.md': { hash: 'b' },
+  }
+
+  assert.deepEqual(diffInventory(previous, current), {
+    added: ['concepts/b.md'],
+    changed: ['concepts/a.md'],
+    unchanged: [],
+    deleted: ['entities/gone.md'],
+  })
+})
+
+test('diffInventory returns deterministic sorted arrays', () => {
+  const previous = {
+    'entities/z.md': { hash: 'same' },
+    'concepts/c.md': { hash: 'old' },
+    'comparisons/a.md': { hash: 'gone' },
+  }
+  const current = {
+    'entities/z.md': { hash: 'same' },
+    'concepts/b.md': { hash: 'new' },
+    'concepts/c.md': { hash: 'changed' },
+    'concepts/a.md': { hash: 'new' },
+  }
+
+  assert.deepEqual(diffInventory(previous, current), {
+    added: ['concepts/a.md', 'concepts/b.md'],
+    changed: ['concepts/c.md'],
+    unchanged: ['entities/z.md'],
+    deleted: ['comparisons/a.md'],
+  })
+})
