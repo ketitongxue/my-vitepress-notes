@@ -29,7 +29,7 @@ updated: "2026-07-02"
 
 ## 规格中应包含什么
 
-最有价值的规则，是 Claude Code 原本需要猜测的地方：命名、API 响应形态、错误码、依赖边界、抽象风格和项目特定的设计原则。
+最有价值的规则，是 [Claude Code](/wiki/entities/claude-code) 原本需要猜测的地方：命名、API 响应形态、错误码、依赖边界、抽象风格和项目特定的设计原则。
 
 [Claude Code 记忆文件](/wiki/concepts/claude-code-memory-files)是这类规格的默认归宿，因为它们会在新会话开始时加载。
 

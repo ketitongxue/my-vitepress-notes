@@ -23,7 +23,7 @@ Claude Code 技能是可通过语义触发的能力包。它们编码领域知�
 
 最小单元是包含 `SKILL.md` 的目录。可选的 `references/`、`scripts/`、`templates/` 和 `assets/` 支持更重或更确定性的工作。
 
-`name` 和 `description` 是路由表面：Claude 先扫描描述，只有任务匹配时才加载技能正文。这是渐进式披露的入口。
+`name` 和 `description` 是路由表面：Claude 先扫描描述，只有任务匹配时才加载技能正文。这是[渐进式披露](/wiki/concepts/progressive-disclosure)的入口。
 
 技能元数据在会话开始时可用，正文仅在斜杠命令或语义匹配触发后加载。被调用的技能可在上下文压缩后、共享预算范围内重新注入。因此，对并非始终相关的流程，技能比根记忆更合适。
 
@@ -45,10 +45,11 @@ Claude Code 技能是可通过语义触发的能力包。它们编码领域知�
 
 ## 与其他引导面的边界
 
-可复用流程需要在主对话中展开时使用技能；工作应在隔离上下文中执行并只返回摘要时使用子智能体；行为必须确定性运行而非依赖模型记住并选择执行时使用 hooks。
+可复用流程需要在主对话中展开时使用技能；工作应在隔离上下文中执行并只返回摘要时使用 [Claude Code 子智能体](/wiki/concepts/claude-code-subagents)；行为必须确定性运行而非依赖模型记住并选择执行时使用 [Claude Code Hooks](/wiki/concepts/claude-code-hooks)。
 
 ## 相关内容
 
 - [Claude Code 扩展系统](/wiki/concepts/claude-code-extension-system)
+- [技能设计模式](/wiki/concepts/skill-design-patterns)
 - [Claude Code 子智能体](/wiki/concepts/claude-code-subagents)
 - [Claude Code Hooks](/wiki/concepts/claude-code-hooks)

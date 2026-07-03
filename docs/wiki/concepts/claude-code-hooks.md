@@ -26,7 +26,7 @@ Hooks 弥合了“Claude 应该记得做某事”和“环境必须执行某事�
 
 Hooks 的主上下文成本较低，因为配置和实现都在普通对话之外。部分输出会进入主上下文，例如解释工具调用为何被拒绝的阻断错误；但除非配置为返回结果，大多数 hook 工作不会成为对话状态。
 
-这与 [Claude Code 技能](/wiki/concepts/claude-code-skills)、规则和记忆文件不同：后三者通过加载指令引导 Claude，hooks 则通过给事件绑定可执行行为来控制系统。
+这与 [Claude Code 技能](/wiki/concepts/claude-code-skills)、规则和 [Claude Code 记忆文件](/wiki/concepts/claude-code-memory-files)不同：后三者通过加载指令引导 Claude，hooks 则通过给事件绑定可执行行为来控制系统。
 
 ## 设计边界
 

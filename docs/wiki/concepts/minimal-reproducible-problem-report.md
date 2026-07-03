@@ -35,5 +35,7 @@ updated: "2026-06-20"
 
 ## 相关内容
 
+- [聪明的技术提问](/wiki/concepts/smart-technical-questioning)
 - [上下文工程](/wiki/concepts/context-engineering)
+- [规格驱动开发](/wiki/concepts/spec-driven-development)
 - [AI 调试错误分流](/wiki/concepts/ai-debugging-error-triage)

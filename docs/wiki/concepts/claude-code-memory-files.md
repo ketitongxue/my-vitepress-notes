@@ -46,7 +46,7 @@ project-root/.claude/rules/*.md
 - 少即是多：每一行都会注入未来上下文。
 - 具体胜过泛泛：明确约定，不写模糊的质量目标。
 - 对必须可靠执行的规则说明原因、内容和方法。
-- 使用渐进式披露：`CLAUDE.md` 只放默认规则，通过链接指向详细文档。
+- 使用[渐进式披露](/wiki/concepts/progressive-disclosure)：`CLAUDE.md` 只放默认规则，通过链接指向详细文档。
 
 记忆应在错误后迭代。Claude 反复违反某条规则时，持久修复是更新相应记忆或规格，而不是只在聊天中不断纠正。
 
@@ -56,5 +56,6 @@ project-root/.claude/rules/*.md
 
 - [Claude Code](/wiki/entities/claude-code)
 - [Claude Code 扩展系统](/wiki/concepts/claude-code-extension-system)
+- [规格驱动开发](/wiki/concepts/spec-driven-development)
 - [Claude Code 技能](/wiki/concepts/claude-code-skills)
 - [Claude Code Hooks](/wiki/concepts/claude-code-hooks)

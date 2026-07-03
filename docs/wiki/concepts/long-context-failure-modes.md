@@ -25,7 +25,7 @@ updated: "2026-06-13"
 
 这是直接的[上下文工程](/wiki/concepts/context-engineering)问题：系统必须决定哪些内容留在活动提示中，哪些应摘要、按需加载或与主流程隔离。
 
-即使所有技能、规则、文档和工具定义都能放进窗口，一次全部加载仍会制造混淆和冲突。因此渐进式披露至关重要。
+即使所有技能、规则、文档和工具定义都能放进窗口，一次全部加载仍会制造混淆和冲突。因此[渐进式披露](/wiki/concepts/progressive-disclosure)至关重要。
 
 它也约束[模型上下文协议](/wiki/concepts/model-context-protocol)设计。连接更多工具意味着更多无关或冲突的描述，所以工具路由和动态加载属于可靠性机制，而不只是便利功能。
 
@@ -36,6 +36,7 @@ updated: "2026-06-13"
 ## 相关内容
 
 - [上下文工程](/wiki/concepts/context-engineering)
+- [渐进式披露](/wiki/concepts/progressive-disclosure)
 - [模型上下文协议](/wiki/concepts/model-context-protocol)
 - [Claude Code 子智能体](/wiki/concepts/claude-code-subagents)
 - [智能体运行框架工程](/wiki/concepts/agent-harness-engineering)
