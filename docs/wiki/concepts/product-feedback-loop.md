@@ -65,5 +65,5 @@ updated: "2026-06-21"
 - [AI 调试错误分诊](/wiki/concepts/ai-debugging-error-triage)
 - [产品邮件投递工作流](/wiki/concepts/product-email-delivery-workflow)
 - [产品部署发布工作流](/wiki/concepts/product-deployment-release-workflow)
-- [AI 产品设计打磨工作流](/wiki/concepts/ai-product-design-polish-workflow)
+- [AI 产品设计润色工作流](/wiki/concepts/ai-product-design-polish-workflow)
 - [产品分析迭代循环](/wiki/concepts/product-analytics-iteration-loop)

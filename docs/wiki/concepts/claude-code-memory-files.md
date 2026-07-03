@@ -50,7 +50,7 @@ project-root/.claude/rules/*.md
 
 记忆应在错误后迭代。Claude 反复违反某条规则时，持久修复是更新相应记忆或规格，而不是只在聊天中不断纠正。
 
-行为若是流程，应迁移到 [Claude Code 技能](/wiki/concepts/claude-code-skills)；若需确定性强制执行，则迁移到 [Claude Code Hooks](/wiki/concepts/claude-code-hooks)或[权限模型](/wiki/concepts/claude-code-permission-model)。这样记忆保持为索引和稳定契约，而不会成为所有指令的倾倒场。
+行为若是流程，应迁移到 [Claude Code 技能](/wiki/concepts/claude-code-skills)；若需确定性强制执行，则迁移到 [Claude Code Hooks](/wiki/concepts/claude-code-hooks)或[Claude Code 权限模型](/wiki/concepts/claude-code-permission-model)。这样记忆保持为索引和稳定契约，而不会成为所有指令的倾倒场。
 
 ## 相关内容
 

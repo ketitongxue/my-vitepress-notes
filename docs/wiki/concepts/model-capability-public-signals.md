@@ -26,7 +26,7 @@ updated: "2026-06-20"
 4. 能力足够接近后再比较价格、延迟和提供商可用性。
 5. 投入生产前运行本地、任务专用测试。
 
-这个循环把基准阅读连接到[氛围编程商业验证](/wiki/concepts/vibe-coding-commercial-validation)：最佳模型不一定是能力最强者，而是在产品约束下足够好、且可持续成本最低者。
+这个循环把基准阅读连接到[氛围编程的商业验证](/wiki/concepts/vibe-coding-commercial-validation)：最佳模型不一定是能力最强者，而是在产品约束下足够好、且可持续成本最低者。
 
 ## 信号质量
 
@@ -40,13 +40,13 @@ updated: "2026-06-20"
 
 ## 与智能体工作的关系
 
-对[智能体运行框架工程](/wiki/concepts/agent-harness-engineering)而言，模型选择是框架设计，而非一次性偏好。排行榜略强的模型若更慢、更贵、难路由或无法接入工具栈，仍可能是更差的组件。
+对[智能体 Harness 工程](/wiki/concepts/agent-harness-engineering)而言，模型选择是框架设计，而非一次性偏好。排行榜略强的模型若更慢、更贵、难路由或无法接入工具栈，仍可能是更差的组件。
 
 对 [AI 编程工程循环](/wiki/concepts/ai-coding-engineering-loop)而言，公开信号应触发实现前的小型评估：选候选模型，在真实任务上测试，再记录质量、成本和延迟的权衡。
 
 ## 相关内容
 
-- [智能体运行框架工程](/wiki/concepts/agent-harness-engineering)
+- [智能体 Harness 工程](/wiki/concepts/agent-harness-engineering)
 - [AI 编程工程循环](/wiki/concepts/ai-coding-engineering-loop)
-- [氛围编程商业验证](/wiki/concepts/vibe-coding-commercial-validation)
+- [氛围编程的商业验证](/wiki/concepts/vibe-coding-commercial-validation)
 - [开源工具发现](/wiki/concepts/open-source-tool-discovery)

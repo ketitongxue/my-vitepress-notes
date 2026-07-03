@@ -20,7 +20,7 @@ updated: "2026-06-13"
 
 长上下文材料提出一项可靠性警告：一次暴露过多工具定义会造成[长上下文失效模式](/wiki/concepts/long-context-failure-modes)，尤其是上下文混淆和冲突。因此 MCP 系统需要路由、过滤或动态加载，让模型只看到当前任务相关工具，而非全部已连接能力。
 
-从[智能体运行框架工程](/wiki/concepts/agent-harness-engineering)看，仅有工具连接还不够；运行时还要决定哪些工具可见、如何拦截命令，以及何时在人与外部系统之间加入审批或中间件。
+从[智能体 Harness 工程](/wiki/concepts/agent-harness-engineering)看，仅有工具连接还不够；运行时还要决定哪些工具可见、如何拦截命令，以及何时在人与外部系统之间加入审批或中间件。
 
 ## 相关内容
 
@@ -28,4 +28,4 @@ updated: "2026-06-13"
 - [CC Switch](/wiki/entities/cc-switch)
 - [智能体无头执行](/wiki/concepts/agent-headless-execution)
 - [长上下文失效模式](/wiki/concepts/long-context-failure-modes)
-- [智能体运行框架工程](/wiki/concepts/agent-harness-engineering)
+- [智能体 Harness 工程](/wiki/concepts/agent-harness-engineering)

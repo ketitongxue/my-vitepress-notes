@@ -20,7 +20,7 @@ updated: "2026-06-21"
 4. 只修改产品的一部分。
 5. 再次检查同一指标或行为信号。
 
-它把[产品反馈循环](/wiki/concepts/product-feedback-loop)从显式用户消息扩展为隐式行为证据，也为首个版本上线后的[氛围编程商业验证](/wiki/concepts/vibe-coding-commercial-validation)增加更强测量层。
+它把[产品反馈循环](/wiki/concepts/product-feedback-loop)从显式用户消息扩展为隐式行为证据，也为首个版本上线后的[氛围编程的商业验证](/wiki/concepts/vibe-coding-commercial-validation)增加更强测量层。
 
 ## 指标层
 
@@ -83,7 +83,7 @@ updated: "2026-06-21"
 ## 相关内容
 
 - [产品反馈循环](/wiki/concepts/product-feedback-loop)
-- [氛围编程商业验证](/wiki/concepts/vibe-coding-commercial-validation)
+- [氛围编程的商业验证](/wiki/concepts/vibe-coding-commercial-validation)
 - [AI 编程工程循环](/wiki/concepts/ai-coding-engineering-loop)
 - [产品部署发布工作流](/wiki/concepts/product-deployment-release-workflow)
-- [AI 调试错误分流](/wiki/concepts/ai-debugging-error-triage)
+- [AI 调试错误分诊](/wiki/concepts/ai-debugging-error-triage)

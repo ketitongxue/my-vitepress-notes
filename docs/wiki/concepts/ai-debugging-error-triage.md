@@ -80,9 +80,9 @@ AI 调试错误分诊是一套工作流，用于把 bug、运行时错误或空�
 ## 相关内容
 
 - [最小可复现问题报告](/wiki/concepts/minimal-reproducible-problem-report)
-- [聪明地提出技术问题](/wiki/concepts/smart-technical-questioning)
+- [聪明的技术提问](/wiki/concepts/smart-technical-questioning)
 - [AI 编程工程循环](/wiki/concepts/ai-coding-engineering-loop)
 - [智能体任务简报](/wiki/concepts/agent-task-briefing)
 - [上下文工程](/wiki/concepts/context-engineering)
 - [产品部署发布工作流](/wiki/concepts/product-deployment-release-workflow)
-- [Serverless 定时任务](/wiki/concepts/serverless-scheduled-jobs)
+- [无服务器定时任务](/wiki/concepts/serverless-scheduled-jobs)

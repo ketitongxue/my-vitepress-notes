@@ -38,7 +38,7 @@ Anthropic 的 2026 年引导指南进一步明确了这组机制：可通过 `CL
 
 后续课程笔记把 Claude Code 的角色进一步明确为 AI 辅助工程的完整操作系统：
 
-- [Claude Code 记忆文件](/wiki/concepts/claude-code-memory-files)与[规范驱动开发](/wiki/concepts/spec-driven-development)定义持久的项目规则。
+- [Claude Code 记忆文件](/wiki/concepts/claude-code-memory-files)与[规格驱动开发](/wiki/concepts/spec-driven-development)定义持久的项目规则。
 - [Claude Code 子智能体](/wiki/concepts/claude-code-subagents)隔离高噪声或特定角色的工作。
 - [Claude Code 技能](/wiki/concepts/claude-code-skills)通过[渐进式披露](/wiki/concepts/progressive-disclosure)按需提供操作流程。
 - [智能体流水线编排](/wiki/concepts/agent-pipeline-orchestration)说明当工作进入并行或分阶段状态时，主对话如何继续承担监督者角色。

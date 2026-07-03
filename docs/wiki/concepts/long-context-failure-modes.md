@@ -31,7 +31,7 @@ updated: "2026-06-13"
 
 在智能体工作流中，[Claude Code 子智能体](/wiki/concepts/claude-code-subagents)等隔离模式充当上下文隔离区：高噪声研究、日志和试错留在监督者主上下文之外，仅返回紧凑结果。
 
-[智能体运行框架工程](/wiki/concepts/agent-harness-engineering)把这些失效模式转化为运行时职责：限制活动工具描述、外部化状态、压缩或丢弃旧上下文，并在危险或重复动作循环成为生产事故前打断它们。
+[智能体 Harness 工程](/wiki/concepts/agent-harness-engineering)把这些失效模式转化为运行时职责：限制活动工具描述、外部化状态、压缩或丢弃旧上下文，并在危险或重复动作循环成为生产事故前打断它们。
 
 ## 相关内容
 
@@ -39,4 +39,4 @@ updated: "2026-06-13"
 - [渐进式披露](/wiki/concepts/progressive-disclosure)
 - [模型上下文协议](/wiki/concepts/model-context-protocol)
 - [Claude Code 子智能体](/wiki/concepts/claude-code-subagents)
-- [智能体运行框架工程](/wiki/concepts/agent-harness-engineering)
+- [智能体 Harness 工程](/wiki/concepts/agent-harness-engineering)

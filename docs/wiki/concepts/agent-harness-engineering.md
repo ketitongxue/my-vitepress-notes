@@ -27,7 +27,7 @@ updated: "2026-06-20"
 | 工具 | API 太多且可供性不清。 | 偏好极简工具集和清晰的工具注册表。 |
 | 安全 | 危险的 shell 或文件操作。 | 在执行前加入中间件、审批和中断点。 |
 | 评估 | 不知道改动是否让智能体变得更好。 | 加入追踪、成本记录和基准测试。 |
-| 模型选择 | 被热度或供应商驱动的模型选择。 | 先结合[模型能力的公开信号](/wiki/concepts/model-capability-public-signals)与本地任务测试，再选择运行时模型。 |
+| 模型选择 | 被热度或供应商驱动的模型选择。 | 先结合[模型能力公开信号](/wiki/concepts/model-capability-public-signals)与本地任务测试，再选择运行时模型。 |
 
 ## 与现有页面的关系
 
@@ -45,4 +45,4 @@ updated: "2026-06-20"
 - [模型上下文协议](/wiki/concepts/model-context-protocol)
 - [长上下文失效模式](/wiki/concepts/long-context-failure-modes)
 - [Claude Code 子智能体](/wiki/concepts/claude-code-subagents)
-- [模型能力的公开信号](/wiki/concepts/model-capability-public-signals)
+- [模型能力公开信号](/wiki/concepts/model-capability-public-signals)

@@ -22,7 +22,7 @@ AI 编程智能体了解通用软件模式，但不会自动知道项目已经�
 4. 把事实加入正确的持久控制面。
 5. 未来的智能体会话继承改进后的规则集。
 
-这就是[规范驱动开发](/wiki/concepts/spec-driven-development)背后的知识复利机制。
+这就是[规格驱动开发](/wiki/concepts/spec-driven-development)背后的知识复利机制。
 
 ## 知识层级
 
@@ -60,8 +60,8 @@ AI 编程智能体了解通用软件模式，但不会自动知道项目已经�
 
 ## 相关内容
 
-- [规范驱动开发](/wiki/concepts/spec-driven-development)
-- [SDD 规范生命周期](/wiki/concepts/sdd-spec-lifecycle)
+- [规格驱动开发](/wiki/concepts/spec-driven-development)
+- [SDD 规格生命周期](/wiki/concepts/sdd-spec-lifecycle)
 - [技能设计模式](/wiki/concepts/skill-design-patterns)
 - [Claude Code 记忆文件](/wiki/concepts/claude-code-memory-files)
 - [Claude Code Hooks](/wiki/concepts/claude-code-hooks)

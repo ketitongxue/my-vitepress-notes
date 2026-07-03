@@ -46,7 +46,7 @@ AI 产品设计润色是一套工作流，用于把能够工作的 AI 原型转�
 
 - 核心产品价值还不清楚，就添加视觉效果。
 - 克隆信息架构与产品不匹配的漂亮布局。
-- 把精致落地页当作 [Vibe Coding 商业验证](/wiki/concepts/vibe-coding-commercial-validation)的证据。
+- 把精致落地页当作 [氛围编程的商业验证](/wiki/concepts/vibe-coding-commercial-validation)的证据。
 - 没有示例、约束或验收标准，就要求智能体“做得漂亮”。
 - 导入破坏无障碍、响应式、性能或品牌一致性的组件。
 
@@ -55,5 +55,5 @@ AI 产品设计润色是一套工作流，用于把能够工作的 AI 原型转�
 - [AI 编程工程循环](/wiki/concepts/ai-coding-engineering-loop)
 - [智能体任务简报](/wiki/concepts/agent-task-briefing)
 - [开源工具发现](/wiki/concepts/open-source-tool-discovery)
-- [Vibe Coding 商业验证](/wiki/concepts/vibe-coding-commercial-validation)
-- [规范驱动开发](/wiki/concepts/spec-driven-development)
+- [氛围编程的商业验证](/wiki/concepts/vibe-coding-commercial-validation)
+- [规格驱动开发](/wiki/concepts/spec-driven-development)

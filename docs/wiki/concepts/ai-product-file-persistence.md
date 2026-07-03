@@ -20,7 +20,7 @@ AI 产品文件持久化是一套工作流，用于把临时生成或上传的�
 4. 在数据库中保存永久对象 URL。
 5. 把永久 URL 返回前端。
 
-这会将文件存储与结构化产品数据分离。文件属于对象存储；关系状态和元数据属于[产品数据层选择](/wiki/concepts/product-data-layer-selection)中描述的数据库。
+这会将文件存储与结构化产品数据分离。文件属于对象存储；关系状态和元数据属于[产品数据层选型](/wiki/concepts/product-data-layer-selection)中描述的数据库。
 
 ## S3 兼容存储
 
@@ -50,7 +50,7 @@ S3 兼容性很重要，因为大量 SDK 和工具可以使用同一协议。对
 
 ## 相关内容
 
-- [产品数据层选择](/wiki/concepts/product-data-layer-selection)
+- [产品数据层选型](/wiki/concepts/product-data-layer-selection)
 - [产品部署发布工作流](/wiki/concepts/product-deployment-release-workflow)
 - [智能体任务简报](/wiki/concepts/agent-task-briefing)
 - [AI 编程工程循环](/wiki/concepts/ai-coding-engineering-loop)

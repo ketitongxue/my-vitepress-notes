@@ -52,7 +52,7 @@ updated: "2026-06-21"
 
 [产品数据层选型](/wiki/concepts/product-data-layer-selection)为持久化补充了同样的纪律。选择足以支撑已验证产品循环的最小数据层：关系和报表重要时使用托管式 PostgreSQL；只有产品确实需要认证、存储、API 或实时功能时，才选择更完整的后端套件。
 
-[AI 产品设计打磨工作流](/wiki/concepts/ai-product-design-polish-workflow)澄清了打磨何时有用：视觉可信度能在验证过程中降低信任摩擦，但不能替代需求、付费和获客证据。
+[AI 产品设计润色工作流](/wiki/concepts/ai-product-design-polish-workflow)澄清了打磨何时有用：视觉可信度能在验证过程中降低信任摩擦，但不能替代需求、付费和获客证据。
 
 [产品分析迭代循环](/wiki/concepts/product-analytics-iteration-loop)补充了上线后的证据层。原型公开后，只有流量规模远远不够。构建者应检查留存、跳出率、会话时长、转化、流量来源、行为录制、热力图和漏斗流失，以决定下一步修改什么。
 
@@ -66,5 +66,5 @@ updated: "2026-06-21"
 - [开源工具发现](/wiki/concepts/open-source-tool-discovery)
 - [模型能力公开信号](/wiki/concepts/model-capability-public-signals)
 - [产品数据层选型](/wiki/concepts/product-data-layer-selection)
-- [AI 产品设计打磨工作流](/wiki/concepts/ai-product-design-polish-workflow)
+- [AI 产品设计润色工作流](/wiki/concepts/ai-product-design-polish-workflow)
 - [产品分析迭代循环](/wiki/concepts/product-analytics-iteration-loop)

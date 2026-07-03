@@ -22,9 +22,9 @@ updated: "2026-07-02"
 | 红线 | 明确智能体不应做什么。 |
 | 交付标准 | 定义何为完成；必要时包括移动端行为或工作流闭环。 |
 
-它位于随意提示与完整的[规范驱动开发](/wiki/concepts/spec-driven-development)之间：既为智能体提供足以行动的结构，又让简报保持精简，以便快速迭代。
+它位于随意提示与完整的[规格驱动开发](/wiki/concepts/spec-driven-development)之间：既为智能体提供足以行动的结构，又让简报保持精简，以便快速迭代。
 
-[苏格拉底式规范细化](/wiki/concepts/socratic-spec-refinement)是生成这份简报的对话方式。用户从一句话开始，AI 每次提出一个带编号选项的问题，直到补齐简报中缺失的部分。当用户知道意图、却还不知道完整规范应是什么形态时，这种方式尤其有用。
+[苏格拉底式规格细化](/wiki/concepts/socratic-spec-refinement)是生成这份简报的对话方式。用户从一句话开始，AI 每次提出一个带编号选项的问题，直到补齐简报中缺失的部分。当用户知道意图、却还不知道完整规范应是什么形态时，这种方式尤其有用。
 
 ## 升级为完整设计文档
 
@@ -32,7 +32,7 @@ updated: "2026-07-02"
 
 关键机制是显式化。完整设计文档迫使模糊工作在编码前进入命名明确的决策界面，尤其是要修改的文件、集成点、测试策略、可观测性和发布方案。
 
-[SDD 规范生命周期](/wiki/concepts/sdd-spec-lifecycle)把规划与对齐区分开来。起草提案还不够：在实现前，人类与智能体应明确检查假设、边界、失败行为、性能约束、绕过路径和存在争议的决定。许多代价高昂的偏离都可在对齐阶段避免。
+[SDD 规格生命周期](/wiki/concepts/sdd-spec-lifecycle)把规划与对齐区分开来。起草提案还不够：在实现前，人类与智能体应明确检查假设、边界、失败行为、性能约束、绕过路径和存在争议的决定。许多代价高昂的偏离都可在对齐阶段避免。
 
 ## 与智能体工作的关系
 
@@ -40,18 +40,18 @@ updated: "2026-07-02"
 
 对于持久项目规则，简报可以升级为 [Claude Code 记忆文件](/wiki/concepts/claude-code-memory-files)。对于单次实现，它可以保持为任务局部契约。失效模式是要求智能体自行推断本应明确写出的约束。
 
-数据库工作会放大模糊简报的代价。[产品数据层选择](/wiki/concepts/product-data-layer-selection)补充了简报应明确的字段：现有 schema 的位置、ORM、迁移命令、开发与生产数据库目标、密钥处理规则，以及管理操作是只读还是可编辑。
+数据库工作会放大模糊简报的代价。[产品数据层选型](/wiki/concepts/product-data-layer-selection)补充了简报应明确的字段：现有 schema 的位置、ORM、迁移命令、开发与生产数据库目标、密钥处理规则，以及管理操作是只读还是可编辑。
 
 设计润色提出了另一类简报要求。[AI 产品设计润色工作流](/wiki/concepts/ai-product-design-polish-workflow)表明视觉任务需要具体参照：目标区块、组件或网站灵感、产品语气、设备尺寸、交互范围，以及哪些内容不可照搬。“让它显得高级”并不是实现简报。
 
 ## 相关内容
 
-- [规范驱动开发](/wiki/concepts/spec-driven-development)
+- [规格驱动开发](/wiki/concepts/spec-driven-development)
 - [上下文工程](/wiki/concepts/context-engineering)
 - [AI 编程工程循环](/wiki/concepts/ai-coding-engineering-loop)
 - [Claude Code 记忆文件](/wiki/concepts/claude-code-memory-files)
-- [苏格拉底式规范细化](/wiki/concepts/socratic-spec-refinement)
-- [产品数据层选择](/wiki/concepts/product-data-layer-selection)
+- [苏格拉底式规格细化](/wiki/concepts/socratic-spec-refinement)
+- [产品数据层选型](/wiki/concepts/product-data-layer-selection)
 - [AI 产品设计润色工作流](/wiki/concepts/ai-product-design-polish-workflow)
-- [SDD 规范生命周期](/wiki/concepts/sdd-spec-lifecycle)
+- [SDD 规格生命周期](/wiki/concepts/sdd-spec-lifecycle)
 - [SDD 分层采用模型](/wiki/concepts/sdd-layered-adoption-model)

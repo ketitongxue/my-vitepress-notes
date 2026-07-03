@@ -20,7 +20,7 @@ Claude Code 子智能体是拥有独立指令、工具边界、权限和上下�
 
 这是一种具体的[上下文工程](/wiki/concepts/context-engineering)机制：它控制信息存放在哪里，以及多少信息返回主 [Claude Code](/wiki/entities/claude-code) 会话。
 
-子智能体可充当上下文隔离区。大量搜索轨迹、试探性尝试、无关工具选项和过期的中间结论留在监督者之外，避免[长上下文失效模式](/wiki/concepts/long-context-failure-modes)。在[智能体运行框架工程](/wiki/concepts/agent-harness-engineering)中，它也是协调与隔离原语。
+子智能体可充当上下文隔离区。大量搜索轨迹、试探性尝试、无关工具选项和过期的中间结论留在监督者之外，避免[长上下文失效模式](/wiki/concepts/long-context-failure-modes)。在[智能体 Harness 工程](/wiki/concepts/agent-harness-engineering)中，它也是协调与隔离原语。
 
 父会话可看到子智能体名称、描述和工具列表，但正文在独立窗口运行，只有最终结果返回。这使它在主上下文中比始终加载的指令更便宜，也更适合产生大量中间状态的旁支任务。
 
@@ -53,4 +53,4 @@ Claude Code 子智能体是拥有独立指令、工具边界、权限和上下�
 - [多智能体架构模式](/wiki/comparisons/multi-agent-architecture-patterns)
 - [Claude Code 技能](/wiki/concepts/claude-code-skills)
 - [长上下文失效模式](/wiki/concepts/long-context-failure-modes)
-- [智能体运行框架工程](/wiki/concepts/agent-harness-engineering)
+- [智能体 Harness 工程](/wiki/concepts/agent-harness-engineering)

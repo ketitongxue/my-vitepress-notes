@@ -35,7 +35,7 @@ GitHub Trending 既是程序员注意力信息流，也是工具发现界面。�
 
 对 AI 辅助构建者而言，可运行仓库能展示代码组织、文档风格、依赖选择、发布纪律和维护模式，减少无谓重复发明，也避免让模型从空提示中臆造这些内容。
 
-同一习惯也支持[氛围编程商业验证](/wiki/concepts/vibe-coding-commercial-validation)：不直接检验核心需求的基础设施应复用现成方案，把定制工作留给必须验证的产品洞察或工作流。[AI 产品设计润色工作流](/wiki/concepts/ai-product-design-polish-workflow)把这套发现习惯用于设计：组件库、模板画廊和成熟产品都可作为参考；应逐段检查和改造，而非要求模型从空白提示发明视觉系统。
+同一习惯也支持[氛围编程的商业验证](/wiki/concepts/vibe-coding-commercial-validation)：不直接检验核心需求的基础设施应复用现成方案，把定制工作留给必须验证的产品洞察或工作流。[AI 产品设计润色工作流](/wiki/concepts/ai-product-design-polish-workflow)把这套发现习惯用于设计：组件库、模板画廊和成熟产品都可作为参考；应逐段检查和改造，而非要求模型从空白提示发明视觉系统。
 
 产品迭代阶段应从“寻找工具”扩展为“加速已验证方向”。Trending 适合广泛发现；已知目标能力时，关键词搜索和 Advanced Search 更合适，可按语言、star 数、最近推送过滤，并排除归档仓库。
 
@@ -63,7 +63,7 @@ Vercel 模板提供偏部署的素材池：启动器、AI 模板、认证流程�
 ## 相关内容
 
 - [AI 编程工程循环](/wiki/concepts/ai-coding-engineering-loop)
-- [氛围编程商业验证](/wiki/concepts/vibe-coding-commercial-validation)
+- [氛围编程的商业验证](/wiki/concepts/vibe-coding-commercial-validation)
 - [OpenClaw](/wiki/entities/openclaw)
 - [聪明的技术提问](/wiki/concepts/smart-technical-questioning)
 - [AI 产品设计润色工作流](/wiki/concepts/ai-product-design-polish-workflow)
