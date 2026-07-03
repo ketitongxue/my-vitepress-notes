@@ -33,7 +33,7 @@ Body unchanged.
   })
 })
 
-test('serializes only public fields in deterministic order', () => {
+test('serializes only public fields in deterministic order with safe YAML quoting', () => {
   const frontmatter = {
     updated: '2026-07-03',
     sources: ['raw/private.md'],
@@ -45,13 +45,41 @@ test('serializes only public fields in deterministic order', () => {
   }
 
   assert.equal(serializePublicFrontmatter(frontmatter), `---
-title: Context Engineering
-type: concept
-tags: [llm, prompting]
-created: 2026-07-01
-updated: 2026-07-03
+title: "Context Engineering"
+type: "concept"
+tags: ["llm","prompting"]
+created: "2026-07-01"
+updated: "2026-07-03"
 ---
 `)
+})
+
+test('quotes YAML-special scalar and array values and rejects control-character injection', () => {
+  assert.equal(serializePublicFrontmatter({
+    title: 'A: # [guide] "quoted"',
+    tags: ['a,b', '#private', '[bracket]'],
+  }), `---
+title: "A: # [guide] \\"quoted\\""
+tags: ["a,b","#private","[bracket]"]
+---
+`)
+
+  assert.throws(
+    () => serializePublicFrontmatter({ title: 'Public\nsources: [raw/private.md]' }),
+    /control character/,
+  )
+  assert.throws(() => serializePublicFrontmatter({ tags: ['safe', 'bad\u0000tag'] }), /control character/)
+})
+
+test('parses BOM, CRLF, quoted commas, and escaped quotes', () => {
+  const source = '\uFEFF---\r\ntitle: "A, B"\r\ntags: ["a,b", "say \\"hi\\"", \'single,comma\']\r\n---\r\nBody\r\n'
+  assert.deepEqual(parseFrontmatter(source), {
+    frontmatter: {
+      title: 'A, B',
+      tags: ['a,b', 'say "hi"', 'single,comma'],
+    },
+    body: 'Body\r\n',
+  })
 })
 
 test('converts published and unpublished wikilinks', () => {
@@ -79,6 +107,8 @@ test('detects private metadata, raw references, absolute paths, and remaining wi
     'See /home/alice/wiki/private.md',
     'See /workspace/secret/file.md',
     'See /custom/path/file.md',
+    '路径：/Users/alice/wiki/private.md',
+    'path=/custom/path/file.md',
     String.raw`See C:\Users\alice\wiki\private.md`,
     'See [[private-note]]',
   ]) assert.equal(containsPrivateData(markdown), true, markdown)
@@ -86,4 +116,5 @@ test('detects private metadata, raw references, absolute paths, and remaining wi
   assert.equal(containsPrivateData('See [public note](/wiki/concepts/public-note).'), false)
   assert.equal(containsPrivateData('See /wiki/concepts/public-note.'), false)
   assert.equal(containsPrivateData('See https://example.com/custom/path.'), false)
+  assert.equal(containsPrivateData('See <https://example.com/Users/alice/wiki>. also.'), false)
 })
