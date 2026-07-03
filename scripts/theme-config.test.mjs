@@ -32,9 +32,23 @@ assert.deepEqual(
   ['实体', '概念', '对比分析'],
   'the wiki sidebar must use the three Chinese index sections'
 )
+assert.deepEqual(
+  wikiSidebar.map(({ text, collapsed }) => ({ text, collapsed: collapsed ?? false })),
+  [
+    { text: '实体', collapsed: false },
+    { text: '概念', collapsed: true },
+    { text: '对比分析', collapsed: false }
+  ],
+  'only the long concepts group should be collapsed by default'
+)
 
 const sidebarItems = wikiSidebar.flatMap((group) => group.items)
-assert.equal(sidebarItems.length, 42, 'the wiki sidebar must list all 42 published pages')
+const manifest = JSON.parse(await readFile('wiki-manifest.json', 'utf8'))
+assert.equal(
+  sidebarItems.length,
+  manifest.pages.length,
+  'the wiki sidebar must list every published manifest page'
+)
 
 const sidebarLinks = sidebarItems.map((item) => item.link)
 assert.equal(
@@ -43,7 +57,6 @@ assert.equal(
   'every wiki sidebar link must be unique'
 )
 
-const manifest = JSON.parse(await readFile('wiki-manifest.json', 'utf8'))
 const manifestLinks = manifest.pages.map(({ publicPath }) =>
   `/${publicPath.replace(/^docs\//, '').replace(/\.md$/, '')}`
 )
@@ -64,7 +77,7 @@ const indexGroups = indexHeadings.map((heading, index) => ({
   )
 }))
 assert.deepEqual(
-  wikiSidebar,
+  wikiSidebar.map(({ text, items }) => ({ text, items })),
   indexGroups,
   'wiki sidebar titles and order must match the Chinese wiki index'
 )

@@ -36,6 +36,7 @@ export default defineConfig({
         },
         {
           text: '概念',
+          collapsed: true,
           items: [
             { text: '智能体 Harness 工程', link: '/wiki/concepts/agent-harness-engineering' },
             { text: '智能体无头执行', link: '/wiki/concepts/agent-headless-execution' },
