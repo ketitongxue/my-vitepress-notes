@@ -1,10 +1,22 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import {
+  access,
+  mkdtemp,
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
+
+import { sync } from './sync.mjs'
 
 const cli = fileURLToPath(new URL('./sync.mjs', import.meta.url))
 
@@ -90,4 +102,76 @@ test('sync exits 1 with usage when no wiki path is configured', async (t) => {
   const result = await run(site)
   assert.equal(result.code, 1)
   assert.match(result.stderr, /Usage:.*--wiki <path>.*LLM_WIKI_PATH/i)
+})
+
+test('sync rejects an allowed-directory symlink swap before snapshot copying', async (t) => {
+  const wiki = await temporaryDirectory(t, 'sync-wiki-')
+  const outside = await temporaryDirectory(t, 'sync-outside-')
+  const site = await temporaryDirectory(t, 'sync-site-')
+  await Promise.all([
+    mkdir(path.join(wiki, 'comparisons'), { recursive: true }),
+    mkdir(path.join(wiki, 'entities'), { recursive: true }),
+    mkdir(path.join(outside, 'entities'), { recursive: true }),
+  ])
+  await Promise.all([
+    writeFile(path.join(wiki, 'comparisons', 'large.md'), Buffer.alloc(64 * 1024 * 1024, 97)),
+    writeFile(path.join(wiki, 'entities', 'z.md'), 'same hash\n'),
+    writeFile(path.join(outside, 'entities', 'z.md'), 'same hash\n'),
+  ])
+
+  const syncing = sync({ argv: ['--wiki', wiki], site })
+  let staged = false
+  for (let attempt = 0; attempt < 10_000; attempt += 1) {
+    const entries = await readdir(site)
+    const temporary = entries.find((entry) => entry.startsWith('.wiki-work.tmp-'))
+    if (temporary) {
+      try {
+        await access(path.join(site, temporary, 'source', 'comparisons', 'large.md'))
+        staged = true
+        break
+      } catch (error) {
+        if (error?.code !== 'ENOENT') throw error
+      }
+    }
+    await new Promise((resolve) => setImmediate(resolve))
+  }
+  assert.equal(staged, true, 'snapshot staging was not observed')
+  await rename(path.join(wiki, 'entities'), path.join(wiki, 'entities-inside'))
+  await symlink(path.join(outside, 'entities'), path.join(wiki, 'entities'))
+
+  await assert.rejects(syncing, /symbolic link|changed|outside/i)
+})
+
+test('concurrent sync processes serialize against the same site', async (t) => {
+  const wiki = await temporaryDirectory(t, 'sync-wiki-')
+  const site = await temporaryDirectory(t, 'sync-site-')
+  await mkdir(path.join(wiki, 'concepts'), { recursive: true })
+  await writeFile(path.join(wiki, 'concepts', 'large.md'), Buffer.alloc(32 * 1024 * 1024, 98))
+
+  const [first, second] = await Promise.all([
+    run(site, ['--wiki', wiki]),
+    run(site, ['--wiki', wiki]),
+  ])
+  assert.equal(first.code, 0, first.stderr)
+  assert.equal(second.code, 0, second.stderr)
+  const outputs = [first.stdout, second.stdout]
+  assert.equal(outputs.filter((output) => /1 added/.test(output)).length, 1)
+  assert.equal(outputs.filter((output) => /1 unchanged/.test(output)).length, 1)
+})
+
+test('startup restores an orphaned backup and a failed sync preserves it', async (t) => {
+  const wiki = await temporaryDirectory(t, 'sync-wiki-')
+  const site = await temporaryDirectory(t, 'sync-site-')
+  const backup = path.join(site, '.wiki-work.backup-crash')
+  await Promise.all([
+    mkdir(path.join(wiki, 'concepts'), { recursive: true }),
+    mkdir(backup, { recursive: true }),
+  ])
+  const oldReport = '{"old":true}\n'
+  await writeFile(path.join(backup, 'report.json'), oldReport)
+  await symlink(path.join(site, 'missing.md'), path.join(wiki, 'concepts', 'bad.md'))
+
+  const result = await run(site, ['--wiki', wiki])
+  assert.equal(result.code, 1)
+  assert.equal(await readFile(path.join(site, '.wiki-work', 'report.json'), 'utf8'), oldReport)
 })

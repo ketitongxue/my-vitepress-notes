@@ -1,5 +1,8 @@
 .worktrees/
 .wiki-work/
+.wiki-work.backup-*/
+.wiki-work.tmp-*/
+.wiki-sync.lock/
 node_modules/
 docs/.vitepress/cache/
 docs/.vitepress/dist/

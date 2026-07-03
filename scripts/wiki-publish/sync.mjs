@@ -3,6 +3,7 @@ import {
   access,
   mkdir,
   readFile,
+  readdir,
   rename,
   rm,
   writeFile,
@@ -10,7 +11,7 @@ import {
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { diffInventory, scanWiki, sha256 } from './core.mjs'
+import { diffInventory, scanWikiSnapshot } from './core.mjs'
 import { parseFrontmatter } from './markdown.mjs'
 
 const USAGE = 'Usage: npm run wiki:sync -- --wiki <path> (or set LLM_WIKI_PATH)'
@@ -48,17 +49,61 @@ async function previousInventory(workDirectory) {
   }
 }
 
-async function copySnapshots(wiki, inventory, destination) {
-  for (const [sourcePath, item] of Object.entries(inventory)) {
-    const content = await readFile(path.join(wiki, ...sourcePath.split('/')), 'utf8')
-    if (sha256(content) !== item.hash) {
-      throw new Error(`Source changed while being copied: ${sourcePath}`)
-    }
+async function copySnapshots(contents, destination) {
+  for (const [sourcePath, content] of Object.entries(contents)) {
     // Parse every snapshot through the shared Markdown boundary before retaining it.
     parseFrontmatter(content)
     const target = path.join(destination, ...sourcePath.split('/'))
     await mkdir(path.dirname(target), { recursive: true })
     await writeFile(target, content)
+  }
+}
+
+async function acquireLock(site) {
+  const lock = path.join(site, '.wiki-sync.lock')
+  for (;;) {
+    try {
+      await mkdir(lock)
+      await writeFile(path.join(lock, 'owner.json'), JSON.stringify({ pid: process.pid }))
+      return async () => rm(lock, { recursive: true, force: true })
+    } catch (error) {
+      if (error?.code !== 'EEXIST') throw error
+      try {
+        const owner = JSON.parse(await readFile(path.join(lock, 'owner.json'), 'utf8'))
+        try {
+          process.kill(owner.pid, 0)
+        } catch (signalError) {
+          if (signalError?.code === 'ESRCH') {
+            await rm(lock, { recursive: true, force: true })
+            continue
+          }
+          throw signalError
+        }
+      } catch (ownerError) {
+        if (!['ENOENT', 'EISDIR'].includes(ownerError?.code) && !(ownerError instanceof SyntaxError)) {
+          throw ownerError
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 25))
+    }
+  }
+}
+
+async function recoverWorkspace(site, target) {
+  const entries = await readdir(site)
+  const backups = entries
+    .filter((entry) => entry.startsWith('.wiki-work.backup-'))
+    .sort()
+    .map((entry) => path.join(site, entry))
+  if (!(await exists(target)) && backups.length > 1) {
+    throw new Error('Cannot recover wiki workspace: multiple orphaned backups')
+  }
+  if (!(await exists(target)) && backups.length === 1) {
+    await rename(backups[0], target)
+    return
+  }
+  if (await exists(target)) {
+    await Promise.all(backups.map((backup) => rm(backup, { recursive: true, force: true })))
   }
 }
 
@@ -78,26 +123,36 @@ async function replaceDirectory(temp, target) {
 export async function sync({ argv = process.argv.slice(2), env = process.env, site = process.cwd() } = {}) {
   const wiki = wikiPath(argv, env)
   const workDirectory = path.join(site, '.wiki-work')
-  const previous = await previousInventory(workDirectory)
-  const inventory = await scanWiki(wiki)
-  const changes = diffInventory(previous, inventory)
-  const report = {
-    generatedAt: new Date().toISOString(),
-    ...changes,
-    inventory,
-  }
-
-  const temp = path.join(site, `.wiki-work.tmp-${randomUUID()}`)
+  const releaseLock = await acquireLock(site)
   try {
-    await mkdir(path.join(temp, 'source'), { recursive: true })
-    await copySnapshots(wiki, inventory, path.join(temp, 'source'))
-    await writeFile(path.join(temp, 'report.json'), `${JSON.stringify(report, null, 2)}\n`)
-    await replaceDirectory(temp, workDirectory)
-  } catch (error) {
-    await rm(temp, { recursive: true, force: true })
-    throw error
+    await recoverWorkspace(site, workDirectory)
+    const previous = await previousInventory(workDirectory)
+    const { contents, inventory } = await scanWikiSnapshot(wiki)
+    const changes = diffInventory(previous, inventory)
+    const report = {
+      generatedAt: new Date().toISOString(),
+      ...changes,
+      inventory,
+    }
+
+    const temp = path.join(site, `.wiki-work.tmp-${randomUUID()}`)
+    try {
+      await mkdir(path.join(temp, 'source'), { recursive: true })
+      await copySnapshots(contents, path.join(temp, 'source'))
+      const verified = await scanWikiSnapshot(wiki)
+      if (JSON.stringify(verified.inventory) !== JSON.stringify(inventory)) {
+        throw new Error('Wiki changed while snapshots were being staged')
+      }
+      await writeFile(path.join(temp, 'report.json'), `${JSON.stringify(report, null, 2)}\n`)
+      await replaceDirectory(temp, workDirectory)
+    } catch (error) {
+      await rm(temp, { recursive: true, force: true })
+      throw error
+    }
+    return report
+  } finally {
+    await releaseLock()
   }
-  return report
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

@@ -204,7 +204,7 @@ async function collectMarkdownFiles(
   return files
 }
 
-export async function scanWiki(root) {
+async function scanWikiInternal(root, includeContent) {
   const rootDirectory = await openVerifiedDirectory(root)
   const sectionDirectories = []
   try {
@@ -242,6 +242,7 @@ export async function scanWiki(root) {
     }
 
     const inventory = {}
+    const contents = {}
     for (const file of files.sort((a, b) =>
       a.sourcePath.localeCompare(b.sourcePath),
     )) {
@@ -267,12 +268,21 @@ export async function scanWiki(root) {
         hash: sha256(content),
         publicPath: publicPath(file.sourcePath),
       }
+      if (includeContent) contents[file.sourcePath] = content
     }
-    return inventory
+    return includeContent ? { contents, inventory } : inventory
   } finally {
     await Promise.all(sectionDirectories.map(({ handle }) => handle.close()))
     await rootDirectory.handle.close()
   }
+}
+
+export async function scanWiki(root) {
+  return scanWikiInternal(root, false)
+}
+
+export async function scanWikiSnapshot(root) {
+  return scanWikiInternal(root, true)
 }
 
 export function diffInventory(previous, current) {
