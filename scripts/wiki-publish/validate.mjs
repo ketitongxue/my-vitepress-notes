@@ -1,9 +1,9 @@
-import { access, lstat, readFile, readdir } from 'node:fs/promises'
+import { access, readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import MarkdownIt from 'markdown-it'
 
-import { ALLOWED_SECTIONS, sha256 } from './core.mjs'
+import { ALLOWED_SECTIONS, scanWikiSnapshot, sha256 } from './core.mjs'
 import { parseFrontmatter } from './markdown.mjs'
 
 const PAGE_FIELDS = new Set(['source', 'hash', 'publicPath', 'status', 'syncedAt'])
@@ -18,34 +18,6 @@ async function exists(candidate) {
     if (error?.code === 'ENOENT') return false
     throw error
   }
-}
-
-async function markdownFiles(directory, relative = '') {
-  let metadata
-  try {
-    metadata = await lstat(directory)
-  } catch (error) {
-    if (error?.code === 'ENOENT') return []
-    throw error
-  }
-  if (metadata.isSymbolicLink()) throw new Error(`Symbolic links are not allowed: ${directory}`)
-  if (!metadata.isDirectory()) throw new Error(`Expected a directory: ${directory}`)
-  let entries
-  try {
-    entries = await readdir(directory, { withFileTypes: true })
-  } catch (error) {
-    if (error?.code === 'ENOENT') return []
-    throw error
-  }
-  const files = []
-  for (const entry of entries) {
-    const childRelative = relative ? path.posix.join(relative, entry.name) : entry.name
-    const child = path.join(directory, entry.name)
-    if (entry.isSymbolicLink()) throw new Error(`Symbolic links are not allowed: ${child}`)
-    if (entry.isDirectory()) files.push(...await markdownFiles(child, childRelative))
-    else if (entry.isFile() && entry.name.endsWith('.md')) files.push(childRelative)
-  }
-  return files.sort()
 }
 
 function validSource(source) {
@@ -146,12 +118,8 @@ export async function validatePublishedWiki({ docsRoot, manifest }) {
   if (manifest?.version !== 1) errors.push('manifest: version must be 1')
   if (!Array.isArray(manifest?.pages)) errors.push('manifest: pages must be an array')
 
-  const diskFiles = new Set()
-  for (const section of ALLOWED_SECTIONS) {
-    for (const file of await markdownFiles(path.join(docsRoot, section))) {
-      diskFiles.add(path.posix.join(section, file))
-    }
-  }
+  const snapshot = await scanWikiSnapshot(docsRoot)
+  const diskFiles = new Set(Object.keys(snapshot.inventory))
 
   const manifestSources = new Set()
   const manifestPublicPaths = new Set()
@@ -187,7 +155,7 @@ export async function validatePublishedWiki({ docsRoot, manifest }) {
       errors.push(`docs/wiki: missing file ${source}`)
       continue
     }
-    const markdown = await readFile(path.join(docsRoot, ...source.split('/')), 'utf8')
+    const markdown = snapshot.contents[source]
     const page = pages.find((candidate) => candidate?.source === source)
     if (HASH_PATTERN.test(page.hash ?? '') && sha256(markdown) !== page.hash) errors.push(`${source}: hash does not match content`)
     errors.push(...contentErrors(source, markdown, diskFiles))

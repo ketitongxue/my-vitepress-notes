@@ -122,6 +122,18 @@ test('rejects symlinked sections, nested directories, and Markdown files', async
   }
 })
 
+test('rejects a symlinked docs root', async (t) => {
+  const input = await fixture(t)
+  const outside = await mkdtemp(path.join(tmpdir(), 'wiki-validate-root-'))
+  t.after(() => rm(outside, { recursive: true, force: true }))
+  await mkdir(path.join(outside, 'concepts'))
+  await writeFile(path.join(outside, 'concepts', 'good.md'), CHINESE_BODY)
+  await rm(input.docsRoot, { recursive: true })
+  await symlink(outside, input.docsRoot)
+
+  await assert.rejects(validatePublishedWiki(input), /symbolic link/i)
+})
+
 test('rejects manifest entries whose published files are missing', async (t) => {
   const input = await fixture(t)
   input.manifest.pages.push({
