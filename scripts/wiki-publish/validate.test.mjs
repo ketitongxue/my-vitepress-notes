@@ -158,9 +158,14 @@ test('validates manifest fields and returns sorted diagnostics', async (t) => {
   assert.match(result.errors.join('\n'), /status/i)
 })
 
-test('rejects hash mismatch, duplicate source and publicPath, and bad metadata', async (t) => {
+test('accepts a valid source hash that differs from translated content', async (t) => {
+  const input = await fixture(t, { page: { hash: 'a'.repeat(64) } })
+  assert.doesNotMatch((await validatePublishedWiki(input)).errors.join('\n'), /hash/i)
+})
+
+test('rejects malformed hash, duplicate source and publicPath, and bad metadata', async (t) => {
   const input = await fixture(t, {
-    page: { hash: 'a'.repeat(64), extra: true },
+    page: { hash: 'bad', extra: true },
   })
   input.manifest.pages.push(
     { ...input.manifest.pages[0], syncedAt: undefined },
@@ -172,7 +177,7 @@ test('rejects hash mismatch, duplicate source and publicPath, and bad metadata',
     },
   )
   const errors = (await validatePublishedWiki(input)).errors.join('\n')
-  assert.match(errors, /hash does not match/i)
+  assert.match(errors, /invalid hash/i)
   assert.match(errors, /duplicate source/i)
   assert.match(errors, /duplicate publicPath/i)
   assert.match(errors, /unexpected field extra/i)

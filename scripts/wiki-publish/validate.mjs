@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import MarkdownIt from 'markdown-it'
 
-import { ALLOWED_SECTIONS, scanWikiSnapshot, sha256 } from './core.mjs'
+import { ALLOWED_SECTIONS, scanWikiSnapshot } from './core.mjs'
 import { parseFrontmatter } from './markdown.mjs'
 
 const PAGE_FIELDS = new Set(['source', 'hash', 'publicPath', 'status', 'syncedAt'])
@@ -156,8 +156,6 @@ export async function validatePublishedWiki({ docsRoot, manifest }) {
       continue
     }
     const markdown = snapshot.contents[source]
-    const page = pages.find((candidate) => candidate?.source === source)
-    if (HASH_PATTERN.test(page.hash ?? '') && sha256(markdown) !== page.hash) errors.push(`${source}: hash does not match content`)
     errors.push(...contentErrors(source, markdown, diskFiles))
   }
   return { errors: errors.sort(), warnings: warnings.sort() }
