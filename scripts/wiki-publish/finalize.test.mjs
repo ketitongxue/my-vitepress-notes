@@ -172,3 +172,30 @@ test('rolls back a newly installed wiki when a crash occurs before manifest inst
   assert.equal(await readFile(path.join(site, 'docs', 'wiki', source), 'utf8'), original)
   assert.equal(JSON.parse(await readFile(path.join(site, 'wiki-manifest.json'), 'utf8')).pages.length, 1)
 })
+
+test('rejects non-canonical report sources and inventory keys before mutation', async (t) => {
+  const cases = [
+    { field: 'deleted', source: 'concepts/../entities/x.md' },
+    { field: 'added', source: 'concepts/not-markdown.txt' },
+    { field: 'changed', source: 'concepts/%2e%2e/entities/x.md' },
+    { field: 'deleted', source: String.raw`concepts\victim.md` },
+    { field: 'added', source: 'concepts/./x.md' },
+    { field: 'changed', source: 'concepts/x\u0000.md'.replace('\\u0000', '\u0000') },
+  ]
+  for (const { field, source } of cases) await t.test(`${field}: ${JSON.stringify(source)}`, async (st) => {
+    const site = await fixture(st, { report: { [field]: [source], inventory: { [source]: { hash: 'd'.repeat(64), publicPath: `docs/wiki/${source}` } } } })
+    const before = await readFile(path.join(site, 'wiki-manifest.json'))
+    await assert.rejects(finalize({ site, argv: field === 'deleted' ? ['--confirm-delete', source] : [] }), /invalid report source/i)
+    assert.deepEqual(await readFile(path.join(site, 'wiki-manifest.json')), before)
+  })
+
+  await t.test('inventory key', async (st) => {
+    const source = 'concepts/good.md'
+    const site = await fixture(st, { report: { added: [source], inventory: {
+      [source]: { hash: 'e'.repeat(64), publicPath: `docs/wiki/${source}` },
+      'concepts/../entities/hidden.md': { hash: 'f'.repeat(64), publicPath: 'docs/wiki/entities/hidden.md' },
+    } } })
+    await put(site, source)
+    await assert.rejects(finalize({ site }), /invalid report source/i)
+  })
+})

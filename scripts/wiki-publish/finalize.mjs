@@ -34,14 +34,33 @@ function confirmations(argv) {
   return values
 }
 
+function assertCanonicalSource(source) {
+  const segments = typeof source === 'string' ? source.split('/') : []
+  const canonical = typeof source === 'string'
+    && source.length > 0
+    && source.endsWith('.md')
+    && !source.includes('\\')
+    && !source.includes('%')
+    && !source.includes('\0')
+    && segments.every((segment) => segment && segment !== '.' && segment !== '..')
+    && path.posix.normalize(source) === source
+  if (!canonical) throw new Error(`Invalid report source: ${JSON.stringify(source)}`)
+  try {
+    if (publicPath(source) !== `docs/wiki/${source}`) throw new Error('not canonical')
+  } catch {
+    throw new Error(`Invalid report source: ${JSON.stringify(source)}`)
+  }
+}
+
 function verifyReport(report) {
   for (const field of ['added', 'changed', 'unchanged', 'deleted']) {
     if (!Array.isArray(report[field])) throw new Error(`Invalid report: ${field} must be an array`)
-    for (const source of report[field]) publicPath(source)
+    for (const source of report[field]) assertCanonicalSource(source)
   }
   if (!report.inventory || typeof report.inventory !== 'object' || Array.isArray(report.inventory)) {
     throw new Error('Invalid report: inventory must be an object')
   }
+  for (const source of Object.keys(report.inventory)) assertCanonicalSource(source)
 }
 
 async function indexMarkdown(docsRoot, pages, date) {
