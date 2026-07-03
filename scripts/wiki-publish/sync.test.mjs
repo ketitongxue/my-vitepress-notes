@@ -18,6 +18,7 @@ import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 
 import { sync } from './sync.mjs'
+import { sha256 } from './core.mjs'
 
 const cli = fileURLToPath(new URL('./sync.mjs', import.meta.url))
 
@@ -47,6 +48,19 @@ async function run(site, args = [], env = {}, timeout = 10_000) {
 
 async function json(file) {
   return JSON.parse(await readFile(file, 'utf8'))
+}
+
+async function writeManifest(site, entries) {
+  await writeFile(path.join(site, 'wiki-manifest.json'), `${JSON.stringify({
+    version: 1,
+    pages: Object.entries(entries).map(([source, hash]) => ({
+      source,
+      hash,
+      publicPath: `docs/wiki/${source}`,
+      status: 'published',
+      syncedAt: '2026-07-03T00:00:00.000Z',
+    })),
+  })}\n`)
 }
 
 test('sync writes relative change report and allowed source snapshots without touching docs', async (t) => {
@@ -86,6 +100,11 @@ test('sync writes relative change report and allowed source snapshots without to
   assert.equal(JSON.stringify(firstReport).includes(wiki), false)
   assert.equal(JSON.stringify(firstReport).includes(site), false)
 
+  await writeManifest(site, {
+    'concepts/a.md': sha256('---\ntitle: A\n---\nA\n'),
+    'entities/gone.md': sha256('gone\n'),
+  })
+
   await Promise.all([
     writeFile(path.join(wiki, 'concepts', 'a.md'), '---\ntitle: A\n---\nchanged\n'),
     rm(path.join(wiki, 'entities', 'gone.md')),
@@ -107,6 +126,65 @@ test('sync exits 1 with usage when no wiki path is configured', async (t) => {
   const result = await run(site)
   assert.equal(result.code, 1)
   assert.match(result.stderr, /Usage:.*--wiki <path>.*LLM_WIKI_PATH/i)
+})
+
+test('manifest is the published baseline when local report is absent', async (t) => {
+  const wiki = await temporaryDirectory(t, 'sync-wiki-')
+  const site = await temporaryDirectory(t, 'sync-site-')
+  await mkdir(path.join(wiki, 'concepts'), { recursive: true })
+  await writeFile(path.join(wiki, 'concepts', 'a.md'), 'published\n')
+  await writeManifest(site, { 'concepts/a.md': sha256('published\n') })
+
+  const result = await run(site, ['--wiki', wiki])
+  assert.equal(result.code, 0, result.stderr)
+  const report = await json(path.join(site, '.wiki-work', 'report.json'))
+  assert.deepEqual(report.added, [])
+  assert.deepEqual(report.changed, [])
+  assert.deepEqual(report.unchanged, ['concepts/a.md'])
+})
+
+test('stale local report cannot override manifest baseline', async (t) => {
+  const wiki = await temporaryDirectory(t, 'sync-wiki-')
+  const site = await temporaryDirectory(t, 'sync-site-')
+  await Promise.all([
+    mkdir(path.join(wiki, 'concepts'), { recursive: true }),
+    mkdir(path.join(site, '.wiki-work'), { recursive: true }),
+  ])
+  await writeFile(path.join(wiki, 'concepts', 'a.md'), 'current\n')
+  await writeManifest(site, { 'concepts/a.md': sha256('current\n') })
+  await writeFile(path.join(site, '.wiki-work', 'report.json'), JSON.stringify({
+    inventory: {
+      'concepts/a.md': { hash: sha256('stale\n'), publicPath: 'docs/wiki/concepts/a.md' },
+      'entities/stale.md': { hash: sha256('stale'), publicPath: 'docs/wiki/entities/stale.md' },
+    },
+  }))
+
+  const result = await run(site, ['--wiki', wiki])
+  assert.equal(result.code, 0, result.stderr)
+  const report = await json(path.join(site, '.wiki-work', 'report.json'))
+  assert.deepEqual(report.changed, [])
+  assert.deepEqual(report.deleted, [])
+  assert.deepEqual(report.unchanged, ['concepts/a.md'])
+})
+
+test('manifest classifies source changes and its absence classifies additions', async (t) => {
+  const wiki = await temporaryDirectory(t, 'sync-wiki-')
+  const changedSite = await temporaryDirectory(t, 'sync-site-')
+  const newSite = await temporaryDirectory(t, 'sync-site-')
+  await mkdir(path.join(wiki, 'concepts'), { recursive: true })
+  await writeFile(path.join(wiki, 'concepts', 'a.md'), 'new\n')
+  await writeManifest(changedSite, { 'concepts/a.md': sha256('old\n') })
+
+  assert.equal((await run(changedSite, ['--wiki', wiki])).code, 0)
+  assert.deepEqual(
+    (await json(path.join(changedSite, '.wiki-work', 'report.json'))).changed,
+    ['concepts/a.md'],
+  )
+  assert.equal((await run(newSite, ['--wiki', wiki])).code, 0)
+  assert.deepEqual(
+    (await json(path.join(newSite, '.wiki-work', 'report.json'))).added,
+    ['concepts/a.md'],
+  )
 })
 
 test('sync rejects an allowed-directory symlink swap before snapshot copying', async (t) => {
@@ -160,8 +238,7 @@ test('concurrent sync processes serialize against the same site', async (t) => {
   assert.equal(first.code, 0, first.stderr)
   assert.equal(second.code, 0, second.stderr)
   const outputs = [first.stdout, second.stdout]
-  assert.equal(outputs.filter((output) => /1 added/.test(output)).length, 1)
-  assert.equal(outputs.filter((output) => /1 unchanged/.test(output)).length, 1)
+  assert.equal(outputs.filter((output) => /1 added/.test(output)).length, 2)
 })
 
 test('startup restores an orphaned backup and a failed sync preserves it', async (t) => {
@@ -218,6 +295,5 @@ test('two stale-lock reclaimers do not delete a replacement lock', async (t) => 
   assert.equal(first.code, 0, first.stderr)
   assert.equal(second.code, 0, second.stderr)
   const outputs = [first.stdout, second.stdout]
-  assert.equal(outputs.filter((output) => /1 added/.test(output)).length, 1)
-  assert.equal(outputs.filter((output) => /1 unchanged/.test(output)).length, 1)
+  assert.equal(outputs.filter((output) => /1 added/.test(output)).length, 2)
 })

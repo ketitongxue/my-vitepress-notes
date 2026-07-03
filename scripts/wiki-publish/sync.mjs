@@ -38,16 +38,34 @@ async function exists(candidate) {
   }
 }
 
-async function previousInventory(workDirectory) {
+async function publishedInventory(site) {
+  let manifest
   try {
-    const report = JSON.parse(await readFile(path.join(workDirectory, 'report.json'), 'utf8'))
-    return report.inventory && typeof report.inventory === 'object'
-      ? report.inventory
-      : {}
+    manifest = JSON.parse(await readFile(path.join(site, 'wiki-manifest.json'), 'utf8'))
   } catch (error) {
-    if (error?.code === 'ENOENT' || error instanceof SyntaxError) return {}
+    if (error?.code === 'ENOENT') return {}
     throw error
   }
+  if (!Array.isArray(manifest.pages)) {
+    throw new Error('wiki-manifest.json must contain a pages array')
+  }
+
+  const inventory = {}
+  for (const page of [...manifest.pages].sort((left, right) =>
+    String(left.source).localeCompare(String(right.source)),
+  )) {
+    if (typeof page.source !== 'string' || typeof page.hash !== 'string') {
+      throw new Error('wiki-manifest.json pages require source and hash')
+    }
+    if (Object.hasOwn(inventory, page.source)) {
+      throw new Error(`wiki-manifest.json contains duplicate source: ${page.source}`)
+    }
+    inventory[page.source] = {
+      hash: page.hash,
+      publicPath: page.publicPath,
+    }
+  }
+  return inventory
 }
 
 async function copySnapshots(contents, destination) {
@@ -197,7 +215,7 @@ export async function sync({ argv = process.argv.slice(2), env = process.env, si
   try {
     await lock.assertOwned()
     await recoverWorkspace(site, workDirectory)
-    const previous = await previousInventory(workDirectory)
+    const previous = await publishedInventory(site)
     const { contents, inventory } = await scanWikiSnapshot(wiki)
     const changes = diffInventory(previous, inventory)
     const report = {
