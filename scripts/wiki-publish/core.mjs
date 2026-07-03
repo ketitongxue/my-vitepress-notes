@@ -40,7 +40,12 @@ export function publicPath(sourcePath) {
 
 function isContained(root, candidate) {
   const relative = path.relative(root, candidate)
-  return relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative))
+  return (
+    relative === '' ||
+    (!relative.startsWith(`..${path.sep}`) &&
+      relative !== '..' &&
+      !path.isAbsolute(relative))
+  )
 }
 
 async function assertContained(candidate, canonicalSectionRoot) {
@@ -49,6 +54,67 @@ async function assertContained(candidate, canonicalSectionRoot) {
     throw new Error(`Path resolves outside its allowed directory: ${candidate}`)
   }
   return resolved
+}
+
+function sameObject(left, right) {
+  return left.dev === right.dev && left.ino === right.ino
+}
+
+async function verifyDirectoryHandle(
+  handle,
+  directory,
+  canonicalDirectory,
+  canonicalParent,
+) {
+  const openedMetadata = await handle.stat()
+  if (!openedMetadata.isDirectory()) {
+    throw new Error(`Expected a directory: ${directory}`)
+  }
+
+  const resolved = await realpath(directory)
+  if (resolved !== canonicalDirectory) {
+    throw new Error(`Directory changed while being scanned: ${directory}`)
+  }
+  if (canonicalParent && !isContained(canonicalParent, resolved)) {
+    throw new Error(`Path resolves outside its allowed directory: ${directory}`)
+  }
+
+  const pathMetadata = await lstat(directory)
+  if (pathMetadata.isSymbolicLink()) {
+    throw new Error(`Symbolic links are not allowed: ${directory}`)
+  }
+  if (!sameObject(pathMetadata, openedMetadata)) {
+    throw new Error(`Directory changed while being scanned: ${directory}`)
+  }
+}
+
+async function openVerifiedDirectory(directory, canonicalParent) {
+  let handle
+  try {
+    handle = await open(
+      directory,
+      constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW,
+    )
+  } catch (error) {
+    if (['ELOOP', 'ENOTDIR'].includes(error?.code)) {
+      throw new Error(`Symbolic links are not allowed: ${directory}`)
+    }
+    throw error
+  }
+
+  try {
+    const canonicalDirectory = await realpath(directory)
+    await verifyDirectoryHandle(
+      handle,
+      directory,
+      canonicalDirectory,
+      canonicalParent,
+    )
+    return { canonicalDirectory, handle }
+  } catch (error) {
+    await handle.close()
+    throw error
+  }
 }
 
 async function readVerifiedFile(absolutePath, canonicalSectionRoot) {
@@ -73,10 +139,7 @@ async function readVerifiedFile(absolutePath, canonicalSectionRoot) {
     if (pathMetadata.isSymbolicLink()) {
       throw new Error(`Symbolic links are not allowed: ${absolutePath}`)
     }
-    if (
-      pathMetadata.dev !== openedMetadata.dev ||
-      pathMetadata.ino !== openedMetadata.ino
-    ) {
+    if (!sameObject(pathMetadata, openedMetadata)) {
       throw new Error(`File changed while being scanned: ${absolutePath}`)
     }
 
@@ -86,8 +149,7 @@ async function readVerifiedFile(absolutePath, canonicalSectionRoot) {
     const finalMetadata = await lstat(absolutePath)
     if (
       finalMetadata.isSymbolicLink() ||
-      finalMetadata.dev !== openedMetadata.dev ||
-      finalMetadata.ino !== openedMetadata.ino
+      !sameObject(finalMetadata, openedMetadata)
     ) {
       throw new Error(`File changed while being scanned: ${absolutePath}`)
     }
@@ -143,49 +205,74 @@ async function collectMarkdownFiles(
 }
 
 export async function scanWiki(root) {
-  const rootMetadata = await lstat(root)
-  if (rootMetadata.isSymbolicLink()) {
-    throw new Error(`Symbolic links are not allowed: ${root}`)
-  }
-  if (!rootMetadata.isDirectory()) {
-    throw new Error(`Wiki root must be a directory: ${root}`)
-  }
-
-  const files = []
-  for (const section of ALLOWED_SECTIONS) {
-    const sectionPath = path.join(root, section)
-    try {
-      const metadata = await lstat(sectionPath)
-      if (metadata.isSymbolicLink()) {
-        throw new Error(`Symbolic links are not allowed: ${sectionPath}`)
+  const rootDirectory = await openVerifiedDirectory(root)
+  const sectionDirectories = []
+  try {
+    const files = []
+    for (const section of ALLOWED_SECTIONS) {
+      await verifyDirectoryHandle(
+        rootDirectory.handle,
+        root,
+        rootDirectory.canonicalDirectory,
+      )
+      const sectionPath = path.join(root, section)
+      let sectionDirectory
+      try {
+        sectionDirectory = await openVerifiedDirectory(
+          sectionPath,
+          rootDirectory.canonicalDirectory,
+        )
+      } catch (error) {
+        if (error?.code === 'ENOENT') continue
+        throw error
       }
-      if (!metadata.isDirectory()) continue
-    } catch (error) {
-      if (error?.code === 'ENOENT') continue
-      throw error
+      sectionDirectories.push({ ...sectionDirectory, path: sectionPath })
+      await verifyDirectoryHandle(
+        rootDirectory.handle,
+        root,
+        rootDirectory.canonicalDirectory,
+      )
+      files.push(
+        ...(await collectMarkdownFiles(
+          sectionPath,
+          section,
+          sectionDirectory.canonicalDirectory,
+        )),
+      )
     }
-    const canonicalSectionRoot = await realpath(sectionPath)
-    files.push(
-      ...(await collectMarkdownFiles(
-        sectionPath,
-        section,
-        canonicalSectionRoot,
-      )),
-    )
-  }
 
-  const inventory = {}
-  for (const file of files.sort((a, b) => a.sourcePath.localeCompare(b.sourcePath))) {
-    const content = await readVerifiedFile(
-      file.absolutePath,
-      file.canonicalSectionRoot,
-    )
-    inventory[file.sourcePath] = {
-      hash: sha256(content),
-      publicPath: publicPath(file.sourcePath),
+    const inventory = {}
+    for (const file of files.sort((a, b) =>
+      a.sourcePath.localeCompare(b.sourcePath),
+    )) {
+      await verifyDirectoryHandle(
+        rootDirectory.handle,
+        root,
+        rootDirectory.canonicalDirectory,
+      )
+      const sectionDirectory = sectionDirectories.find(
+        (candidate) => candidate.canonicalDirectory === file.canonicalSectionRoot,
+      )
+      await verifyDirectoryHandle(
+        sectionDirectory.handle,
+        sectionDirectory.path,
+        sectionDirectory.canonicalDirectory,
+        rootDirectory.canonicalDirectory,
+      )
+      const content = await readVerifiedFile(
+        file.absolutePath,
+        file.canonicalSectionRoot,
+      )
+      inventory[file.sourcePath] = {
+        hash: sha256(content),
+        publicPath: publicPath(file.sourcePath),
+      }
     }
+    return inventory
+  } finally {
+    await Promise.all(sectionDirectories.map(({ handle }) => handle.close()))
+    await rootDirectory.handle.close()
   }
-  return inventory
 }
 
 export function diffInventory(previous, current) {

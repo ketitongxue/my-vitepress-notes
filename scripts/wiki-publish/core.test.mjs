@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import {
   mkdtemp,
   mkdir,
+  rename,
   rm,
   symlink,
   unlink,
@@ -116,7 +117,58 @@ test('scanWiki never reads a file replaced by an outside symlink', async (t) => 
   await unlink(victim)
   await symlink(outside, victim)
 
-  await assert.rejects(scanning, /symbolic link|changed|outside/i)
+  try {
+    const inventory = await scanning
+    assert.notEqual(inventory['concepts/z.md']?.hash, sha256('outside secret'))
+  } catch (error) {
+    assert.match(error.message, /symbolic link|changed|outside/i)
+  }
+})
+
+test('scanWiki never adopts an outside section during ancestor replacement', async (t) => {
+  const root = await temporaryWiki(t)
+  const section = path.join(root, 'concepts')
+  const parked = path.join(root, 'concepts-inside')
+  const outside = await mkdtemp(path.join(tmpdir(), 'wiki-outside-'))
+  t.after(() => rm(outside, { recursive: true, force: true }))
+  await writeFile(path.join(section, 'safe.md'), 'safe')
+  await writeFile(path.join(outside, 'secret.md'), 'outside secret')
+
+  let replacing = true
+  const replacement = (async () => {
+    while (replacing) {
+      try {
+        await rename(section, parked)
+        await symlink(outside, section)
+        await new Promise((resolve) => setImmediate(resolve))
+        await unlink(section)
+        await rename(parked, section)
+        await new Promise((resolve) => setImmediate(resolve))
+      } catch (error) {
+        if (!['ENOENT', 'EEXIST'].includes(error?.code)) throw error
+      }
+    }
+  })()
+
+  let acceptedOutside = false
+  try {
+    for (let attempt = 0; attempt < 500 && !acceptedOutside; attempt += 1) {
+      try {
+        const inventory = await scanWiki(root)
+        acceptedOutside = 'concepts/secret.md' in inventory
+      } catch (error) {
+        assert.match(
+          error.message,
+          /symbolic link|changed|outside|no such file|not a directory/i,
+        )
+      }
+    }
+  } finally {
+    replacing = false
+    await replacement
+  }
+
+  assert.equal(acceptedOutside, false)
 })
 
 test('diffInventory sorts added, changed, unchanged, and deleted paths', () => {
