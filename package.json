@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "wiki:sync": "node scripts/wiki-publish/sync.mjs",
+    "wiki:finalize": "node scripts/wiki-publish/finalize.mjs",
     "wiki:validate": "node scripts/wiki-publish/validate.mjs",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",

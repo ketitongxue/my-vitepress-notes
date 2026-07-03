@@ -121,7 +121,7 @@ async function reclaimStaleLock(lock, observedOwner) {
   return false
 }
 
-async function acquireLock(site) {
+export async function acquireLock(site) {
   const lock = path.join(site, '.wiki-sync.lock')
   for (;;) {
     const token = randomUUID()
