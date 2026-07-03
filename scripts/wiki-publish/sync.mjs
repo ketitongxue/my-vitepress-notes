@@ -218,10 +218,21 @@ export async function sync({ argv = process.argv.slice(2), env = process.env, si
     const previous = await publishedInventory(site)
     const { contents, inventory } = await scanWikiSnapshot(wiki)
     const changes = diffInventory(previous, inventory)
+    const publishedRoot = path.join(site, 'docs', 'wiki')
+    const published = await exists(publishedRoot)
+      ? await scanWikiSnapshot(publishedRoot)
+      : { inventory: {} }
+    const translationBaselines = Object.fromEntries(
+      [...changes.added, ...changes.changed].map((source) => [
+        source,
+        published.inventory[source]?.hash ?? null,
+      ]),
+    )
     const report = {
       generatedAt: new Date().toISOString(),
       ...changes,
       inventory,
+      translationBaselines,
     }
 
     const temp = path.join(site, `.wiki-work.tmp-${randomUUID()}`)

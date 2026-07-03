@@ -22,16 +22,22 @@ async function exists(candidate) {
 }
 
 function confirmations(argv) {
-  const values = []
+  const result = { deletions: [], translations: [] }
   for (let index = 0; index < argv.length; index += 1) {
-    if (argv[index] !== '--confirm-delete') throw new Error(`Unknown finalize argument: ${argv[index]}`)
+    const kind = argv[index] === '--confirm-delete'
+      ? 'deletions'
+      : argv[index] === '--confirm-translation'
+        ? 'translations'
+        : null
+    if (!kind) throw new Error(`Unknown finalize argument: ${argv[index]}`)
     const value = argv[index + 1]
-    if (!value || value.startsWith('--')) throw new Error('--confirm-delete requires a source')
-    if (values.includes(value)) throw new Error(`Duplicate deletion confirmation: ${value}`)
-    values.push(value)
+    if (!value || value.startsWith('--')) throw new Error(`${argv[index]} requires a source`)
+    assertCanonicalSource(value)
+    if (result[kind].includes(value)) throw new Error(`Duplicate ${kind === 'deletions' ? 'deletion' : 'translation'} confirmation: ${value}`)
+    result[kind].push(value)
     index += 1
   }
-  return values
+  return result
 }
 
 function assertCanonicalSource(source) {
@@ -61,6 +67,24 @@ function verifyReport(report) {
     throw new Error('Invalid report: inventory must be an object')
   }
   for (const source of Object.keys(report.inventory)) assertCanonicalSource(source)
+  const affected = [...report.added, ...report.changed]
+  if (affected.length && (!report.translationBaselines || typeof report.translationBaselines !== 'object' || Array.isArray(report.translationBaselines))) {
+    throw new Error('Invalid report: added/changed sources require translationBaselines')
+  }
+  if (report.translationBaselines !== undefined) {
+    for (const [source, baseline] of Object.entries(report.translationBaselines)) {
+      assertCanonicalSource(source)
+      if (!affected.includes(source)) throw new Error(`Invalid report: extra translation baseline ${source}`)
+      if (baseline !== null && !/^[a-f0-9]{64}$/.test(baseline)) {
+        throw new Error(`Invalid report: bad translation baseline ${source}`)
+      }
+    }
+  }
+  for (const source of affected) {
+    if (!Object.hasOwn(report.translationBaselines, source)) {
+      throw new Error(`Invalid report: missing translation baseline ${source}`)
+    }
+  }
 }
 
 async function indexMarkdown(docsRoot, pages, date) {
@@ -165,11 +189,15 @@ export async function finalize({ argv = process.argv.slice(2), site = process.cw
     const report = JSON.parse(await readFile(path.join(site, '.wiki-work', 'report.json'), 'utf8'))
     verifyReport(report)
     const deleted = new Set(report.deleted)
-    for (const source of confirmed) {
+    for (const source of confirmed.deletions) {
       if (!deleted.has(source)) throw new Error(`Extra deletion confirmation: ${source}`)
     }
-    const missingConfirmations = report.deleted.filter((source) => !confirmed.includes(source))
+    const missingConfirmations = report.deleted.filter((source) => !confirmed.deletions.includes(source))
     if (missingConfirmations.length) throw new Error(`Unconfirmed deletion: ${missingConfirmations.join(', ')}`)
+    const translationSources = new Set([...report.added, ...report.changed])
+    for (const source of confirmed.translations) {
+      if (!translationSources.has(source)) throw new Error(`Extra translation confirmation: ${source}`)
+    }
 
     const manifestPath = path.join(site, 'wiki-manifest.json')
     const docsRoot = path.join(site, 'docs', 'wiki')
@@ -187,11 +215,23 @@ export async function finalize({ argv = process.argv.slice(2), site = process.cw
     await stageVerifiedSnapshot(publishedSnapshot, stagedWiki, deleted)
 
     const bySource = new Map(manifest.pages.map((page) => [page.source, page]))
+    for (const source of report.changed) {
+      if (!bySource.has(source)) throw new Error(`${source}: changed source is missing from manifest`)
+    }
+    for (const source of report.added) {
+      if (bySource.has(source)) throw new Error(`${source}: added source already exists in manifest`)
+    }
+    for (const source of translationSources) {
+      const currentHash = publishedSnapshot.inventory[source]?.hash
+      if (!currentHash) throw new Error(`${source}: missing translation`)
+      if (currentHash === report.translationBaselines[source] && !confirmed.translations.includes(source)) {
+        throw new Error(`${source}: translation was not updated; use --confirm-translation ${source} to acknowledge unchanged bytes`)
+      }
+    }
     for (const source of report.deleted) bySource.delete(source)
     const syncedAt = report.generatedAt
     for (const source of [...report.changed, ...report.added]) {
       if (!report.inventory[source]?.hash) throw new Error(`${source}: missing inventory entry`)
-      if (!(await exists(path.join(stagedWiki, ...source.split('/'))))) throw new Error(`${source}: missing translation`)
       bySource.set(source, {
         source,
         hash: report.inventory[source].hash,

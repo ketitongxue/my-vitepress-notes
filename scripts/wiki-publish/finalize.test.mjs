@@ -18,9 +18,14 @@ async function fixture(t, { report = {}, pages = [] } = {}) {
   ])
   const manifest = { version: 1, pages }
   await writeFile(path.join(site, 'wiki-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
-  await writeFile(path.join(site, '.wiki-work', 'report.json'), `${JSON.stringify({
+  const completeReport = {
     generatedAt: '2026-07-03T12:00:00.000Z', added: [], changed: [], unchanged: [], deleted: [], inventory: {}, ...report,
-  })}\n`)
+  }
+  completeReport.translationBaselines ??= Object.fromEntries([
+    ...completeReport.added.map((source) => [source, null]),
+    ...completeReport.changed.map((source) => [source, sha256('previous translation')]),
+  ])
+  await writeFile(path.join(site, '.wiki-work', 'report.json'), `${JSON.stringify(completeReport)}\n`)
   return site
 }
 
@@ -114,9 +119,9 @@ test('concurrent finalizers serialize through the shared publication lock', asyn
   const source = 'concepts/new.md'
   const site = await fixture(t, { report: { added: [source], inventory: { [source]: { hash: 'c'.repeat(64), publicPath: `docs/wiki/${source}` } } } })
   await put(site, source)
-  const [first, second] = await Promise.all([finalize({ site }), finalize({ site })])
-  assert.equal(first.pages, 1)
-  assert.equal(second.pages, 1)
+  const results = await Promise.allSettled([finalize({ site }), finalize({ site })])
+  assert.equal(results.filter(({ status }) => status === 'fulfilled').length, 1)
+  assert.match(results.find(({ status }) => status === 'rejected').reason.message, /added source already exists/i)
   assert.equal(JSON.parse(await readFile(path.join(site, 'wiki-manifest.json'), 'utf8')).pages.length, 1)
 })
 
@@ -198,4 +203,70 @@ test('rejects non-canonical report sources and inventory keys before mutation', 
     await put(site, source)
     await assert.rejects(finalize({ site }), /invalid report source/i)
   })
+})
+
+test('does not advance a changed source hash until its translation is edited', async (t) => {
+  const source = 'concepts/changed.md'
+  const oldTranslation = `---\ntitle: 旧译文\n---\n${BODY}\n`
+  const oldHash = 'a'.repeat(64)
+  const newHash = 'b'.repeat(64)
+  const site = await fixture(t, { pages: [page(source, oldHash)], report: {
+    changed: [source], inventory: { [source]: { hash: newHash, publicPath: `docs/wiki/${source}` } },
+    translationBaselines: { [source]: sha256(oldTranslation) },
+  } })
+  await mkdir(path.join(site, 'docs', 'wiki', 'concepts'), { recursive: true })
+  await writeFile(path.join(site, 'docs', 'wiki', source), oldTranslation)
+  await assert.rejects(finalize({ site }), /translation.*not.*updated/i)
+  assert.equal(JSON.parse(await readFile(path.join(site, 'wiki-manifest.json'), 'utf8')).pages[0].hash, oldHash)
+
+  await writeFile(path.join(site, 'docs', 'wiki', source), oldTranslation.replace('旧译文', '新译文'))
+  await finalize({ site })
+  assert.equal(JSON.parse(await readFile(path.join(site, 'wiki-manifest.json'), 'utf8')).pages[0].hash, newHash)
+})
+
+test('blocks a stale pre-existing added page unless edited or explicitly acknowledged', async (t) => {
+  const source = 'entities/new.md'
+  const stale = `---\ntitle: 陈旧页面\n---\n${BODY}\n`
+  const report = {
+    added: [source], inventory: { [source]: { hash: 'c'.repeat(64), publicPath: `docs/wiki/${source}` } },
+    translationBaselines: { [source]: sha256(stale) },
+  }
+  const site = await fixture(t, { report })
+  await mkdir(path.join(site, 'docs', 'wiki', 'entities'), { recursive: true })
+  await writeFile(path.join(site, 'docs', 'wiki', source), stale)
+  await assert.rejects(finalize({ site }), /translation.*not.*updated/i)
+  await finalize({ site, argv: ['--confirm-translation', source] })
+  assert.equal(JSON.parse(await readFile(path.join(site, 'wiki-manifest.json'), 'utf8')).pages[0].source, source)
+})
+
+test('requires exact canonical translation confirmations for pending added or changed sources', async (t) => {
+  const source = 'concepts/changed.md'
+  const content = await (async () => `---\ntitle: 未变化\n---\n${BODY}\n`)()
+  for (const argv of [
+    ['--confirm-translation'],
+    ['--confirm-translation', 'concepts/other.md'],
+    ['--confirm-translation', 'concepts/../entities/x.md'],
+    ['--confirm-translation', source, '--confirm-translation', source],
+  ]) await t.test(argv.join(' '), async (st) => {
+    const site = await fixture(st, { pages: [page(source)], report: {
+      changed: [source], inventory: { [source]: { hash: 'd'.repeat(64), publicPath: `docs/wiki/${source}` } },
+      translationBaselines: { [source]: sha256(content) },
+    } })
+    await mkdir(path.join(site, 'docs', 'wiki', 'concepts'), { recursive: true })
+    await writeFile(path.join(site, 'docs', 'wiki', source), content)
+    await assert.rejects(finalize({ site, argv }), /confirm-translation|translation confirmation|invalid report source/i)
+  })
+})
+
+test('safely rejects a legacy report with added or changed sources but no translation baseline', async (t) => {
+  const source = 'concepts/new.md'
+  const site = await fixture(t, { report: {
+    added: [source], inventory: { [source]: { hash: 'f'.repeat(64), publicPath: `docs/wiki/${source}` } },
+  } })
+  await put(site, source)
+  const reportPath = path.join(site, '.wiki-work', 'report.json')
+  const legacy = JSON.parse(await readFile(reportPath, 'utf8'))
+  delete legacy.translationBaselines
+  await writeFile(reportPath, JSON.stringify(legacy))
+  await assert.rejects(finalize({ site }), /require translationBaselines/i)
 })

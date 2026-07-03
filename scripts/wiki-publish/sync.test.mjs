@@ -84,13 +84,17 @@ test('sync writes relative change report and allowed source snapshots without to
   const reportPath = path.join(site, '.wiki-work', 'report.json')
   const firstReport = await json(reportPath)
   assert.deepEqual(Object.keys(firstReport), [
-    'generatedAt', 'added', 'changed', 'unchanged', 'deleted', 'inventory',
+    'generatedAt', 'added', 'changed', 'unchanged', 'deleted', 'inventory', 'translationBaselines',
   ])
   assert.match(firstReport.generatedAt, /^\d{4}-\d{2}-\d{2}T/)
   assert.deepEqual(firstReport.added, ['concepts/a.md', 'entities/gone.md'])
   assert.deepEqual(firstReport.changed, [])
   assert.deepEqual(firstReport.unchanged, [])
   assert.deepEqual(firstReport.deleted, [])
+  assert.deepEqual(firstReport.translationBaselines, {
+    'concepts/a.md': null,
+    'entities/gone.md': null,
+  })
   assert.equal(
     await readFile(path.join(site, '.wiki-work', 'source', 'concepts', 'a.md'), 'utf8'),
     '---\ntitle: A\n---\nA\n',
@@ -105,6 +109,17 @@ test('sync writes relative change report and allowed source snapshots without to
     'entities/gone.md': sha256('gone\n'),
   })
 
+  const previousChangedTranslation = '---\ntitle: 旧译文\n---\n这是原有中文译文，用于确认同步时会安全记录公开内容哈希作为翻译基线。\n'
+  const staleAddedTranslation = '---\ntitle: 陈旧新增页\n---\n这是一个预先存在但尚未纳入清单的陈旧页面，需要人工更新或明确确认。\n'
+  await Promise.all([
+    mkdir(path.join(site, 'docs', 'wiki', 'concepts'), { recursive: true }),
+    mkdir(path.join(site, 'docs', 'wiki', 'entities'), { recursive: true }),
+  ])
+  await Promise.all([
+    writeFile(path.join(site, 'docs', 'wiki', 'concepts', 'a.md'), previousChangedTranslation),
+    writeFile(path.join(site, 'docs', 'wiki', 'entities', 'new.md'), staleAddedTranslation),
+  ])
+
   await Promise.all([
     writeFile(path.join(wiki, 'concepts', 'a.md'), '---\ntitle: A\n---\nchanged\n'),
     rm(path.join(wiki, 'entities', 'gone.md')),
@@ -117,6 +132,10 @@ test('sync writes relative change report and allowed source snapshots without to
   assert.deepEqual(secondReport.changed, ['concepts/a.md'])
   assert.deepEqual(secondReport.unchanged, [])
   assert.deepEqual(secondReport.deleted, ['entities/gone.md'])
+  assert.deepEqual(secondReport.translationBaselines, {
+    'entities/new.md': sha256(staleAddedTranslation),
+    'concepts/a.md': sha256(previousChangedTranslation),
+  })
   assert.equal(await readFile(path.join(site, 'docs', 'wiki', 'keep.md'), 'utf8'), 'published\n')
   assert.equal(await readFile(path.join(site, '.wiki-work', 'source', 'entities', 'new.md'), 'utf8'), 'new\n')
 })
@@ -223,6 +242,26 @@ test('sync rejects an allowed-directory symlink swap before snapshot copying', a
   await symlink(path.join(outside, 'entities'), path.join(wiki, 'entities'))
 
   await assert.rejects(syncing, /symbolic link|changed|outside/i)
+})
+
+test('sync rejects symlinks while reading public translation baselines', async (t) => {
+  const wiki = await temporaryDirectory(t, 'sync-wiki-')
+  const outside = await temporaryDirectory(t, 'sync-public-outside-')
+  const site = await temporaryDirectory(t, 'sync-site-')
+  await Promise.all([
+    mkdir(path.join(wiki, 'concepts'), { recursive: true }),
+    mkdir(path.join(outside, 'concepts'), { recursive: true }),
+    mkdir(path.join(site, 'docs', 'wiki'), { recursive: true }),
+  ])
+  await Promise.all([
+    writeFile(path.join(wiki, 'concepts', 'a.md'), 'new source\n'),
+    writeFile(path.join(outside, 'concepts', 'a.md'), 'outside translation\n'),
+    writeManifest(site, { 'concepts/a.md': sha256('old source\n') }),
+  ])
+  await symlink(path.join(outside, 'concepts'), path.join(site, 'docs', 'wiki', 'concepts'))
+
+  await assert.rejects(sync({ argv: ['--wiki', wiki], site }), /symbolic link/i)
+  await assert.rejects(readFile(path.join(site, '.wiki-work', 'report.json')), /ENOENT/)
 })
 
 test('concurrent sync processes serialize against the same site', async (t) => {
