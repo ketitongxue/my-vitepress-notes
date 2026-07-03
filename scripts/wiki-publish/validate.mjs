@@ -1,12 +1,14 @@
-import { access, readFile, readdir } from 'node:fs/promises'
+import { access, lstat, readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import MarkdownIt from 'markdown-it'
 
 import { ALLOWED_SECTIONS, sha256 } from './core.mjs'
 import { parseFrontmatter } from './markdown.mjs'
 
 const PAGE_FIELDS = new Set(['source', 'hash', 'publicPath', 'status', 'syncedAt'])
 const HASH_PATTERN = /^[a-f0-9]{64}$/
+const markdownParser = new MarkdownIt({ html: false })
 
 async function exists(candidate) {
   try {
@@ -19,6 +21,15 @@ async function exists(candidate) {
 }
 
 async function markdownFiles(directory, relative = '') {
+  let metadata
+  try {
+    metadata = await lstat(directory)
+  } catch (error) {
+    if (error?.code === 'ENOENT') return []
+    throw error
+  }
+  if (metadata.isSymbolicLink()) throw new Error(`Symbolic links are not allowed: ${directory}`)
+  if (!metadata.isDirectory()) throw new Error(`Expected a directory: ${directory}`)
   let entries
   try {
     entries = await readdir(directory, { withFileTypes: true })
@@ -30,6 +41,7 @@ async function markdownFiles(directory, relative = '') {
   for (const entry of entries) {
     const childRelative = relative ? path.posix.join(relative, entry.name) : entry.name
     const child = path.join(directory, entry.name)
+    if (entry.isSymbolicLink()) throw new Error(`Symbolic links are not allowed: ${child}`)
     if (entry.isDirectory()) files.push(...await markdownFiles(child, childRelative))
     else if (entry.isFile() && entry.name.endsWith('.md')) files.push(childRelative)
   }
@@ -54,21 +66,30 @@ function withoutCodeBlocks(markdown) {
 }
 
 function internalLinks(markdown) {
-  return [...markdown.matchAll(/!?(?<!\!)\[[^\]]*\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g)]
-    .filter((match) => match[0][0] !== '!')
-    .map((match) => match[1].replace(/^<|>$/g, ''))
+  const links = []
+  const visit = (tokens) => {
+    for (const token of tokens) {
+      if (token.type === 'link_open') links.push(token.attrGet('href'))
+      if (token.children) visit(token.children)
+    }
+  }
+  visit(markdownParser.parse(markdown, {}))
+  return links
 }
 
 function linkTarget(source, href) {
+  if (!href || href.startsWith('#') || /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(href)) return null
   const clean = decodeURIComponent(href.split(/[?#]/, 1)[0])
-  if (!clean || clean.startsWith('#') || /^(?:https?:|mailto:|tel:|\/\/)/i.test(clean)) return null
+  if (!clean) return null
+  if (clean.split('/').includes('..')) throw new Error('traversal')
   if (clean === '/wiki' || clean === '/wiki/') return 'index.md'
   if (clean.startsWith('/wiki/')) {
     const target = clean.slice('/wiki/'.length).replace(/\/$/, '')
     return target.endsWith('.md') ? target : `${target}.md`
   }
-  if (clean.startsWith('/')) return null
+  if (clean.startsWith('/')) throw new Error('outside wiki')
   const target = path.posix.normalize(path.posix.join(path.posix.dirname(source), clean))
+  if (target === '..' || target.startsWith('../')) throw new Error('traversal')
   return target.endsWith('.md') ? target : `${target}.md`
 }
 
@@ -106,8 +127,9 @@ function contentErrors(source, markdown, knownFiles) {
     let target
     try {
       target = linkTarget(source, href)
-    } catch {
-      errors.push(`${source}: broken link ${href}`)
+    } catch (error) {
+      const kind = error?.message === 'traversal' ? 'link traversal' : 'broken link'
+      errors.push(`${source}: ${kind} ${href}`)
       continue
     }
     if (target && target !== 'index.md' && !knownFiles.has(target)) {
@@ -132,6 +154,7 @@ export async function validatePublishedWiki({ docsRoot, manifest }) {
   }
 
   const manifestSources = new Set()
+  const manifestPublicPaths = new Set()
   for (const [index, page] of pages.entries()) {
     const label = `manifest.pages[${index}]`
     if (!page || typeof page !== 'object' || Array.isArray(page)) {
@@ -147,6 +170,10 @@ export async function validatePublishedWiki({ docsRoot, manifest }) {
       manifestSources.add(page.source)
     }
     if (!HASH_PATTERN.test(page.hash ?? '')) errors.push(`${label}: invalid hash`)
+    if (typeof page.publicPath === 'string') {
+      if (manifestPublicPaths.has(page.publicPath)) errors.push(`${label}: duplicate publicPath ${page.publicPath}`)
+      manifestPublicPaths.add(page.publicPath)
+    }
     if (page.publicPath !== `docs/wiki/${page.source}`) errors.push(`${label}: invalid publicPath`)
     if (page.status !== 'published') errors.push(`${label}: invalid status`)
     if (typeof page.syncedAt !== 'string' || !Number.isFinite(Date.parse(page.syncedAt))) errors.push(`${label}: invalid syncedAt`)

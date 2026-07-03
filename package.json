@@ -13,6 +13,7 @@
     "test": "node --test scripts/wiki-publish/*.test.mjs && npm run wiki:validate && npm run test:content && npm run test:theme && npm run docs:build"
   },
   "devDependencies": {
+    "markdown-it": "^14.3.0",
     "vitepress": "latest"
   }
 }

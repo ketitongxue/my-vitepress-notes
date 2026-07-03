@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -76,10 +76,50 @@ test('rejects broken internal Markdown links', async (t) => {
   assert.match(await errorsFor(t, `${CHINESE_BODY}\n[缺失页面](/wiki/concepts/missing)`), /broken link/i)
 })
 
+test('finds reference, angle-bracket, and escaped-parenthesis broken links', async (t) => {
+  const errors = await errorsFor(t, `${CHINESE_BODY}
+
+[missing]: /wiki/concepts/reference-missing
+
+[引用链接][missing]
+[尖括号](<missing page.md>)
+[嵌套括号](missing\\(nested\\).md)`)
+  assert.match(errors, /reference-missing/i)
+  assert.match(errors, /missing(?:%20| )page\.md/i)
+  assert.match(errors, /missing(?:\\?\(|%28)nested(?:\\?\)|%29)\.md/i)
+})
+
+test('rejects plain and encoded link traversal', async (t) => {
+  const errors = await errorsFor(t, `${CHINESE_BODY}
+[越界](../../secret.md)
+[编码越界](%2e%2e/%2e%2e/secret.md)`)
+  assert.match(errors, /traversal.*\.\.\/\.\.\/secret\.md/i)
+  assert.match(errors, /traversal.*%2e%2e/i)
+})
+
 test('rejects extra files under published sections', async (t) => {
   const input = await fixture(t)
   await writeFile(path.join(input.docsRoot, 'concepts', 'extra.md'), CHINESE_BODY)
   assert.match((await validatePublishedWiki(input)).errors.join('\n'), /extra.*concepts\/extra\.md/i)
+})
+
+test('rejects symlinked sections, nested directories, and Markdown files', async (t) => {
+  for (const kind of ['section', 'directory', 'file']) {
+    await t.test(kind, async (subtest) => {
+      const input = await fixture(subtest)
+      const outside = await mkdtemp(path.join(tmpdir(), 'wiki-validate-outside-'))
+      subtest.after(() => rm(outside, { recursive: true, force: true }))
+      await writeFile(path.join(outside, 'leak.md'), CHINESE_BODY)
+      if (kind === 'section') {
+        await symlink(outside, path.join(input.docsRoot, 'entities'))
+      } else if (kind === 'directory') {
+        await symlink(outside, path.join(input.docsRoot, 'concepts', 'linked'))
+      } else {
+        await symlink(path.join(outside, 'leak.md'), path.join(input.docsRoot, 'concepts', 'leak.md'))
+      }
+      await assert.rejects(validatePublishedWiki(input), /symbolic link/i)
+    })
+  }
 })
 
 test('rejects manifest entries whose published files are missing', async (t) => {
@@ -104,4 +144,25 @@ test('validates manifest fields and returns sorted diagnostics', async (t) => {
   assert.match(result.errors.join('\n'), /publicPath/i)
   assert.match(result.errors.join('\n'), /hash/i)
   assert.match(result.errors.join('\n'), /status/i)
+})
+
+test('rejects hash mismatch, duplicate source and publicPath, and bad metadata', async (t) => {
+  const input = await fixture(t, {
+    page: { hash: 'a'.repeat(64), extra: true },
+  })
+  input.manifest.pages.push(
+    { ...input.manifest.pages[0], syncedAt: undefined },
+    {
+      ...input.manifest.pages[0],
+      source: 'entities/other.md',
+      hash: 'b'.repeat(64),
+      syncedAt: 'not-a-date',
+    },
+  )
+  const errors = (await validatePublishedWiki(input)).errors.join('\n')
+  assert.match(errors, /hash does not match/i)
+  assert.match(errors, /duplicate source/i)
+  assert.match(errors, /duplicate publicPath/i)
+  assert.match(errors, /unexpected field extra/i)
+  assert.match(errors, /invalid syncedAt/i)
 })
