@@ -7,6 +7,7 @@ export default defineConfig({
   appearance: 'force-dark',
   cleanUrls: true,
   lastUpdated: true,
+  srcExclude: ['superpowers/**'],
   themeConfig: {
     nav: [
       { text: '主题', link: '/topics/' },

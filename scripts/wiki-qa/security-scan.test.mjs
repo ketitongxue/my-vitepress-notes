@@ -1,95 +1,11 @@
 import assert from 'node:assert/strict'
-import { execFile } from 'node:child_process'
-import { readFile, readdir } from 'node:fs/promises'
+import { mkdtemp, readFile } from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
-import { promisify } from 'node:util'
+import { scanArtifactFiles, scanText, scanTrackedFiles } from './security-scan.mjs'
 
-const execFileAsync = promisify(execFile)
 const projectRoot = path.resolve(import.meta.dirname, '../..')
-const TEST_FILES = /(?:^|\/)\w[\w.-]*\.test\.mjs$/
-const TEST_NET = /^(?:192\.0\.2|198\.51\.100|203\.0\.113)\.(?:\d{1,3})$/
-const PRIVATE_FIXTURE_FILES = new Set(['a.md', 'article.md', 'bad.md', 'private.md', 'secret.md', 'source.md'])
-
-function addFinding(findings, file, kind) {
-  findings.push(`${file}: ${kind}`)
-}
-
-export function scanText(file, text, { artifact = false } = {}) {
-  const findings = []
-  const isTest = TEST_FILES.test(file)
-
-  for (const match of text.matchAll(/\bsk-[A-Za-z0-9_-]{20,}\b/g)) {
-    if (!(isTest && /^sk-(?:fake|test)-/.test(match[0]))) {
-      addFinding(findings, file, 'possible provider secret')
-    }
-  }
-
-  for (const match of text.matchAll(/\bDEEPSEEK_API_KEY\s*=\s*['"]?([A-Za-z0-9_$.-][A-Za-z0-9_$./-]*)['"]?/g)) {
-    const assigned = match[1].replace(/^['"]|['"]$/g, '')
-    if (!(isTest && /^(?:fake|test|fixture)-/.test(assigned))) {
-      addFinding(findings, file, 'assigned DeepSeek API key')
-    }
-  }
-
-  const absolutePaths = [
-    ...text.matchAll(/(?:^|[\s('"`])\/(?:Users|home)\/([^\s)'"`]+)/gm),
-    ...text.matchAll(/(?:^|[\s('"`])[A-Za-z]:\\Users\\([^\s)'"`]+)/gm),
-  ]
-  for (const match of absolutePaths) {
-    const fixturePath = /^(?:alice|person|test|fake)(?:[\\/]|$)/i.test(match[1])
-    if (artifact || !isTest || !fixturePath) {
-      addFinding(findings, file, 'local absolute path')
-    }
-  }
-
-  for (const match of text.matchAll(/(?:^|[\s/('"`])((?:sources\/)?raw\/[A-Za-z0-9_./-]+)/gim)) {
-    const dedicatedFixture = isTest && PRIVATE_FIXTURE_FILES.has(path.posix.basename(match[1]).toLowerCase())
-    if (artifact || !dedicatedFixture) {
-      addFinding(findings, file, 'private source path')
-    }
-  }
-
-  for (const match of text.matchAll(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g)) {
-    const octets = match[0].split('.').map(Number)
-    if (octets.some((octet) => octet > 255)) continue
-    if (!(isTest && TEST_NET.test(match[0]))) addFinding(findings, file, 'full IP address')
-  }
-
-  return [...new Set(findings)]
-}
-
-async function trackedFiles() {
-  const { stdout } = await execFileAsync('git', ['ls-files', '-z'], {
-    cwd: projectRoot,
-    encoding: 'utf8',
-    maxBuffer: 10 * 1024 * 1024,
-  })
-  return stdout.split('\0').filter(Boolean)
-}
-
-async function artifactFiles(directory, prefix = '') {
-  let entries
-  try {
-    entries = await readdir(directory, { withFileTypes: true })
-  } catch (error) {
-    if (error?.code === 'ENOENT' && prefix === '') return []
-    throw error
-  }
-  const files = []
-  for (const entry of entries) {
-    const relative = path.posix.join(prefix, entry.name)
-    if (entry.isDirectory()) files.push(...await artifactFiles(path.join(directory, entry.name), relative))
-    else if (entry.isFile()) files.push(relative)
-  }
-  return files
-}
-
-async function scanFile(relative, { artifact = false, root = projectRoot } = {}) {
-  const content = await readFile(path.join(root, relative))
-  if (content.includes(0)) return []
-  return scanText(relative, content.toString('utf8'), { artifact })
-}
 
 test('scanner catches production leaks without echoing their values', () => {
   const secret = ['sk', 'live', '0123456789abcdefghijklmnopqrstuvwxyz'].join('-')
@@ -127,6 +43,33 @@ test('scanner permits variable names and explicit documentation fixtures only in
   assert.notDeepEqual(scanText('assets/app.js', '203.0.113.42', { artifact: true }), [])
 })
 
+test('scanner catches POSIX, Windows, UNC, and backslash raw paths without exposing them', () => {
+  const separators = ['/', '\\']
+  const samples = [
+    ['', 'root', 'llm_wiki', 'notes.md'].join('/'),
+    ['', 'private', 'var', 'folders', 'notes.md'].join('/'),
+    ['', 'tmp', 'private-notes.md'].join('/'),
+    ['', 'var', 'tmp', 'private-notes.md'].join('/'),
+    ['C:', 'Users', 'owner', 'notes.md'].join(separators[1]),
+    ['', '', 'server', 'share', 'notes.md'].join(separators[1]),
+    ['source', 'raw', 'private.md'].join(separators[1]),
+  ]
+  const findings = scanText('worker/leak.mjs', samples.join('\n'))
+
+  assert.ok(findings.includes('worker/leak.mjs: local absolute path'))
+  assert.ok(findings.includes('worker/leak.mjs: private source path'))
+  assert.ok(findings.every((finding) => samples.every((sample) => !finding.includes(sample))))
+})
+
+test('scanner allows web routes, URLs, imports, and regex source', () => {
+  assert.deepEqual(scanText('worker/safe.mjs', [
+    '/wiki/concepts/attention',
+    'https://example.com/raw/article.md',
+    "import value from '/worker/module.mjs'",
+    String.raw`const pattern = /(?:^|[\\/])raw[\\/]/`,
+  ].join('\n')), [])
+})
+
 test('integrated test command preserves the deployment verification order', async () => {
   const packageJson = JSON.parse(await readFile(path.join(projectRoot, 'package.json'), 'utf8'))
   const command = packageJson.scripts.test
@@ -139,6 +82,7 @@ test('integrated test command preserves the deployment verification order', asyn
     'npm run test:content',
     'npm run test:theme',
     'npm run docs:build',
+    'npm run qa:security',
   ]
   let cursor = -1
   for (const step of ordered) {
@@ -167,14 +111,12 @@ test('README documents setup, secrets, deployment, limits, and privacy', async (
   ]) assert.ok(readme.includes(required), `README must include ${required}`)
 })
 
-test('tracked files and generated deployment artifacts contain no credential or private-data leaks', async () => {
-  const trackedFindings = (await Promise.all(
-    (await trackedFiles()).map((file) => scanFile(file)),
-  )).flat()
-  const buildRoot = path.join(projectRoot, 'docs/.vitepress/dist')
-  const artifactFindings = (await Promise.all(
-    (await artifactFiles(buildRoot)).map((file) => scanFile(file, { artifact: true, root: buildRoot })),
-  )).flat()
+test('tracked files contain no credential or private-data leaks', async () => {
+  assert.deepEqual(await scanTrackedFiles(projectRoot), [])
+})
 
-  assert.deepEqual([...trackedFindings, ...artifactFindings], [])
+test('artifact scan fails closed when a clean archive has not been built', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'wiki-qa-security-'))
+  t.after(() => import('node:fs/promises').then(({ rm }) => rm(root, { recursive: true, force: true })))
+  await assert.rejects(scanArtifactFiles(root), /artifacts are missing.*build first/i)
 })
