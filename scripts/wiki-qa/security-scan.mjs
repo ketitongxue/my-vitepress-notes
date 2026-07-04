@@ -212,19 +212,19 @@ function scanRawByteSignatures(label, content) {
   return findings
 }
 
-function scanUtf16SecretBytes(label, content) {
+function scanUtf16ProtectedBytes(relative, label, content, artifact) {
   const findings = []
   for (const offset of [0, 1]) {
     if (content.length - offset < 2) continue
-    findings.push(...scanHighConfidenceSecrets(label, content.subarray(offset).toString('utf16le')))
-    findings.push(...scanHighConfidenceSecrets(label, decodeUtf16Be(content, offset)))
+    findings.push(...scanText(relative, content.subarray(offset).toString('utf16le'), { artifact, label }))
+    findings.push(...scanText(relative, decodeUtf16Be(content, offset), { artifact, label }))
   }
   return findings
 }
 
 function scanBuffer(relative, content, artifact, label = relative) {
   const texts = decodedTexts(content)
-  const findings = scanUtf16SecretBytes(label, content)
+  const findings = scanUtf16ProtectedBytes(relative, label, content, artifact)
   if (texts.size === 0) findings.push(...scanRawByteSignatures(label, content))
   for (const text of texts) findings.push(...scanText(relative, text, { artifact, label }))
   return [...new Set(findings)]

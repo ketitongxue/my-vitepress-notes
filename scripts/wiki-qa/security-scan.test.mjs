@@ -256,6 +256,49 @@ test('raw byte scan finds UTF-16 secrets after a neutral 4 KiB prefix in both en
   assert.ok(findings.every((finding) => !finding.includes(secret) && !finding.includes('late-')))
 })
 
+test('offset-independent UTF-16 scan covers paths, raw sources, and validated IPs', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'wiki-qa-security-'))
+  t.after(() => import('node:fs/promises').then(({ rm }) => rm(root, { recursive: true, force: true })))
+  const dist = path.join(root, 'docs/.vitepress/dist/assets')
+  await mkdir(dist, { recursive: true })
+  const prefix = Buffer.alloc(4096, 0x41)
+  const littleText = [
+    ['', 'opt', 'company', 'secret.md'].join('/'),
+    ['raw', 'source.md'].join('/'),
+    [198, 18, 0, 42].join('.'),
+  ].join(' ')
+  const bigText = [
+    ['', 'Users', 'owner', 'secret.md'].join('/'),
+    ['raw', 'source.md'].join('\\'),
+    [198, 18, 0, 42].join('.'),
+  ].join(' ')
+  const toBigEndian = (value) => {
+    const bytes = Buffer.from(value, 'utf16le')
+    for (let index = 0; index < bytes.length; index += 2) {
+      const first = bytes[index]
+      bytes[index] = bytes[index + 1]
+      bytes[index + 1] = first
+    }
+    return bytes
+  }
+  await writeFile(path.join(dist, 'protected-le.bin'), Buffer.concat([prefix, Buffer.from(littleText, 'utf16le')]))
+  await writeFile(path.join(dist, 'protected-be.bin'), Buffer.concat([prefix, toBigEndian(bigText)]))
+  await writeFile(path.join(dist, 'invalid-le.bin'), Buffer.concat([
+    prefix,
+    Buffer.from([999, 999, 999, 999].join('.'), 'utf16le'),
+  ]))
+  await writeFile(path.join(dist, 'invalid-be.bin'), Buffer.concat([
+    prefix,
+    toBigEndian([999, 999, 999, 999].join('.')),
+  ]))
+
+  const findings = await scanArtifactFiles(root)
+  assert.equal(findings.filter((finding) => finding.endsWith(': local absolute path')).length, 2)
+  assert.equal(findings.filter((finding) => finding.endsWith(': private source path')).length, 2)
+  assert.equal(findings.filter((finding) => finding.endsWith(': full IP address')).length, 2)
+  assert.ok(findings.every((finding) => !finding.includes('protected-') && !finding.includes('secret.md')))
+})
+
 test('artifact and tracked path diagnostics redact secret-bearing filenames', async (t) => {
   const artifactRoot = await mkdtemp(path.join(os.tmpdir(), 'wiki-qa-security-'))
   const trackedRoot = await mkdtemp(path.join(os.tmpdir(), 'wiki-qa-tracked-'))
