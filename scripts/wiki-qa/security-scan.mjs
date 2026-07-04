@@ -1,10 +1,12 @@
 import { execFile } from 'node:child_process'
-import { readFile, readdir } from 'node:fs/promises'
+import { constants } from 'node:fs'
+import { lstat, open, readdir, realpath } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
+const MAX_SCAN_FILE_BYTES = 16 * 1024 * 1024
 const TEST_FILES = /(?:^|\/)\w[\w.-]*\.test\.mjs$/
 const TEST_NET = /^(?:192\.0\.2|198\.51\.100|203\.0\.113)\.(?:\d{1,3})$/
 const TEST_PATH_FIXTURES = new Set([
@@ -83,13 +85,13 @@ export function scanText(file, text, { artifact = false } = {}) {
   const isTest = TEST_FILES.test(file)
 
   for (const match of text.matchAll(/\bsk-[A-Za-z0-9_-]{20,}\b/g)) {
-    if (!(isTest && /^sk-(?:fake|test)-/.test(match[0]))) {
+    if (!(!artifact && isTest && /^sk-(?:fake|test)-/.test(match[0]))) {
       addFinding(findings, file, 'possible provider secret')
     }
   }
 
   for (const match of text.matchAll(/\bDEEPSEEK_API_KEY\s*=\s*['"]?([A-Za-z0-9_$.-][A-Za-z0-9_$./-]*)['"]?/g)) {
-    if (!(isTest && /^(?:fake|test|fixture)-/.test(match[1]))) {
+    if (!(!artifact && isTest && /^(?:fake|test|fixture)-/.test(match[1]))) {
       addFinding(findings, file, 'assigned DeepSeek API key')
     }
   }
@@ -118,35 +120,186 @@ export function scanText(file, text, { artifact = false } = {}) {
   for (const match of text.matchAll(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g)) {
     const octets = match[0].split('.').map(Number)
     if (octets.some((octet) => octet > 255)) continue
-    if (!(isTest && TEST_NET.test(match[0]))) addFinding(findings, file, 'full IP address')
+    if (!(!artifact && isTest && TEST_NET.test(match[0]))) addFinding(findings, file, 'full IP address')
   }
 
   return [...new Set(findings)]
 }
 
-async function scanFile(root, relative, artifact = false) {
-  const content = await readFile(path.join(root, relative))
-  if (content.includes(0)) return []
-  return scanText(relative, content.toString('utf8'), { artifact })
+function decodeUtf16Be(content, offset = 0) {
+  const bytes = Buffer.from(content.subarray(offset, content.length - ((content.length - offset) % 2)))
+  for (let index = 0; index < bytes.length; index += 2) {
+    const first = bytes[index]
+    bytes[index] = bytes[index + 1]
+    bytes[index + 1] = first
+  }
+  return bytes.toString('utf16le')
+}
+
+function decodedTexts(content) {
+  const texts = new Set()
+  if (content[0] === 0xff && content[1] === 0xfe) {
+    texts.add(content.subarray(2).toString('utf16le'))
+    return texts
+  }
+  if (content[0] === 0xfe && content[1] === 0xff) {
+    texts.add(decodeUtf16Be(content, 2))
+    return texts
+  }
+  if (content[0] === 0xef && content[1] === 0xbb && content[2] === 0xbf) {
+    texts.add(content.subarray(3).toString('utf8'))
+    return texts
+  }
+
+  const sampleLength = Math.min(content.length - (content.length % 2), 4096)
+  let evenNuls = 0
+  let oddNuls = 0
+  for (let index = 0; index < sampleLength; index += 2) {
+    if (content[index] === 0) evenNuls += 1
+    if (content[index + 1] === 0) oddNuls += 1
+  }
+  const pairs = sampleLength / 2
+  if (pairs > 0 && oddNuls / pairs > 0.3 && evenNuls / pairs < 0.1) {
+    texts.add(content.toString('utf16le'))
+  } else if (pairs > 0 && evenNuls / pairs > 0.3 && oddNuls / pairs < 0.1) {
+    texts.add(decodeUtf16Be(content))
+  } else {
+    try {
+      const text = new TextDecoder('utf-8', { fatal: true }).decode(content)
+      const controls = [...text].filter((character) => {
+        const code = character.charCodeAt(0)
+        return (code < 32 && !['\t', '\n', '\r'].includes(character)) || code === 127
+      }).length
+      if (text.length === 0 || controls / text.length < 0.02) texts.add(text)
+    } catch {
+      // Binary files are still checked below using high-confidence ASCII signatures.
+    }
+  }
+  return texts
+}
+
+function scanRawByteSignatures(relative, content) {
+  const text = content.toString('latin1')
+  const findings = []
+  if (/\bsk-[A-Za-z0-9_-]{20,}\b/.test(text)) addFinding(findings, relative, 'possible provider secret')
+  if (/\bDEEPSEEK_API_KEY\s*=\s*['"]?[A-Za-z0-9_$.-][A-Za-z0-9_$./-]*/.test(text)) {
+    addFinding(findings, relative, 'assigned DeepSeek API key')
+  }
+  if (/\b(?:\d{1,3}\.){3}\d{1,3}\b/.test(text)) addFinding(findings, relative, 'full IP address')
+  if (/(?:^|[^A-Za-z0-9_:/.-])\/(?:Users|home|root|private|tmp|var|opt|etc|srv|Volumes)\/[A-Za-z0-9._~-]+/.test(text)
+    || /(?:^|[^A-Za-z0-9_])\b[A-Za-z]:[\\/][A-Za-z0-9._~-]+[\\/][A-Za-z0-9._~-]+/.test(text)
+    || /(?:^|[^\\])\\\\[A-Za-z0-9._-]+[\\/][A-Za-z0-9$._-]+/.test(text)) {
+    addFinding(findings, relative, 'local absolute path')
+  }
+  if (/(?:^|[\s/\\('"`])raw[\\/][A-Za-z0-9_.-]+/i.test(text)) {
+    addFinding(findings, relative, 'private source path')
+  }
+  return findings
+}
+
+function scanBuffer(relative, content, artifact) {
+  const texts = decodedTexts(content)
+  const findings = texts.size === 0 ? scanRawByteSignatures(relative, content) : []
+  for (const text of texts) findings.push(...scanText(relative, text, { artifact }))
+  return [...new Set(findings)]
+}
+
+function assertContained(rootReal, candidateReal) {
+  if (candidateReal !== rootReal && !candidateReal.startsWith(`${rootReal}${path.sep}`)) {
+    throw new Error('deployment artifact escaped its canonical root')
+  }
+}
+
+function sameFile(left, right) {
+  return left.dev === right.dev && left.ino === right.ino
+}
+
+async function readOpenFileBounded(absolute, expected, artifact) {
+  let handle
+  try {
+    handle = await open(absolute, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0))
+    const opened = await handle.stat()
+    if (!opened.isFile() || !sameFile(opened, expected)) {
+      throw new Error('deployment artifact changed during security scan')
+    }
+    if (opened.size > MAX_SCAN_FILE_BYTES) throw new Error('deployment artifact exceeds scan size limit')
+
+    const content = Buffer.allocUnsafe(Math.min(MAX_SCAN_FILE_BYTES + 1, opened.size + 1))
+    let length = 0
+    while (length < content.length) {
+      const { bytesRead } = await handle.read(content, length, content.length - length, length)
+      if (bytesRead === 0) break
+      length += bytesRead
+    }
+    if (length > opened.size || length > MAX_SCAN_FILE_BYTES) {
+      throw new Error('deployment artifact changed during security scan')
+    }
+    const after = await handle.stat()
+    if (!sameFile(after, opened) || after.size !== opened.size) {
+      throw new Error('deployment artifact changed during security scan')
+    }
+    return content.subarray(0, length)
+  } catch (error) {
+    if (artifact && ['ELOOP', 'EMLINK'].includes(error?.code)) {
+      throw new Error('deployment artifacts contain a symbolic link')
+    }
+    throw error
+  } finally {
+    await handle?.close()
+  }
+}
+
+async function scanTrackedFile(rootReal, relative) {
+  const absolute = path.resolve(rootReal, relative)
+  assertContained(rootReal, absolute)
+  const before = await lstat(absolute)
+  if (before.isSymbolicLink() || !before.isFile()) throw new Error('tracked scan input is not a regular file')
+  if (before.size > MAX_SCAN_FILE_BYTES) throw new Error('tracked scan input exceeds scan size limit')
+  return scanBuffer(relative, await readOpenFileBounded(absolute, before, false), false)
 }
 
 export async function scanTrackedFiles(projectRoot) {
+  const rootReal = await realpath(projectRoot)
   const { stdout } = await execFileAsync('git', ['ls-files', '-z'], {
     cwd: projectRoot,
     encoding: 'utf8',
     maxBuffer: 10 * 1024 * 1024,
   })
   const files = stdout.split('\0').filter(Boolean)
-  return (await Promise.all(files.map((file) => scanFile(projectRoot, file)))).flat()
+  const findings = []
+  for (const file of files) findings.push(...await scanTrackedFile(rootReal, file))
+  return findings
 }
 
-async function artifactFiles(directory, prefix = '') {
+async function artifactFiles(rootReal, directory = rootReal, prefix = '') {
+  const directoryBefore = await lstat(directory)
+  if (directoryBefore.isSymbolicLink()) throw new Error('deployment artifacts contain a symbolic link')
+  if (!directoryBefore.isDirectory()) throw new Error('deployment artifact tree contains a non-directory')
+  const directoryReal = await realpath(directory)
+  assertContained(rootReal, directoryReal)
   const entries = await readdir(directory, { withFileTypes: true })
   const files = []
   for (const entry of entries) {
     const relative = path.posix.join(prefix, entry.name)
-    if (entry.isDirectory()) files.push(...await artifactFiles(path.join(directory, entry.name), relative))
-    else if (entry.isFile()) files.push(relative)
+    const absolute = path.join(directory, entry.name)
+    const entryBefore = await lstat(absolute)
+    if (entry.isSymbolicLink() || entryBefore.isSymbolicLink()) {
+      throw new Error('deployment artifacts contain a symbolic link')
+    }
+    const entryReal = await realpath(absolute)
+    assertContained(rootReal, entryReal)
+    if (entryBefore.isDirectory()) {
+      files.push(...await artifactFiles(rootReal, absolute, relative))
+    } else if (entryBefore.isFile()) {
+      files.push({ absolute, relative, before: entryBefore, real: entryReal })
+    } else {
+      throw new Error('deployment artifact tree contains a non-regular entry')
+    }
+  }
+  const directoryAfter = await lstat(directory)
+  if (directoryAfter.isSymbolicLink() || !sameFile(directoryAfter, directoryBefore)
+    || await realpath(directory) !== directoryReal) {
+    throw new Error('deployment artifact directory changed during security scan')
   }
   return files
 }
@@ -154,14 +307,42 @@ async function artifactFiles(directory, prefix = '') {
 export async function scanArtifactFiles(projectRoot) {
   const root = path.join(projectRoot, 'docs/.vitepress/dist')
   let files
+  let rootBefore
+  let rootReal
   try {
-    files = await artifactFiles(root)
+    rootBefore = await lstat(root)
+    if (rootBefore.isSymbolicLink()) throw new Error('deployment artifacts contain a symbolic link')
+    if (!rootBefore.isDirectory()) throw new Error('deployment artifact root is not a directory')
+    rootReal = await realpath(root)
+    files = await artifactFiles(rootReal)
   } catch (error) {
     if (error?.code === 'ENOENT') throw new Error('deployment artifacts are missing; run docs:build first')
     throw error
   }
   if (files.length === 0) throw new Error('deployment artifacts are empty; run docs:build first')
-  return (await Promise.all(files.map((file) => scanFile(root, file, true)))).flat()
+  const findings = []
+  for (const file of files) {
+    const parentReal = await realpath(path.dirname(file.absolute))
+    assertContained(rootReal, parentReal)
+    const before = await lstat(file.absolute)
+    if (before.isSymbolicLink()) throw new Error('deployment artifacts contain a symbolic link')
+    const fileReal = await realpath(file.absolute)
+    assertContained(rootReal, fileReal)
+    if (!sameFile(before, file.before) || fileReal !== file.real) {
+      throw new Error('deployment artifact changed during security scan')
+    }
+    const content = await readOpenFileBounded(file.absolute, before, true)
+    const after = await lstat(file.absolute)
+    if (after.isSymbolicLink() || !sameFile(after, before) || await realpath(file.absolute) !== fileReal) {
+      throw new Error('deployment artifact changed during security scan')
+    }
+    findings.push(...scanBuffer(file.relative, content, true))
+  }
+  const rootAfter = await lstat(root)
+  if (rootAfter.isSymbolicLink() || !sameFile(rootAfter, rootBefore) || await realpath(root) !== rootReal) {
+    throw new Error('deployment artifact root changed during security scan')
+  }
+  return findings
 }
 
 export async function scanRepository(projectRoot) {

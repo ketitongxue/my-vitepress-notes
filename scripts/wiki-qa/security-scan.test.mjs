@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, symlink, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -41,6 +41,8 @@ test('scanner permits variable names and explicit documentation fixtures only in
   ].join('\n')), [])
   assert.notDeepEqual(scanText('worker/unsafe.mjs', 'DEEPSEEK_API_KEY=test-fixture-value'), [])
   assert.notDeepEqual(scanText('assets/app.js', '203.0.113.42', { artifact: true }), [])
+  assert.notDeepEqual(scanText('assets/fake.test.mjs', 'DEEPSEEK_API_KEY=test-fixture-value', { artifact: true }), [])
+  assert.notDeepEqual(scanText('assets/fake.test.mjs', 'sk-test-0123456789abcdefghijklmnop', { artifact: true }), [])
 })
 
 test('scanner catches POSIX, Windows, UNC, and backslash raw paths without exposing them', () => {
@@ -170,4 +172,60 @@ test('artifact scan fails closed when a clean archive has not been built', async
   const root = await mkdtemp(path.join(os.tmpdir(), 'wiki-qa-security-'))
   t.after(() => import('node:fs/promises').then(({ rm }) => rm(root, { recursive: true, force: true })))
   await assert.rejects(scanArtifactFiles(root), /artifacts are missing.*build first/i)
+})
+
+test('artifact scan rejects symlinked files and directories without exposing their targets', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'wiki-qa-security-'))
+  const outside = await mkdtemp(path.join(os.tmpdir(), 'wiki-qa-outside-'))
+  t.after(() => Promise.all([
+    import('node:fs/promises').then(({ rm }) => rm(root, { recursive: true, force: true })),
+    import('node:fs/promises').then(({ rm }) => rm(outside, { recursive: true, force: true })),
+  ]))
+  const dist = path.join(root, 'docs/.vitepress/dist')
+  await mkdir(dist, { recursive: true })
+  await writeFile(path.join(outside, 'private.txt'), 'outside fixture')
+  await symlink(path.join(outside, 'private.txt'), path.join(dist, 'linked-file'))
+
+  await assert.rejects(scanArtifactFiles(root), (error) => {
+    assert.match(error.message, /symbolic link/i)
+    assert.doesNotMatch(error.message, /outside|private\.txt/)
+    return true
+  })
+
+  await import('node:fs/promises').then(({ rm }) => rm(path.join(dist, 'linked-file')))
+  await symlink(outside, path.join(dist, 'linked-directory'))
+  await assert.rejects(scanArtifactFiles(root), (error) => {
+    assert.match(error.message, /symbolic link/i)
+    assert.doesNotMatch(error.message, /outside|private\.txt/)
+    return true
+  })
+})
+
+test('artifact scan detects UTF-16LE and binary embedded secrets without printing them', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'wiki-qa-security-'))
+  t.after(() => import('node:fs/promises').then(({ rm }) => rm(root, { recursive: true, force: true })))
+  const dist = path.join(root, 'docs/.vitepress/dist/assets')
+  await mkdir(dist, { recursive: true })
+  const assignment = `${['DEEPSEEK', 'API', 'KEY'].join('_')}=live-utf16-value`
+  const secret = ['sk', 'live', '0123456789abcdefghijklmnopqrstuvwxyz'].join('-')
+  const binaryPath = ['', 'opt', 'company', 'secret.md'].join('/')
+  await writeFile(path.join(dist, 'utf16.bin'), Buffer.concat([
+    Buffer.from([0xff, 0xfe]),
+    Buffer.from(assignment, 'utf16le'),
+  ]))
+  await writeFile(path.join(dist, 'binary.bin'), Buffer.concat([
+    Buffer.from([0x00, 0x01, 0x02, 0xff, 0x00]),
+    Buffer.from(secret, 'ascii'),
+    Buffer.from([0x00]),
+    Buffer.from(binaryPath, 'ascii'),
+    Buffer.from([0x00, 0xfe]),
+  ]))
+
+  const findings = await scanArtifactFiles(root)
+  assert.deepEqual(findings.sort(), [
+    'assets/binary.bin: local absolute path',
+    'assets/binary.bin: possible provider secret',
+    'assets/utf16.bin: assigned DeepSeek API key',
+  ])
+  assert.ok(findings.every((finding) => !finding.includes(secret) && !finding.includes('live-utf16-value')))
 })
