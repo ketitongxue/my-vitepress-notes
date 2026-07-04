@@ -127,7 +127,7 @@ export function retrieve(index, question, history = []) {
       .filter((candidate) => confident || candidate.currentScore > 0)
       .map((candidate) => ({
         ...candidate,
-        adjustedScore: (confident ? candidate.rawScore : candidate.currentScore)
+        adjustedScore: candidate.rawScore
           * ((pageCounts.get(candidate.chunk.url) ?? 0) === 1 ? SAME_PAGE_SECOND_CHUNK_MULTIPLIER : 1),
       }))
       .sort((left, right) => right.adjustedScore - left.adjustedScore

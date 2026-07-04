@@ -66,6 +66,22 @@ test('history cannot make an unrelated current question confident', () => {
   assert.equal(result.confident, false)
 })
 
+test('history disambiguates low-evidence follow-ups without changing confidence', () => {
+  const synthetic = {
+    version: 1,
+    pages: [],
+    chunks: [
+      { id: 'apple', title: '苹果', section: '', tags: [], url: '/z-apple', text: '详情' },
+      { id: 'banana', title: '香蕉', section: '', tags: [], url: '/a-banana', text: '详情 详情' },
+    ],
+  }
+  const result = retrieve(synthetic, '详情', [{ role: 'user', content: '苹果' }])
+  assert.equal(result.confident, false)
+  assert.equal(result.score, 2)
+  assert.equal(result.sources[0].url, '/z-apple')
+  assert.ok(result.sources[0].score > result.score)
+})
+
 test('long repeated queries stay deterministic without multiplying document preprocessing', () => {
   const question = Array.from({ length: 300 }, (_, index) => `上下文工程 term${index}`).join(' ')
   const first = retrieve(index, question, [])
