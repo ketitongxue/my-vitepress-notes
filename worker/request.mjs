@@ -10,6 +10,72 @@ function characterLength(value) {
   return [...value].length
 }
 
+function isTokenCharacter(character) {
+  return /^[!#$%&'*+.^_`|~0-9A-Za-z-]$/.test(character)
+}
+
+function isJsonContentType(value) {
+  if (typeof value !== 'string') return false
+
+  let position = 0
+  const skipWhitespace = () => {
+    while (value[position] === ' ' || value[position] === '\t') position += 1
+  }
+  const readToken = () => {
+    const start = position
+    while (position < value.length && isTokenCharacter(value[position])) position += 1
+    return position > start
+  }
+  const readQuotedString = () => {
+    if (value[position] !== '"') return false
+    position += 1
+    while (position < value.length) {
+      const code = value.charCodeAt(position)
+      if (value[position] === '"') {
+        position += 1
+        return true
+      }
+      if (value[position] === '\\') {
+        position += 1
+        if (position >= value.length) return false
+        const escaped = value.charCodeAt(position)
+        if (escaped !== 9 && (escaped < 32 || escaped > 126)) return false
+        position += 1
+        continue
+      }
+      const isQuotedText = code === 9 || code === 32 || code === 33
+        || (code >= 35 && code <= 91) || (code >= 93 && code <= 126)
+        || (code >= 128 && code <= 255)
+      if (!isQuotedText) return false
+      position += 1
+    }
+    return false
+  }
+
+  skipWhitespace()
+  const mediaType = 'application/json'
+  if (value.slice(position, position + mediaType.length).toLowerCase() !== mediaType) return false
+  position += mediaType.length
+
+  while (true) {
+    skipWhitespace()
+    if (position === value.length) return true
+    if (value[position] !== ';') return false
+    position += 1
+    skipWhitespace()
+    if (!readToken()) return false
+    skipWhitespace()
+    if (value[position] !== '=') return false
+    position += 1
+    skipWhitespace()
+    if (value[position] === '"') {
+      if (!readQuotedString()) return false
+    } else if (!readToken()) {
+      return false
+    }
+  }
+}
+
 async function readBoundedBody(request) {
   const declaredLength = Number(request.headers.get('content-length'))
   if (Number.isFinite(declaredLength) && declaredLength > MAX_REQUEST_BYTES) {
@@ -69,7 +135,7 @@ export async function validateAskRequest(request, allowedOrigin) {
   if (!allowedOrigin || request.headers.get('origin') !== allowedOrigin) {
     return invalid('INVALID_ORIGIN', 403)
   }
-  if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type') ?? '')) {
+  if (!isJsonContentType(request.headers.get('content-type'))) {
     return invalid('UNSUPPORTED_MEDIA_TYPE', 415)
   }
 

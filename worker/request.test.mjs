@@ -58,10 +58,31 @@ test('rejects non-POST, non-JSON, absent or non-exact Origin', async () => {
 })
 
 test('accepts application/json with parameters', async () => {
-  const result = await validateAskRequest(request({ question: 'x' }, {
-    headers: { 'content-type': 'application/json; charset=utf-8' },
-  }), ORIGIN)
-  assert.equal(result.ok, true)
+  for (const contentType of [
+    'application/json; charset=utf-8',
+    ' Application/JSON ; charset = "utf-8" ',
+    'application/json; profile="https://example.com/a;b"; charset=UTF-8',
+  ]) {
+    const result = await validateAskRequest(request({ question: 'x' }, {
+      headers: { 'content-type': contentType },
+    }), ORIGIN)
+    assert.equal(result.ok, true, contentType)
+  }
+})
+
+test('rejects malformed or trailing Content-Type data', async () => {
+  for (const contentType of [
+    'application/json; text/plain',
+    'application/json;; charset=utf-8',
+    'application/json;',
+    'application/json; charset=utf-8 text/plain',
+    'application/json; charset="utf-8',
+    'application/json, text/plain',
+  ]) {
+    await expectError(request({ question: 'x' }, {
+      headers: { 'content-type': contentType },
+    }), 'UNSUPPORTED_MEDIA_TYPE', 415)
+  }
 })
 
 test('rejects malformed JSON, arrays, null and unknown top-level fields', async () => {
@@ -107,4 +128,3 @@ test('rejects a declared or actual request body over the byte cap', async () => 
   const oversized = JSON.stringify({ question: 'x', padding: 'a'.repeat(MAX_REQUEST_BYTES) })
   await expectError(request(oversized), 'REQUEST_TOO_LARGE', 413)
 })
-
