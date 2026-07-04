@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict'
+import { execFile } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, symlink, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
+import { promisify } from 'node:util'
 import { scanArtifactFiles, scanText, scanTrackedFiles } from './security-scan.mjs'
 
 const projectRoot = path.resolve(import.meta.dirname, '../..')
+const execFileAsync = promisify(execFile)
 
 test('scanner catches production leaks without echoing their values', () => {
   const secret = ['sk', 'live', '0123456789abcdefghijklmnopqrstuvwxyz'].join('-')
@@ -222,10 +225,71 @@ test('artifact scan detects UTF-16LE and binary embedded secrets without printin
   ]))
 
   const findings = await scanArtifactFiles(root)
-  assert.deepEqual(findings.sort(), [
-    'assets/binary.bin: local absolute path',
-    'assets/binary.bin: possible provider secret',
-    'assets/utf16.bin: assigned DeepSeek API key',
+  assert.deepEqual(findings.map((finding) => finding.replace(/^artifact:[a-f0-9]{12}: /, '')).sort(), [
+    'assigned DeepSeek API key',
+    'local absolute path',
+    'possible provider secret',
   ])
+  assert.ok(findings.every((finding) => /^artifact:[a-f0-9]{12}: /.test(finding)))
   assert.ok(findings.every((finding) => !finding.includes(secret) && !finding.includes('live-utf16-value')))
+})
+
+test('raw byte scan finds UTF-16 secrets after a neutral 4 KiB prefix in both endian orders', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'wiki-qa-security-'))
+  t.after(() => import('node:fs/promises').then(({ rm }) => rm(root, { recursive: true, force: true })))
+  const dist = path.join(root, 'docs/.vitepress/dist/assets')
+  await mkdir(dist, { recursive: true })
+  const secret = ['sk', 'live', '0123456789abcdefghijklmnopqrstuvwxyz'].join('-')
+  const little = Buffer.from(secret, 'utf16le')
+  const big = Buffer.from(little)
+  for (let index = 0; index < big.length; index += 2) {
+    const first = big[index]
+    big[index] = big[index + 1]
+    big[index + 1] = first
+  }
+  const prefix = Buffer.alloc(4096, 0x41)
+  await writeFile(path.join(dist, 'late-le.bin'), Buffer.concat([prefix, little]))
+  await writeFile(path.join(dist, 'late-be.bin'), Buffer.concat([prefix, big]))
+
+  const findings = await scanArtifactFiles(root)
+  assert.equal(findings.filter((finding) => finding.endsWith(': possible provider secret')).length, 2)
+  assert.ok(findings.every((finding) => !finding.includes(secret) && !finding.includes('late-')))
+})
+
+test('artifact and tracked path diagnostics redact secret-bearing filenames', async (t) => {
+  const artifactRoot = await mkdtemp(path.join(os.tmpdir(), 'wiki-qa-security-'))
+  const trackedRoot = await mkdtemp(path.join(os.tmpdir(), 'wiki-qa-tracked-'))
+  t.after(() => Promise.all([
+    import('node:fs/promises').then(({ rm }) => rm(artifactRoot, { recursive: true, force: true })),
+    import('node:fs/promises').then(({ rm }) => rm(trackedRoot, { recursive: true, force: true })),
+  ]))
+  const secret = ['sk', 'live', 'filename0123456789abcdefghijklmnop'].join('-')
+  const secretName = `${secret}.txt`
+  const dist = path.join(artifactRoot, 'docs/.vitepress/dist')
+  await mkdir(dist, { recursive: true })
+  await writeFile(path.join(dist, secretName), 'safe contents')
+  const artifactFindings = await scanArtifactFiles(artifactRoot)
+  assert.equal(artifactFindings.length, 1)
+  assert.match(artifactFindings[0], /possible provider secret/)
+  assert.doesNotMatch(artifactFindings[0], new RegExp(secret))
+
+  await execFileAsync('git', ['init', '-q'], { cwd: trackedRoot })
+  await writeFile(path.join(trackedRoot, secretName), 'safe contents')
+  await execFileAsync('git', ['add', '--', secretName], { cwd: trackedRoot })
+  const trackedFindings = await scanTrackedFiles(trackedRoot)
+  assert.equal(trackedFindings.length, 1)
+  assert.match(trackedFindings[0], /possible provider secret/)
+  assert.doesNotMatch(trackedFindings[0], new RegExp(secret))
+})
+
+test('raw binary IPv4 detection validates every octet', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'wiki-qa-security-'))
+  t.after(() => import('node:fs/promises').then(({ rm }) => rm(root, { recursive: true, force: true })))
+  const dist = path.join(root, 'docs/.vitepress/dist')
+  await mkdir(dist, { recursive: true })
+  await writeFile(path.join(dist, 'invalid.bin'), Buffer.from([0, ...Buffer.from('999.999.999.999'), 0xff]))
+  assert.deepEqual(await scanArtifactFiles(root), [])
+  await writeFile(path.join(dist, 'valid.bin'), Buffer.from([0, ...Buffer.from('198.51.100.42'), 0xff]))
+  const findings = await scanArtifactFiles(root)
+  assert.equal(findings.filter((finding) => finding.endsWith(': full IP address')).length, 1)
 })
