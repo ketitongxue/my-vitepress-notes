@@ -1,6 +1,10 @@
 const API_URL = 'https://api.deepseek.com/chat/completions'
 const DEFAULT_TIMEOUT_MS = 25_000
 const MAX_TOKENS = 1200
+export const MAX_PROVIDER_LINE_CHARS = 64 * 1024
+export const MAX_PROVIDER_EVENT_CHARS = 96 * 1024
+export const MAX_PROVIDER_PENDING_CHARS = 128 * 1024
+export const MAX_CITATION_PENDING_CHARS = 32
 
 export class DeepSeekError extends Error {
   constructor(code) {
@@ -83,7 +87,10 @@ function createCitationFilter(sourceCount) {
       const close = input.indexOf(']', open + 1)
       if (close < 0) {
         const remainder = input.slice(open + 1)
-        if (!final && /^[+\-\s\d]*$/.test(remainder)) pending = input.slice(open)
+        if (!final && /^[+\-\s\d]*$/.test(remainder)) {
+          pending = input.slice(open)
+          if (pending.length > MAX_CITATION_PENDING_CHARS) throw new DeepSeekError('DEEPSEEK_PROTOCOL')
+        }
         else output += input.slice(open)
         break
       }
@@ -105,52 +112,84 @@ function createCitationFilter(sourceCount) {
 
 async function* parseProviderEvents(reader) {
   const decoder = new TextDecoder()
-  let buffer = ''
+  let lineParts = []
+  let lineLength = 0
   let dataLines = []
+  let dataLength = 0
+  let skipLeadingLf = false
+
+  function appendLine(part) {
+    if (!part) return
+    lineLength += part.length
+    if (lineLength > MAX_PROVIDER_LINE_CHARS || lineLength + dataLength > MAX_PROVIDER_PENDING_CHARS) {
+      throw new DeepSeekError('DEEPSEEK_PROTOCOL')
+    }
+    lineParts.push(part)
+  }
 
   function dispatch() {
     if (!dataLines.length) return null
     const data = dataLines.join('\n')
     dataLines = []
+    dataLength = 0
     return data
+  }
+
+  function completeLine() {
+    const line = lineParts.join('')
+    lineParts = []
+    lineLength = 0
+    if (line === '') return dispatch()
+    let data = null
+    if (line === 'data') data = ''
+    else if (line.startsWith('data:')) data = line.slice(5).replace(/^ /, '')
+    if (data !== null) {
+      const separator = dataLines.length ? 1 : 0
+      dataLength += separator + data.length
+      if (dataLength > MAX_PROVIDER_EVENT_CHARS || dataLength > MAX_PROVIDER_PENDING_CHARS) {
+        throw new DeepSeekError('DEEPSEEK_PROTOCOL')
+      }
+      dataLines.push(data)
+    }
+    return null
   }
 
   while (true) {
     const { done, value } = await reader.read()
-    buffer += decoder.decode(value, { stream: !done })
-    while (true) {
-      let lineEnd = -1
-      let separatorLength = 0
-      for (let index = 0; index < buffer.length; index += 1) {
-        if (buffer[index] === '\n') {
-          lineEnd = index
-          separatorLength = 1
-          break
-        }
-        if (buffer[index] === '\r') {
-          if (index + 1 === buffer.length && !done) break
-          lineEnd = index
-          separatorLength = buffer[index + 1] === '\n' ? 2 : 1
-          break
-        }
+    const text = decoder.decode(value, { stream: !done })
+    let cursor = 0
+    if (skipLeadingLf) {
+      if (text.startsWith('\n')) cursor = 1
+      skipLeadingLf = false
+    }
+    while (cursor < text.length) {
+      const lf = text.indexOf('\n', cursor)
+      const cr = text.indexOf('\r', cursor)
+      let separator = -1
+      if (lf >= 0 && cr >= 0) separator = Math.min(lf, cr)
+      else separator = Math.max(lf, cr)
+      if (separator < 0) {
+        appendLine(text.slice(cursor))
+        break
       }
-      if (lineEnd < 0) break
-      const line = buffer.slice(0, lineEnd)
-      buffer = buffer.slice(lineEnd + separatorLength)
-      if (line === '') {
-        const event = dispatch()
-        if (event !== null) yield event
-      } else if (line === 'data') {
-        dataLines.push('')
-      } else if (line.startsWith('data:')) {
-        dataLines.push(line.slice(5).replace(/^ /, ''))
-      }
+      appendLine(text.slice(cursor, separator))
+      const event = completeLine()
+      if (event !== null) yield event
+      if (text[separator] === '\r') {
+        if (separator + 1 < text.length && text[separator + 1] === '\n') cursor = separator + 2
+        else {
+          cursor = separator + 1
+          if (cursor === text.length) skipLeadingLf = true
+        }
+      } else cursor = separator + 1
     }
     if (done) break
   }
 
-  if (buffer === 'data') dataLines.push('')
-  else if (buffer.startsWith('data:')) dataLines.push(buffer.slice(5).replace(/^ /, ''))
+  if (lineLength) {
+    const event = completeLine()
+    if (event !== null) yield event
+  }
   const event = dispatch()
   if (event !== null) yield event
 }
@@ -219,15 +258,80 @@ export async function streamDeepSeek({
   }
 
   const reader = response.body.getReader()
+  const events = parseProviderEvents(reader)
   const citations = createCitationFilter(sources.length)
   let usage = null
-  let finished = false
+  let finalized = false
+  let cancelled = false
+  let pulling = false
+  let closePromise = null
+  let completionPrepared = false
+  const queued = []
+
+  function cleanup() {
+    clearTimeoutImpl(timeout)
+    signal?.removeEventListener('abort', abortFromClient)
+  }
+
+  function closeUpstream({ cancelReader, abortUpstream }) {
+    if (closePromise) return closePromise
+    closePromise = (async () => {
+      if (abortUpstream) upstream.abort()
+      if (cancelReader) {
+        try {
+          await reader.cancel()
+        } catch {
+          // Provider cancellation is best-effort and its details are private.
+        }
+      }
+      try {
+        reader.releaseLock()
+      } catch {
+        // A racing cancellation may already have released the lock.
+      }
+      cleanup()
+    })()
+    return closePromise
+  }
+
+  async function prepareCompletion(early) {
+    if (completionPrepared) return
+    completionPrepared = true
+    const tail = citations.flush()
+    if (tail) queued.push({ type: 'delta', text: tail })
+    await closeUpstream({ cancelReader: early, abortUpstream: early })
+    queued.push({ type: 'done', usage })
+  }
 
   return new ReadableStream({
-    async start(controller) {
+    async pull(controller) {
+      if (pulling || finalized || cancelled) return
+      pulling = true
       try {
-        for await (const data of parseProviderEvents(reader)) {
-          if (data === '[DONE]') break
+        while (!cancelled && !finalized && controller.desiredSize > 0) {
+          if (queued.length) {
+            const item = queued.shift()
+            if (cancelled) return
+            controller.enqueue(item)
+            if (item.type === 'done') {
+              finalized = true
+              controller.close()
+              return
+            }
+            continue
+          }
+
+          const next = await events.next()
+          if (cancelled) return
+          if (next.done) {
+            await prepareCompletion(false)
+            continue
+          }
+          const data = next.value
+          if (data === '[DONE]') {
+            await prepareCompletion(true)
+            continue
+          }
           let parsed
           try {
             parsed = JSON.parse(data)
@@ -239,31 +343,23 @@ export async function streamDeepSeek({
           const content = parsed?.choices?.[0]?.delta?.content
           if (typeof content !== 'string' || !content) continue
           const text = citations.push(content)
-          if (text) controller.enqueue({ type: 'delta', text })
+          if (text) queued.push({ type: 'delta', text })
         }
-        const tail = citations.flush()
-        if (tail) controller.enqueue({ type: 'delta', text: tail })
-        controller.enqueue({ type: 'done', usage })
-        finished = true
-        controller.close()
       } catch (error) {
-        controller.error(mappedReadError(error, { timedOut, externallyAborted }))
+        await closeUpstream({ cancelReader: true, abortUpstream: true })
+        if (!cancelled && !finalized) {
+          finalized = true
+          controller.error(mappedReadError(error, { timedOut, externallyAborted }))
+        }
       } finally {
-        clearTimeoutImpl(timeout)
-        signal?.removeEventListener('abort', abortFromClient)
+        pulling = false
       }
     },
-    async cancel(reason) {
-      if (finished) return
+    async cancel() {
+      if (cancelled || finalized) return
+      cancelled = true
       externallyAborted = true
-      upstream.abort()
-      try {
-        await reader.cancel(reason)
-      } catch {
-        // Cancellation is best-effort; provider details must not escape.
-      }
-      clearTimeoutImpl(timeout)
-      signal?.removeEventListener('abort', abortFromClient)
+      await closeUpstream({ cancelReader: true, abortUpstream: true })
     },
   })
 }

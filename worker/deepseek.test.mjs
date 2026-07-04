@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { DeepSeekError, streamDeepSeek } from './deepseek.mjs'
+import {
+  DeepSeekError,
+  MAX_CITATION_PENDING_CHARS,
+  MAX_PROVIDER_EVENT_CHARS,
+  MAX_PROVIDER_LINE_CHARS,
+  streamDeepSeek,
+} from './deepseek.mjs'
 
 const encoder = new TextEncoder()
 
@@ -202,5 +208,71 @@ test('external abort during fetch is stable and downstream cancellation aborts a
   const reader = stream.getReader()
   await reader.cancel('client disconnected')
   assert.equal(upstreamSignal.aborted, true)
+  assert.equal(cancelled, true)
+})
+
+test('rejects newline-free oversized provider data with a stable protocol error', async () => {
+  const oversized = `data: ${'x'.repeat(MAX_PROVIDER_LINE_CHARS + 1)}`
+  const stream = await streamDeepSeek(base({ fetchImpl: async () => fakeResponse([oversized]) }))
+  await assert.rejects(
+    () => collect(stream),
+    (error) => error instanceof DeepSeekError && error.code === 'DEEPSEEK_PROTOCOL' && !error.message.includes('xxx'),
+  )
+})
+
+test('rejects an oversized multi-data-line event with a stable protocol error', async () => {
+  const line = 'x'.repeat(Math.floor(MAX_PROVIDER_EVENT_CHARS / 2) + 1)
+  const stream = await streamDeepSeek(base({
+    fetchImpl: async () => fakeResponse([`data: ${line}\ndata: ${line}\n\n`]),
+  }))
+  await assert.rejects(
+    () => collect(stream),
+    (error) => error instanceof DeepSeekError && error.code === 'DEEPSEEK_PROTOCOL',
+  )
+})
+
+test('rejects an absurd unfinished citation without buffering it indefinitely', async () => {
+  const content = `[${'1'.repeat(MAX_CITATION_PENDING_CHARS + 1)}`
+  const stream = await streamDeepSeek(base({
+    fetchImpl: async () => fakeResponse([event({ choices: [{ delta: { content } }] }), event('[DONE]')]),
+  }))
+  await assert.rejects(
+    () => collect(stream),
+    (error) => error instanceof DeepSeekError && error.code === 'DEEPSEEK_PROTOCOL',
+  )
+})
+
+test('respects downstream backpressure instead of eagerly draining provider events', async () => {
+  const total = 20
+  let upstreamPulls = 0
+  let index = 0
+  const body = new ReadableStream({
+    pull(controller) {
+      upstreamPulls += 1
+      if (index < total) {
+        controller.enqueue(encoder.encode(event({ choices: [{ delta: { content: `片段${index} ` } }] })))
+        index += 1
+      } else {
+        controller.enqueue(encoder.encode(event('[DONE]')))
+      }
+    },
+  }, { highWaterMark: 0 })
+  const stream = await streamDeepSeek(base({ fetchImpl: async () => new Response(body) }))
+
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.ok(upstreamPulls < total, `provider was eagerly drained with ${upstreamPulls} pulls`)
+  const items = await collect(stream)
+  assert.equal(items.filter((item) => item.type === 'delta').length, total)
+})
+
+test('cancels an upstream connection that remains open after DONE', async () => {
+  let cancelled = false
+  const stream = await streamDeepSeek(base({
+    fetchImpl: async () => fakeResponse([event('[DONE]')], {
+      cancel() { cancelled = true },
+    }),
+  }))
+
+  assert.deepEqual(await collect(stream), [{ type: 'done', usage: null }])
   assert.equal(cancelled, true)
 })
