@@ -15,7 +15,7 @@
     "deploy": "npm run build && wrangler deploy",
     "test:content": "node scripts/content-validator.test.mjs && node scripts/check-content.mjs",
     "test:theme": "node scripts/theme-validator.test.mjs && node scripts/theme-config.test.mjs && node scripts/check-theme.mjs",
-    "test": "npm run qa:index && node --test worker/*.test.mjs && node --test scripts/wiki-publish/*.test.mjs && node --test scripts/wiki-qa/*.test.mjs && npm run wiki:validate && npm run test:content && npm run test:theme && npm run docs:build"
+    "test": "npm run qa:index && node --test scripts/wiki-publish/*.test.mjs && node --test scripts/wiki-qa/*.test.mjs && node --test worker/*.test.mjs && npm run wiki:validate && npm run test:content && npm run test:theme && npm run docs:build"
   },
   "devDependencies": {
     "markdown-it": "^14.3.0",

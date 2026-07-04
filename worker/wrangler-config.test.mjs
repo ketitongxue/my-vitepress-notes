@@ -14,7 +14,7 @@ test('main test script runs Worker tests and Wrangler is pinned', async () => {
     await readFile(new URL('../package.json', import.meta.url)),
   )
 
-  assert.match(packageJson.scripts.test, /^npm run qa:index && node --test worker\/\*\.test\.mjs/)
+  assert.match(packageJson.scripts.test, /node --test worker\/\*\.test\.mjs/)
   assert.equal(packageJson.scripts['worker:dev'], 'npm run qa:index && wrangler dev')
   assert.equal(packageJson.scripts.deploy, 'npm run build && wrangler deploy')
   assert.doesNotMatch(packageJson.scripts.build, /npm run build/)
