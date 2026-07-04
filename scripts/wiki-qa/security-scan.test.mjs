@@ -163,6 +163,7 @@ test('README documents setup, secrets, deployment, limits, and privacy', async (
     '3 次/分钟',
     '5 次/天',
     '10 次/天',
+    'SQLite Durable Object 原子计数，并按 UTC 日期重置。',
     'sessionStorage',
   ]) assert.ok(readme.includes(required), `README must include ${required}`)
   assert.ok(

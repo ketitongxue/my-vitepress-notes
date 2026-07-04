@@ -34,7 +34,7 @@ npm test
 ```
 
 公开问答限制为每个 IP 3 次/分钟、5 次/天，全站 10 次/天。每日配额由单例
-SQLite Durable Object 严格计数，并按 UTC 日期重置。
+SQLite Durable Object 原子计数，并按 UTC 日期重置。
 
 ## Cloudflare Workers Git 部署
 
