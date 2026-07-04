@@ -73,6 +73,15 @@ function input(overrides = {}) {
   }
 }
 
+function requestInput(overrides = {}) {
+  const { date: _date, ...request } = input(overrides)
+  return request
+}
+
+function makeQuota(storage = new MemoryStorage(), now = `${date}T12:00:00.000Z`) {
+  return new DailyQuota({ storage }, {}, () => new Date(now))
+}
+
 test('Worker exports DailyQuota and Wrangler configures its SQLite namespace', async () => {
   const config = JSON.parse(await readFile(new URL('../wrangler.jsonc', import.meta.url)))
 
@@ -122,7 +131,12 @@ test('allows 50 global reservations and rejects the 51st without incrementing', 
 })
 
 test('global reservations never exceed 50 under concurrency', async () => {
-  const storage = new MemoryStorage({ date, globalCount: 40 })
+  const storage = new MemoryStorage({
+    date,
+    globalCount: 40,
+    [`visitor/${'a'.repeat(64)}`]: 30,
+    [`visitor/${'b'.repeat(64)}`]: 10,
+  })
   const results = await Promise.all(Array.from({ length: 20 }, (_, i) =>
     reserveQuota(storage, input({ visitorKey: i.toString(16).padStart(64, '0') }))))
 
@@ -135,7 +149,7 @@ test('a new UTC date resets global and visitor counters', async () => {
     date: '2026-07-03',
     globalCount: 50,
     [`visitor/${visitorKey}`]: 30,
-    'visitor/stale': 9,
+    [`visitor/${'b'.repeat(64)}`]: 20,
   })
 
   const result = await reserveQuota(storage, input())
@@ -148,15 +162,61 @@ test('a new UTC date resets global and visitor counters', async () => {
   assert.equal(await storage.get('date'), date)
   assert.equal(await storage.get('globalCount'), 1)
   assert.equal(await storage.get(`visitor/${visitorKey}`), 1)
-  assert.equal(await storage.get('visitor/stale'), undefined)
+  assert.equal(await storage.get(`visitor/${'b'.repeat(64)}`), undefined)
+})
+
+test('an out-of-order pre-midnight reservation cannot roll state back after rollover', async () => {
+  const storage = new MemoryStorage({
+    date: '2026-07-04',
+    globalCount: 1,
+    [`visitor/${visitorKey}`]: 1,
+  })
+
+  const [afterMidnight, stale] = await Promise.all([
+    reserveQuota(storage, input({ date: '2026-07-05', visitorKey: 'b'.repeat(64) })),
+    reserveQuota(storage, input({ date: '2026-07-04' })),
+  ])
+
+  assert.deepEqual(afterMidnight, { allowed: true, globalCount: 1, visitorCount: 1 })
+  assert.deepEqual(stale, {
+    allowed: false,
+    reason: 'STALE_DATE',
+    globalCount: 1,
+    visitorCount: 0,
+  })
+  assert.equal(await storage.get('date'), '2026-07-05')
+  assert.equal(await storage.get('globalCount'), 1)
+  assert.equal(await storage.get(`visitor/${visitorKey}`), undefined)
+})
+
+test('corrupt persisted quota state fails closed without mutation', async () => {
+  const cases = [
+    { date, globalCount: '1' },
+    { date, globalCount: -1 },
+    { date, globalCount: Number.MAX_SAFE_INTEGER + 1 },
+    { date: 'not-a-date', globalCount: 0 },
+    { globalCount: 0 },
+    { date, globalCount: 1, [`visitor/${visitorKey}`]: '1' },
+    { date, globalCount: 1, [`visitor/${visitorKey}`]: -1 },
+    { date, globalCount: 1, [`visitor/${'x'.repeat(64)}`]: 1 },
+    { date, globalCount: 1, [`visitor/${visitorKey}`]: 2 },
+    { date, globalCount: 2, [`visitor/${visitorKey}`]: 1 },
+  ]
+
+  for (const state of cases) {
+    const storage = new MemoryStorage(state)
+    const before = new Map(storage.values)
+    await assert.rejects(() => reserveQuota(storage, input()), /CORRUPT_QUOTA_STATE/)
+    assert.deepEqual(storage.values, before)
+  }
 })
 
 test('DailyQuota accepts only a valid internal POST /reserve request', async () => {
-  const quota = new DailyQuota({ storage: new MemoryStorage() }, {})
+  const quota = makeQuota()
   const response = await quota.fetch(new Request('https://quota.internal/reserve', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(input()),
+    body: JSON.stringify(requestInput()),
   }))
 
   assert.equal(response.status, 200)
@@ -175,11 +235,11 @@ test('DailyQuota accepts complete valid application/json Content-Type values', a
   ]
 
   for (const contentType of contentTypes) {
-    const quota = new DailyQuota({ storage: new MemoryStorage() }, {})
+    const quota = makeQuota()
     const response = await quota.fetch(new Request('https://quota.internal/reserve', {
       method: 'POST',
       headers: { 'content-type': contentType },
-      body: JSON.stringify(input()),
+      body: JSON.stringify(requestInput()),
     }))
     assert.equal(response.status, 200, contentType)
   }
@@ -196,11 +256,11 @@ test('DailyQuota rejects ambiguous or malformed application/json Content-Type va
   ]
 
   for (const contentType of contentTypes) {
-    const quota = new DailyQuota({ storage: new MemoryStorage() }, {})
+    const quota = makeQuota()
     const response = await quota.fetch(new Request('https://quota.internal/reserve', {
       method: 'POST',
       headers: { 'content-type': contentType },
-      body: JSON.stringify(input()),
+      body: JSON.stringify(requestInput()),
     }))
     assert.equal(response.status, 415, contentType)
     assert.deepEqual(await response.json(), { error: 'UNSUPPORTED_MEDIA_TYPE' })
@@ -217,20 +277,20 @@ test('DailyQuota rejects invalid methods, paths, media types, bodies, and secret
     }), 400, 'INVALID_JSON'],
     [new Request('https://quota.internal/reserve', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(input({ apiKey: 'should-not-be-here' })),
+      body: JSON.stringify(requestInput({ apiKey: 'should-not-be-here' })),
     }), 400, 'INVALID_BODY'],
     [new Request('https://quota.internal/reserve', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(input({ date: '2026-02-30' })),
+      body: JSON.stringify({ ...requestInput(), date: '2026-02-30' }),
     }), 400, 'INVALID_BODY'],
     [new Request('https://quota.internal/reserve', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(input({ visitorKey: 'raw-ip-address' })),
+      body: JSON.stringify(requestInput({ visitorKey: 'raw-ip-address' })),
     }), 400, 'INVALID_BODY'],
   ]
 
   for (const [request, status, error] of requests) {
-    const quota = new DailyQuota({ storage: new MemoryStorage() }, {})
+    const quota = makeQuota()
     const response = await quota.fetch(request)
     assert.equal(response.status, status)
     assert.deepEqual(await response.json(), { error })
@@ -258,7 +318,7 @@ test('reserveDailyQuota always targets the global singleton and rejects unsafe r
     },
   }
 
-  assert.deepEqual(await reserveDailyQuota(env, input()), {
+  assert.deepEqual(await reserveDailyQuota(env, requestInput()), {
     allowed: true,
     globalCount: 1,
     visitorCount: 1,
@@ -270,5 +330,51 @@ test('reserveDailyQuota always targets the global singleton and rejects unsafe r
   ])
 
   env.QA_QUOTA.get = () => ({ fetch: async () => Response.json({ allowed: true, apiKey: 'leak' }) })
-  await assert.rejects(() => reserveDailyQuota(env, input()), /INVALID_QUOTA_RESPONSE/)
+  await assert.rejects(() => reserveDailyQuota(env, requestInput()), /INVALID_QUOTA_RESPONSE/)
+})
+
+test('reserveDailyQuota rejects impossible or corrupt responses against requested limits', async () => {
+  const responses = [
+    { allowed: true, globalCount: 51, visitorCount: 1 },
+    { allowed: true, globalCount: 1, visitorCount: 31 },
+    { allowed: true, globalCount: 1, visitorCount: 2 },
+    { allowed: false, reason: 'GLOBAL_LIMIT', globalCount: 49, visitorCount: 1 },
+    { allowed: false, reason: 'PER_VISITOR_LIMIT', globalCount: 50, visitorCount: 30 },
+    { allowed: false, reason: 'PER_VISITOR_LIMIT', globalCount: 29, visitorCount: 29 },
+    { allowed: false, reason: 'STALE_DATE', globalCount: -1, visitorCount: 0 },
+  ]
+
+  for (const body of responses) {
+    const env = {
+      QA_QUOTA: {
+        idFromName: () => 'global-id',
+        get: () => ({ fetch: async () => Response.json(body) }),
+      },
+    }
+    await assert.rejects(
+      () => reserveDailyQuota(env, requestInput()),
+      /INVALID_QUOTA_RESPONSE/,
+      JSON.stringify(body),
+    )
+  }
+})
+
+test('DailyQuota derives UTC date from its clock and never accepts a caller-supplied date', async () => {
+  const storage = new MemoryStorage()
+  const quota = makeQuota(storage, '2026-07-05T00:00:00.001Z')
+  const accepted = await quota.fetch(new Request('https://quota.internal/reserve', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(requestInput()),
+  }))
+  assert.equal(accepted.status, 200)
+  assert.equal(await storage.get('date'), '2026-07-05')
+
+  const rejected = await quota.fetch(new Request('https://quota.internal/reserve', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(input()),
+  }))
+  assert.equal(rejected.status, 400)
+  assert.deepEqual(await rejected.json(), { error: 'INVALID_BODY' })
 })

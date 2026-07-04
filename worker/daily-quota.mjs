@@ -3,6 +3,7 @@ import { isJsonContentType } from './request.mjs'
 const UTC_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const VISITOR_KEY_PATTERN = /^[0-9a-f]{64}$/
 const INPUT_FIELDS = ['date', 'globalLimit', 'perVisitorLimit', 'visitorKey']
+const REQUEST_FIELDS = ['globalLimit', 'perVisitorLimit', 'visitorKey']
 
 function jsonResponse(body, status = 200) {
   return Response.json(body, {
@@ -24,19 +25,36 @@ function validLimit(value) {
   return Number.isSafeInteger(value) && value > 0 && value <= 10_000
 }
 
-function validInput(value) {
+function hasExactFields(value, expectedFields) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const fields = Object.keys(value).sort()
-  if (fields.length !== INPUT_FIELDS.length
-    || fields.some((field, index) => field !== INPUT_FIELDS[index])) return false
-  return validUtcDate(value.date)
+  return fields.length === expectedFields.length
+    && fields.every((field, index) => field === expectedFields[index])
+}
+
+function validRequest(value) {
+  return hasExactFields(value, REQUEST_FIELDS)
     && VISITOR_KEY_PATTERN.test(value.visitorKey)
     && validLimit(value.perVisitorLimit)
     && validLimit(value.globalLimit)
     && value.perVisitorLimit <= value.globalLimit
 }
 
-function validQuotaResult(value) {
+function validInput(value) {
+  return hasExactFields(value, INPUT_FIELDS)
+    && validUtcDate(value.date)
+    && validRequest({
+      globalLimit: value.globalLimit,
+      perVisitorLimit: value.perVisitorLimit,
+      visitorKey: value.visitorKey,
+    })
+}
+
+function validCounter(value) {
+  return Number.isSafeInteger(value) && value >= 0
+}
+
+function validQuotaResult(value, limits) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const allowedFields = value.allowed
     ? ['allowed', 'globalCount', 'visitorCount']
@@ -45,9 +63,50 @@ function validQuotaResult(value) {
   if (fields.length !== allowedFields.length
     || fields.some((field, index) => field !== allowedFields[index])) return false
   if (typeof value.allowed !== 'boolean'
-    || !Number.isSafeInteger(value.globalCount) || value.globalCount < 0
-    || !Number.isSafeInteger(value.visitorCount) || value.visitorCount < 0) return false
-  return value.allowed || ['GLOBAL_LIMIT', 'PER_VISITOR_LIMIT'].includes(value.reason)
+    || !validCounter(value.globalCount)
+    || !validCounter(value.visitorCount)
+    || value.visitorCount > value.globalCount) return false
+
+  if (value.allowed) {
+    return value.globalCount > 0
+      && value.visitorCount > 0
+      && value.globalCount <= limits.globalLimit
+      && value.visitorCount <= limits.perVisitorLimit
+  }
+  if (value.reason === 'GLOBAL_LIMIT') return value.globalCount >= limits.globalLimit
+  if (value.reason === 'PER_VISITOR_LIMIT') {
+    return value.globalCount < limits.globalLimit
+      && value.visitorCount >= limits.perVisitorLimit
+  }
+  return value.reason === 'STALE_DATE'
+}
+
+async function readStoredState(txn) {
+  const date = await txn.get('date')
+  const globalCount = await txn.get('globalCount')
+  const visitors = await txn.list({ prefix: 'visitor/' })
+  const isEmpty = date === undefined && globalCount === undefined && visitors.size === 0
+  if (isEmpty) return { date: undefined, globalCount: 0, visitors }
+
+  let visitorTotal = 0
+  if (!validUtcDate(date) || !validCounter(globalCount)) throw new Error('CORRUPT_QUOTA_STATE')
+  for (const [key, count] of visitors) {
+    if (!key.startsWith('visitor/')
+      || !VISITOR_KEY_PATTERN.test(key.slice('visitor/'.length))
+      || !validCounter(count)) throw new Error('CORRUPT_QUOTA_STATE')
+    visitorTotal += count
+    if (!Number.isSafeInteger(visitorTotal)) throw new Error('CORRUPT_QUOTA_STATE')
+  }
+  if (visitorTotal !== globalCount) throw new Error('CORRUPT_QUOTA_STATE')
+  return { date, globalCount, visitors }
+}
+
+function utcDate(clock) {
+  const value = clock()
+  if (!(value instanceof Date) || !Number.isFinite(value.getTime())) {
+    throw new Error('INVALID_QUOTA_CLOCK')
+  }
+  return value.toISOString().slice(0, 10)
 }
 
 export async function reserveQuota(storage, options) {
@@ -57,16 +116,23 @@ export async function reserveQuota(storage, options) {
 
   const { date, visitorKey, perVisitorLimit, globalLimit } = options
   return storage.transaction(async (txn) => {
-    const storedDate = await txn.get('date')
-    if (storedDate !== date) {
-      const staleVisitors = await txn.list({ prefix: 'visitor/' })
-      if (staleVisitors.size > 0) await txn.delete([...staleVisitors.keys()])
+    const stored = await readStoredState(txn)
+    if (stored.date !== undefined && date < stored.date) {
+      return {
+        allowed: false,
+        reason: 'STALE_DATE',
+        globalCount: stored.globalCount,
+        visitorCount: stored.visitors.get(`visitor/${visitorKey}`) ?? 0,
+      }
+    }
+    if (stored.date !== date) {
+      if (stored.visitors.size > 0) await txn.delete([...stored.visitors.keys()])
       await txn.put({ date, globalCount: 0 })
     }
 
     const visitorStorageKey = `visitor/${visitorKey}`
-    const globalCount = storedDate === date ? (await txn.get('globalCount') ?? 0) : 0
-    const visitorCount = storedDate === date ? (await txn.get(visitorStorageKey) ?? 0) : 0
+    const globalCount = stored.date === date ? stored.globalCount : 0
+    const visitorCount = stored.date === date ? (stored.visitors.get(visitorStorageKey) ?? 0) : 0
 
     if (globalCount >= globalLimit) {
       return { allowed: false, reason: 'GLOBAL_LIMIT', globalCount, visitorCount }
@@ -90,8 +156,9 @@ export async function reserveQuota(storage, options) {
 }
 
 export class DailyQuota {
-  constructor(state) {
+  constructor(state, _env, clock = () => new Date()) {
     this.storage = state.storage
+    this.clock = clock
   }
 
   async fetch(request) {
@@ -108,10 +175,13 @@ export class DailyQuota {
     } catch {
       return jsonResponse({ error: 'INVALID_JSON' }, 400)
     }
-    if (!validInput(input)) return jsonResponse({ error: 'INVALID_BODY' }, 400)
+    if (!validRequest(input)) return jsonResponse({ error: 'INVALID_BODY' }, 400)
 
     try {
-      return jsonResponse(await reserveQuota(this.storage, input))
+      return jsonResponse(await reserveQuota(this.storage, {
+        ...input,
+        date: utcDate(this.clock),
+      }))
     } catch {
       return jsonResponse({ error: 'QUOTA_UNAVAILABLE' }, 503)
     }
@@ -119,7 +189,7 @@ export class DailyQuota {
 }
 
 export async function reserveDailyQuota(env, input) {
-  if (!validInput(input)
+  if (!validRequest(input)
     || typeof env?.QA_QUOTA?.idFromName !== 'function'
     || typeof env.QA_QUOTA.get !== 'function') {
     throw new Error('INVALID_QUOTA_CONFIGURATION')
@@ -142,6 +212,6 @@ export async function reserveDailyQuota(env, input) {
   } catch {
     throw new Error('INVALID_QUOTA_RESPONSE')
   }
-  if (!validQuotaResult(result)) throw new Error('INVALID_QUOTA_RESPONSE')
+  if (!validQuotaResult(result, input)) throw new Error('INVALID_QUOTA_RESPONSE')
   return result
 }
