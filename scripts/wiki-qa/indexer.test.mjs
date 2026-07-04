@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, symlink, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -66,4 +66,49 @@ test('private references and unresolved wikilinks are rejected', async () => {
   await writeFile(path.join(root, 'wiki', 'concepts', 'unsafe.md'), `${frontmatter('危险')}# 危险\n\n来自 /Users/person/wiki/raw/source.md 和 [[秘密]]。`)
 
   await assert.rejects(buildIndex(root), /private data|wikilink/i)
+})
+
+test('rejects a public section symlinked outside the wiki', async (context) => {
+  const outside = await mkdtemp(path.join(os.tmpdir(), 'wiki-qa-outside-'))
+  await writeFile(path.join(outside, 'leak.md'), `${frontmatter('泄漏')}# 泄漏\n\n外部秘密。`)
+  const linkedRoot = await mkdtemp(path.join(os.tmpdir(), 'wiki-qa-linked-'))
+  await mkdir(path.join(linkedRoot, 'wiki'), { recursive: true })
+  try {
+    await symlink(outside, path.join(linkedRoot, 'wiki', 'concepts'), 'dir')
+  } catch (error) {
+    if (['EPERM', 'EACCES'].includes(error?.code)) return context.skip('symlinks are unavailable')
+    throw error
+  }
+  await mkdir(path.join(linkedRoot, 'wiki', 'entities'))
+  await mkdir(path.join(linkedRoot, 'wiki', 'comparisons'))
+
+  await assert.rejects(buildIndex(linkedRoot), /symbolic link/i)
+})
+
+test('rejects a symlinked Markdown file in a public section', async (context) => {
+  const root = await fixture()
+  const outside = path.join(await mkdtemp(path.join(os.tmpdir(), 'wiki-qa-file-')), 'leak.md')
+  await writeFile(outside, `${frontmatter('泄漏')}# 泄漏\n\n外部秘密。`)
+  try {
+    await symlink(outside, path.join(root, 'wiki', 'concepts', 'leak.md'))
+  } catch (error) {
+    if (['EPERM', 'EACCES'].includes(error?.code)) return context.skip('symlinks are unavailable')
+    throw error
+  }
+
+  await assert.rejects(buildIndex(root), /symbolic link/i)
+})
+
+test('overlong sections split on paragraph boundaries before sentences', () => {
+  const paragraphs = ['甲', '乙', '丙', '丁'].map((prefix) => `${prefix}${'段落内容。'.repeat(65)}`)
+  const page = {
+    title: '段落切分', type: 'concept', tags: [], url: '/wiki/concepts/paragraph-split',
+    body: `# 段落切分\n\n## 方法\n\n${paragraphs.join('\n\n')}`,
+  }
+
+  const chunks = splitDocument(page)
+  assert.deepEqual(chunks.map(({ text }) => text), [
+    `${paragraphs[0]}\n\n${paragraphs[1]}`,
+    `${paragraphs[2]}\n\n${paragraphs[3]}`,
+  ])
 })

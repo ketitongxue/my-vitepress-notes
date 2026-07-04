@@ -1,9 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, rename, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { containsPrivateData, parseFrontmatter } from '../wiki-publish/markdown.mjs'
+import { scanWikiSnapshot } from '../wiki-publish/core.mjs'
 
 const PUBLIC_DIRECTORIES = ['comparisons', 'concepts', 'entities']
 const TARGET_MAX = 900
@@ -78,7 +79,7 @@ function sectionBlocks(body, fallbackTitle) {
   return blocks
 }
 
-function splitLongText(text) {
+function splitIndivisibleParagraph(text) {
   if (text.length <= TARGET_MAX) return [text]
   const sentences = text.split(/(?<=[。！？；.!?;])\s*/u).filter(Boolean)
   const pieces = []
@@ -105,6 +106,25 @@ function splitLongText(text) {
     const pivot = Math.ceil(combined.length / 2)
     pieces.push(combined.slice(0, pivot), combined.slice(pivot))
   }
+  return pieces
+}
+
+function splitLongText(text) {
+  if (text.length <= TARGET_MAX) return [text]
+  const paragraphs = text.split(/\n{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean)
+  const units = paragraphs.flatMap(splitIndivisibleParagraph)
+  const pieces = []
+  let current = ''
+  for (const unit of units) {
+    const separator = current ? '\n\n' : ''
+    if (!current || current.length + separator.length + unit.length <= TARGET_MAX) {
+      current += separator + unit
+    } else {
+      pieces.push(current)
+      current = unit
+    }
+  }
+  if (current) pieces.push(current)
   return pieces
 }
 
@@ -153,28 +173,22 @@ export function splitDocument(page) {
   return merged.map(({ section, text }) => decorateChunk(page, section, text))
 }
 
-async function markdownFiles(directory) {
-  return (await readdir(directory, { withFileTypes: true }))
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.md'))
-    .map((entry) => entry.name)
-    .sort()
-}
-
 export async function buildIndex(docsRoot) {
   const wikiRoot = path.join(docsRoot, 'wiki')
   const pages = []
   const chunks = []
+  const { contents } = await scanWikiSnapshot(wikiRoot)
   for (const typeDirectory of PUBLIC_DIRECTORIES) {
-    const directory = path.join(wikiRoot, typeDirectory)
-    for (const file of await markdownFiles(directory)) {
-      const markdown = await readFile(path.join(directory, file), 'utf8')
+    const prefix = `${typeDirectory}/`
+    for (const sourcePath of Object.keys(contents).filter((entry) => entry.startsWith(prefix)).sort()) {
+      const markdown = contents[sourcePath]
       if (containsPrivateData(markdown)) {
-        throw new Error(`Wiki page contains private data or an unresolved wikilink: ${typeDirectory}/${file}`)
+        throw new Error(`Wiki page contains private data or an unresolved wikilink: ${sourcePath}`)
       }
       const { frontmatter, body } = parseFrontmatter(markdown)
-      const url = `/wiki/${typeDirectory}/${file.slice(0, -3)}`
+      const url = `/wiki/${sourcePath.slice(0, -3)}`
       const page = {
-        title: String(frontmatter.title ?? file.slice(0, -3)),
+        title: String(frontmatter.title ?? path.posix.basename(sourcePath, '.md')),
         type: String(frontmatter.type ?? typeDirectory.slice(0, -1)),
         tags: Array.isArray(frontmatter.tags) ? frontmatter.tags.map(String) : [],
         url,
