@@ -4,8 +4,12 @@ import test from 'node:test'
 
 import {
   consumeSse,
+  getSessionStorage,
   isActiveRequest,
+  loadSessionHistory,
   normalizeStoredHistory,
+  removeSessionHistory,
+  saveSessionHistory,
   sanitizeCitations,
 } from '../../docs/.vitepress/theme/components/wikiAskClient.mjs'
 
@@ -38,7 +42,8 @@ test('component meets interaction, persistence, stream, and safety contracts', a
   assert.match(component, /清空对话/)
   assert.match(component, /aria-live=['"]polite['"]/)
   assert.match(component, /new AbortController\(\)/)
-  assert.match(component, /sessionStorage\.(?:getItem|setItem|removeItem)/)
+  assert.match(component, /(?:load|save|remove)SessionHistory\(getSessionStorage\(\)/)
+  assert.match(client, /storage\?\.(?:getItem|setItem|removeItem)/)
   assert.match(component, /wiki-ask:v1/)
   assert.match(component, /MAX_HISTORY_ITEMS\s*=\s*6/)
   assert.match(component, /\.slice\(-MAX_HISTORY_ITEMS\)/)
@@ -96,6 +101,84 @@ test('SSE parser cancels and suppresses buffered events after abort', async () =
   assert.deepEqual(events, [])
 })
 
+test('first terminal event cancels the reader and suppresses trailing events', async () => {
+  let cancelled = false
+  const body = new TextEncoder().encode(
+    'event: done\ndata: {"ok":true}\n\nevent: delta\ndata: {"text":"forbidden"}\n\n',
+  )
+  const stream = new ReadableStream({
+    start(controller) { controller.enqueue(body) },
+    cancel() { cancelled = true },
+  })
+  const events = []
+  await consumeSse(new Response(stream), new AbortController().signal, (type, data) => events.push({ type, data }))
+  assert.deepEqual(events, [{ type: 'done', data: { ok: true } }])
+  assert.equal(cancelled, true)
+})
+
+test('malformed, incomplete, and callback failures cancel their readers', async () => {
+  for (const scenario of [
+    { payload: 'event: delta\ndata: nope\n\n', callback() {} },
+    { payload: 'event: delta\ndata: {"text":"partial"}\n\n', callback() {} },
+    { payload: 'event: delta\ndata: {"text":"x"}\n\n', callback() { throw new Error('CALLBACK_FAILED') } },
+  ]) {
+    let cancelled = false
+    let released = false
+    let reads = 0
+    const response = {
+      body: {
+        getReader() {
+          return {
+            async read() {
+              reads += 1
+              return reads === 1
+                ? { done: false, value: new TextEncoder().encode(scenario.payload) }
+                : { done: true, value: undefined }
+            },
+            async cancel() { cancelled = true },
+            releaseLock() { released = true },
+          }
+        },
+      },
+    }
+    await assert.rejects(
+      consumeSse(response, new AbortController().signal, scenario.callback),
+      /MALFORMED_STREAM|INCOMPLETE_STREAM|CALLBACK_FAILED/,
+    )
+    assert.equal(cancelled, true)
+    assert.equal(released, true)
+  }
+})
+
+test('newline-free megabyte input fails at a bounded pending line', async () => {
+  let cancelled = false
+  const chunk = new TextEncoder().encode('x'.repeat(1024 * 1024))
+  const stream = new ReadableStream({
+    start(controller) { controller.enqueue(chunk) },
+    cancel() { cancelled = true },
+  })
+  await assert.rejects(
+    consumeSse(new Response(stream), new AbortController().signal, () => {}),
+    /MALFORMED_STREAM/,
+  )
+  assert.equal(cancelled, true)
+})
+
+test('aggregate delta output is capped at the server 32 KiB ceiling', async () => {
+  let cancelled = false
+  const delta = (text) => `event: delta\ndata: ${JSON.stringify({ text })}\n\n`
+  const payload = delta('a'.repeat(20 * 1024)) + delta('b'.repeat(13 * 1024))
+  const stream = new ReadableStream({
+    start(controller) { controller.enqueue(new TextEncoder().encode(payload)) },
+    cancel() { cancelled = true },
+  })
+  await assert.rejects(
+    consumeSse(new Response(stream), new AbortController().signal, () => {}),
+    /MALFORMED_STREAM/,
+  )
+  assert.equal(cancelled, true)
+})
+
 test('clear-version and stop-signal guards reject late stream mutations', () => {
   const abort = new AbortController()
   let state = 'idle'
@@ -127,6 +210,21 @@ test('persisted history is valid, last-six, and at most 6000 Unicode code points
   }), false)
 })
 
+test('session storage denial never escapes get, set, or remove helpers', () => {
+  const denied = {
+    getItem() { throw new Error('denied') },
+    setItem() { throw new Error('denied') },
+    removeItem() { throw new Error('denied') },
+  }
+  assert.deepEqual(loadSessionHistory(denied, 'key'), [])
+  assert.equal(saveSessionHistory(denied, 'key', [{ role: 'user', content: 'q' }]), false)
+  assert.equal(removeSessionHistory(denied, 'key'), false)
+  const deniedWindow = Object.defineProperty({}, 'sessionStorage', {
+    get() { throw new Error('denied') },
+  })
+  assert.equal(getSessionStorage(deniedWindow), null)
+})
+
 test('citations accept only canonical published routes, dedupe, and cap at six', () => {
   const valid = (id, url = `/wiki/concepts/topic-${id}`) => ({ id, title: `T${id}`, url })
   const result = sanitizeCitations([
@@ -137,4 +235,23 @@ test('citations accept only canonical published routes, dedupe, and cap at six',
     valid('external', 'https://evil.test/wiki/concepts/topic'),
   ], 20)
   assert.deepEqual(result.map((item) => item.id), ['1', '2', '3', '4', '5', '6'])
+})
+
+test('error colors use theme variables with AA contrast in light and dark modes', async () => {
+  const css = await read('docs/.vitepress/theme/custom.css')
+  assert.match(css, /--wiki-ask-error-text:\s*#8b1e35/)
+  assert.match(css, /\.dark\s*\{[\s\S]*--wiki-ask-error-text:\s*#ffd5dc/)
+  assert.match(css, /\.wiki-ask__error[\s\S]*color:\s*var\(--wiki-ask-error-text\)/)
+
+  const luminance = (hex) => {
+    const channels = hex.match(/[0-9a-f]{2}/gi).map((value) => Number.parseInt(value, 16) / 255)
+      .map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+  }
+  const contrast = (a, b) => {
+    const values = [luminance(a), luminance(b)].sort((x, y) => y - x)
+    return (values[0] + 0.05) / (values[1] + 0.05)
+  }
+  assert.ok(contrast('8b1e35', 'fff0f3') >= 4.5)
+  assert.ok(contrast('ffd5dc', '3a1720') >= 4.5)
 })

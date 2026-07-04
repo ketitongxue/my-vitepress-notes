@@ -1,6 +1,10 @@
 const MAX_HISTORY_ITEMS = 6
 const MAX_HISTORY_CHARACTERS = 6000
 const MAX_CITATIONS = 6
+const MAX_SSE_LINE_CHARS = 64 * 1024
+const MAX_SSE_EVENT_CHARS = 96 * 1024
+const MAX_SSE_PENDING_CHARS = 128 * 1024
+const MAX_ASSISTANT_CHARS = 32 * 1024
 const PUBLISHED_WIKI_ROUTE = /^\/wiki\/(?:concepts|entities|comparisons)\/[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 export function isActiveRequest(signal, requestVersion, currentVersion) {
@@ -75,16 +79,76 @@ export function normalizeStoredHistory(values) {
   return result
 }
 
+export function getSessionStorage(windowLike = globalThis) {
+  try {
+    return windowLike?.sessionStorage ?? null
+  } catch {
+    return null
+  }
+}
+
+export function removeSessionHistory(storage, key) {
+  try {
+    if (!storage) return false
+    storage.removeItem(key)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function loadSessionHistory(storage, key) {
+  try {
+    return normalizeStoredHistory(JSON.parse(storage?.getItem(key) ?? '[]'))
+  } catch {
+    removeSessionHistory(storage, key)
+    return []
+  }
+}
+
+export function saveSessionHistory(storage, key, values) {
+  try {
+    if (!storage) return false
+    storage.setItem(key, JSON.stringify(normalizeStoredHistory(values)))
+    return true
+  } catch {
+    return false
+  }
+}
+
 export async function consumeSse(response, signal, onEvent) {
   if (!response.body) throw new Error('MALFORMED_STREAM')
   const reader = response.body.getReader()
   const decoder = new TextDecoder('utf-8', { fatal: true })
-  let buffer = ''
   let eventType = 'message'
   let dataLines = []
-  let completed = false
+  let eventDataLength = 0
+  let lineParts = []
+  let lineLength = 0
+  let skipLeadingLf = false
+  let terminal = false
+  let assistantCharacters = 0
+  let cleanupPromise
 
-  const cancel = () => { void reader.cancel().catch(() => {}) }
+  const cleanup = () => {
+    if (!cleanupPromise) {
+      cleanupPromise = (async () => {
+        try {
+          await reader.cancel()
+        } catch {
+          // Cancellation is best-effort; the original parse result takes precedence.
+        } finally {
+          try {
+            reader.releaseLock?.()
+          } catch {
+            // Some stream implementations release automatically after cancellation.
+          }
+        }
+      })()
+    }
+    return cleanupPromise
+  }
+  const cancel = () => { void cleanup() }
   signal.addEventListener('abort', cancel, { once: true })
 
   const dispatch = () => {
@@ -101,9 +165,14 @@ export async function consumeSse(response, signal, onEvent) {
     const type = eventType
     eventType = 'message'
     dataLines = []
+    eventDataLength = 0
     if (signal.aborted) return
+    if (type === 'delta' && data && typeof data === 'object' && typeof data.text === 'string') {
+      assistantCharacters += safeCodePoints(data.text).length
+      if (assistantCharacters > MAX_ASSISTANT_CHARS) throw new Error('MALFORMED_STREAM')
+    }
+    if (type === 'done' || type === 'error') terminal = true
     onEvent(type, data)
-    if (type === 'done') completed = true
   }
 
   const processLine = (line) => {
@@ -117,49 +186,72 @@ export async function consumeSse(response, signal, onEvent) {
     let value = colon === -1 ? '' : line.slice(colon + 1)
     if (value.startsWith(' ')) value = value.slice(1)
     if (field === 'event') eventType = value
-    if (field === 'data') dataLines.push(value)
+    if (field === 'data') {
+      const added = value.length + (dataLines.length ? 1 : 0)
+      eventDataLength += added
+      if (eventDataLength > MAX_SSE_EVENT_CHARS || eventDataLength + lineLength > MAX_SSE_PENDING_CHARS) {
+        throw new Error('MALFORMED_STREAM')
+      }
+      dataLines.push(value)
+    }
   }
 
-  const drainLines = (final = false) => {
-    while (buffer) {
-      let boundary = -1
-      for (let index = 0; index < buffer.length; index += 1) {
-        if (buffer[index] === '\r' || buffer[index] === '\n') {
-          boundary = index
-          break
+  const appendLinePart = (part) => {
+    if (!part) return
+    lineLength += part.length
+    if (lineLength > MAX_SSE_LINE_CHARS || lineLength + eventDataLength > MAX_SSE_PENDING_CHARS) {
+      throw new Error('MALFORMED_STREAM')
+    }
+    lineParts.push(part)
+  }
+
+  const finishLine = () => {
+    const line = lineParts.length === 1 ? lineParts[0] : lineParts.join('')
+    lineParts = []
+    lineLength = 0
+    processLine(line)
+  }
+
+  const ingest = (text, final = false) => {
+    let segmentStart = 0
+    for (let index = 0; index < text.length && !terminal; index += 1) {
+      const character = text[index]
+      if (skipLeadingLf) {
+        skipLeadingLf = false
+        if (character === '\n') {
+          segmentStart = index + 1
+          continue
         }
       }
-      if (boundary === -1) {
-        if (final) {
-          processLine(buffer)
-          buffer = ''
-        }
-        return
-      }
-      if (buffer[boundary] === '\r' && boundary === buffer.length - 1 && !final) return
-      const line = buffer.slice(0, boundary)
-      const separatorLength = buffer[boundary] === '\r' && buffer[boundary + 1] === '\n' ? 2 : 1
-      buffer = buffer.slice(boundary + separatorLength)
-      processLine(line)
+      if (character !== '\r' && character !== '\n') continue
+      appendLinePart(text.slice(segmentStart, index))
+      finishLine()
+      if (character === '\r') skipLeadingLf = true
+      segmentStart = index + 1
+    }
+    if (!terminal) appendLinePart(text.slice(segmentStart))
+    if (final && !terminal) {
+      skipLeadingLf = false
+      if (lineLength) finishLine()
     }
   }
 
   try {
-    while (!signal.aborted) {
+    while (!signal.aborted && !terminal) {
       const { done, value } = await reader.read()
       if (done) break
-      buffer += decoder.decode(value, { stream: true })
-      drainLines()
+      ingest(decoder.decode(value, { stream: true }))
     }
     if (signal.aborted) return
-    buffer += decoder.decode()
-    drainLines(true)
+    if (terminal) return
+    ingest(decoder.decode(), true)
     if (dataLines.length || eventType !== 'message') throw new Error('MALFORMED_STREAM')
-    if (!completed) throw new Error('INCOMPLETE_STREAM')
+    throw new Error('INCOMPLETE_STREAM')
   } catch (error) {
     if (signal.aborted) return
     throw error instanceof TypeError ? new Error('MALFORMED_STREAM') : error
   } finally {
     signal.removeEventListener('abort', cancel)
+    await cleanup()
   }
 }

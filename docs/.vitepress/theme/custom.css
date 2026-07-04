@@ -12,6 +12,15 @@
   --vp-c-brand-3: #42aa93;
   --vp-home-hero-name-color: #8be9d3;
   --vp-home-hero-name-background: none;
+  --wiki-ask-error-border: #b42342;
+  --wiki-ask-error-bg: #fff0f3;
+  --wiki-ask-error-text: #8b1e35;
+}
+
+.dark {
+  --wiki-ask-error-border: #c75b70;
+  --wiki-ask-error-bg: #3a1720;
+  --wiki-ask-error-text: #ffd5dc;
 }
 
 .VPNavBar,
@@ -255,10 +264,10 @@
 .wiki-ask__error {
   margin: 8px 0;
   padding: 11px 14px;
-  border: 1px solid #9b4c5d;
+  border: 1px solid var(--wiki-ask-error-border);
   border-radius: 9px;
-  background: rgb(155 76 93 / 12%);
-  color: #ffc4cf;
+  background: var(--wiki-ask-error-bg);
+  color: var(--wiki-ask-error-text);
 }
 
 .wiki-ask__composer {

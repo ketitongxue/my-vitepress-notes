@@ -2,9 +2,13 @@
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import {
   consumeSse,
+  getSessionStorage,
   isActiveRequest,
+  loadSessionHistory,
   normalizeStoredHistory,
+  removeSessionHistory,
   sanitizeCitations,
+  saveSessionHistory,
 } from './wikiAskClient.mjs'
 
 type AskState = 'idle' | 'retrieving' | 'streaming' | 'complete' | 'error'
@@ -49,20 +53,11 @@ function historyItems() {
 }
 
 function saveHistory() {
-  try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeStoredHistory(messages.value)))
-  } catch {
-    // Storage can be unavailable in privacy modes; the chat remains usable.
-  }
+  saveSessionHistory(getSessionStorage(), STORAGE_KEY, messages.value)
 }
 
 function loadHistory() {
-  try {
-    const stored = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? '[]')
-    messages.value = normalizeStoredHistory(stored) as ChatMessage[]
-  } catch {
-    sessionStorage.removeItem(STORAGE_KEY)
-  }
+  messages.value = loadSessionHistory(getSessionStorage(), STORAGE_KEY) as ChatMessage[]
 }
 
 async function scrollToLatest() {
@@ -177,7 +172,7 @@ function clearConversation() {
   errorText.value = ''
   state.value = 'idle'
   statusText.value = '对话已清空，可以重新提问。'
-  sessionStorage.removeItem(STORAGE_KEY)
+  removeSessionHistory(getSessionStorage(), STORAGE_KEY)
 }
 
 function handleKeydown(event: KeyboardEvent) {
