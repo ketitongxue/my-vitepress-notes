@@ -1,5 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import {
+  consumeSse,
+  isActiveRequest,
+  normalizeStoredHistory,
+  sanitizeCitations,
+} from './wikiAskClient.mjs'
 
 type AskState = 'idle' | 'retrieving' | 'streaming' | 'complete' | 'error'
 type Role = 'user' | 'assistant'
@@ -8,7 +14,6 @@ type ChatMessage = { role: Role; content: string; sources?: Citation[] }
 
 const STORAGE_KEY = 'wiki-ask:v1:history'
 const MAX_HISTORY_ITEMS = 6
-const MAX_HISTORY_CHARACTERS = 6000
 
 const question = ref('')
 const messages = ref<ChatMessage[]>([])
@@ -38,38 +43,14 @@ const errorMessages: Record<string, string> = {
   SERVER_MISCONFIGURED: '问答服务尚未配置完成。',
 }
 
-function safeCitation(value: unknown): value is Citation {
-  if (!value || typeof value !== 'object') return false
-  const item = value as Record<string, unknown>
-  return typeof item.id === 'string'
-    && typeof item.title === 'string'
-    && (item.section === undefined || typeof item.section === 'string')
-    && typeof item.url === 'string'
-    && /^\/wiki\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_-]+\/?$/.test(item.url)
-}
-
 function historyItems() {
-  const recent = messages.value
-    .filter((message) => message.content.trim())
-    .slice(-MAX_HISTORY_ITEMS)
+  return normalizeStoredHistory(messages.value)
     .map(({ role, content }) => ({ role, content }))
-  const result: Array<{ role: Role; content: string }> = []
-  let remaining = MAX_HISTORY_CHARACTERS
-  for (const message of recent.reverse()) {
-    if (remaining <= 0) break
-    const characters = [...message.content]
-    const content = characters.length <= remaining
-      ? message.content
-      : characters.slice(characters.length - remaining).join('')
-    result.unshift({ role: message.role, content })
-    remaining -= [...content].length
-  }
-  return result
 }
 
 function saveHistory() {
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages.value.slice(-MAX_HISTORY_ITEMS)))
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeStoredHistory(messages.value)))
   } catch {
     // Storage can be unavailable in privacy modes; the chat remains usable.
   }
@@ -78,14 +59,7 @@ function saveHistory() {
 function loadHistory() {
   try {
     const stored = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? '[]')
-    if (!Array.isArray(stored)) return
-    messages.value = stored.filter((item): item is ChatMessage => {
-      return item && (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string'
-    }).slice(-MAX_HISTORY_ITEMS).map((item) => ({
-      role: item.role,
-      content: item.content,
-      sources: Array.isArray(item.sources) ? item.sources.filter(safeCitation) : undefined,
-    }))
+    messages.value = normalizeStoredHistory(stored) as ChatMessage[]
   } catch {
     sessionStorage.removeItem(STORAGE_KEY)
   }
@@ -107,54 +81,6 @@ async function readJsonError(response: Response) {
   } catch {
     return 'UNKNOWN_ERROR'
   }
-}
-
-async function consumeSse(
-  response: Response,
-  signal: AbortSignal,
-  onEvent: (type: string, data: unknown) => void,
-) {
-  if (!response.body) throw new Error('MALFORMED_STREAM')
-  const reader = response.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-  let completed = false
-
-  const parseBlock = (block: string) => {
-    let event = 'message'
-    const dataLines: string[] = []
-    for (const line of block.split(/\r?\n/)) {
-      if (line.startsWith('event:')) event = line.slice(6).trim()
-      if (line.startsWith('data:')) dataLines.push(line.slice(5).trimStart())
-    }
-    if (!dataLines.length) return
-    let data: unknown
-    try {
-      data = JSON.parse(dataLines.join('\n'))
-    } catch {
-      throw new Error('MALFORMED_STREAM')
-    }
-    onEvent(event, data)
-    if (event === 'done') completed = true
-  }
-
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    let boundary = buffer.search(/\r?\n\r?\n/)
-    while (boundary !== -1) {
-      const block = buffer.slice(0, boundary)
-      const separator = buffer.slice(boundary).match(/^\r?\n\r?\n/)?.[0] ?? '\n\n'
-      buffer = buffer.slice(boundary + separator.length)
-      parseBlock(block)
-      boundary = buffer.search(/\r?\n\r?\n/)
-    }
-  }
-  buffer += decoder.decode()
-  if (signal.aborted) return
-  if (buffer.trim()) throw new Error('MALFORMED_STREAM')
-  if (!completed) throw new Error('INCOMPLETE_STREAM')
 }
 
 async function submitQuestion() {
@@ -184,15 +110,19 @@ async function submitQuestion() {
       body: JSON.stringify({ question: text, history }),
       signal: controller.signal,
     })
+    if (version !== conversationVersion) return
+    if (!isActiveRequest(controller.signal, version, conversationVersion)) throw new Error('REQUEST_ABORTED')
     if (!response.ok) throw new Error(await readJsonError(response))
     if (!response.headers.get('content-type')?.startsWith('text/event-stream')) {
       throw new Error('MALFORMED_STREAM')
     }
 
     await consumeSse(response, controller.signal, (type, raw) => {
+      if (!isActiveRequest(controller.signal, version, conversationVersion)) return
       const data = raw as Record<string, unknown>
       if (type === 'meta') {
-        answer.sources = Array.isArray(data?.sources) ? data.sources.filter(safeCitation) : []
+        const received = Array.isArray(data?.sources) ? data.sources : []
+        answer.sources = sanitizeCitations(received, received.length)
       } else if (type === 'delta' && typeof data?.text === 'string') {
         state.value = 'streaming'
         statusText.value = '正在生成回答…'
@@ -205,14 +135,18 @@ async function submitQuestion() {
         throw new Error(typeof data?.code === 'string' ? data.code : 'UNKNOWN_ERROR')
       }
     })
+    if (version !== conversationVersion) return
+    if (!isActiveRequest(controller.signal, version, conversationVersion)) throw new Error('REQUEST_ABORTED')
     messages.value = messages.value
       .filter((message) => message !== answer || message.content.trim())
       .slice(-MAX_HISTORY_ITEMS)
     saveHistory()
   } catch (error) {
+    if (version !== conversationVersion) return
     if (controller.signal.aborted) {
-      if (version !== conversationVersion) return
-      messages.value = messages.value.filter((message) => message !== answer || message.content.trim())
+      messages.value = normalizeStoredHistory(
+        messages.value.filter((message) => message !== answer || message.content.trim()),
+      ) as ChatMessage[]
       state.value = 'complete'
       statusText.value = answer.content ? '已停止生成，保留现有回答。' : '已停止生成。'
       saveHistory()
