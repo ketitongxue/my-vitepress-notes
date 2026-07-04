@@ -71,8 +71,8 @@ function input(overrides = {}) {
   return {
     date,
     visitorKey,
-    perVisitorLimit: 30,
-    globalLimit: 50,
+    perVisitorLimit: 5,
+    globalLimit: 10,
     ...overrides,
   }
 }
@@ -99,53 +99,53 @@ test('Worker exports DailyQuota and Wrangler configures its SQLite namespace', a
   }])
 })
 
-test('allows 30 reservations for one visitor and rejects the 31st without incrementing', async () => {
+test('allows 5 reservations for one visitor and rejects the 6th without incrementing', async () => {
   const storage = new MemoryStorage()
 
   const results = []
-  for (let i = 0; i < 31; i += 1) results.push(await reserveQuota(storage, input()))
+  for (let i = 0; i < 6; i += 1) results.push(await reserveQuota(storage, input()))
 
-  assert.equal(results.filter((result) => result.allowed).length, 30)
+  assert.equal(results.filter((result) => result.allowed).length, 5)
   assert.deepEqual(results.at(-1), {
     allowed: false,
     reason: 'PER_VISITOR_LIMIT',
-    globalCount: 30,
-    visitorCount: 30,
+    globalCount: 5,
+    visitorCount: 5,
   })
-  assert.equal(await storage.get('globalCount'), 30)
-  assert.equal(await storage.get(`visitor/${date}/${visitorKey}`), 30)
-  assert.equal(storage.transactionCount, 31)
+  assert.equal(await storage.get('globalCount'), 5)
+  assert.equal(await storage.get(`visitor/${date}/${visitorKey}`), 5)
+  assert.equal(storage.transactionCount, 6)
 })
 
-test('allows 50 global reservations and rejects the 51st without incrementing', async () => {
+test('allows 10 global reservations and rejects the 11th without incrementing', async () => {
   const storage = new MemoryStorage()
   let last
 
-  for (let i = 0; i < 51; i += 1) {
+  for (let i = 0; i < 11; i += 1) {
     last = await reserveQuota(storage, input({ visitorKey: i.toString(16).padStart(64, '0') }))
   }
 
   assert.deepEqual(last, {
     allowed: false,
     reason: 'GLOBAL_LIMIT',
-    globalCount: 50,
+    globalCount: 10,
     visitorCount: 0,
   })
-  assert.equal(await storage.get('globalCount'), 50)
+  assert.equal(await storage.get('globalCount'), 10)
 })
 
-test('global reservations never exceed 50 under concurrency', async () => {
+test('global reservations never exceed 10 under concurrency', async () => {
   const storage = new MemoryStorage({
     date,
-    globalCount: 40,
-    [`visitor/${date}/${'a'.repeat(64)}`]: 30,
-    [`visitor/${date}/${'b'.repeat(64)}`]: 10,
+    globalCount: 8,
+    [`visitor/${date}/${'a'.repeat(64)}`]: 5,
+    [`visitor/${date}/${'b'.repeat(64)}`]: 3,
   })
   const results = await Promise.all(Array.from({ length: 20 }, (_, i) =>
     reserveQuota(storage, input({ visitorKey: i.toString(16).padStart(64, '0') }))))
 
-  assert.equal(results.filter((result) => result.allowed).length, 10)
-  assert.equal(await storage.get('globalCount'), 50)
+  assert.equal(results.filter((result) => result.allowed).length, 2)
+  assert.equal(await storage.get('globalCount'), 10)
 })
 
 test('a new UTC date resets global and visitor counters', async () => {
@@ -358,12 +358,12 @@ test('reserveDailyQuota always targets the global singleton and rejects unsafe r
 
 test('reserveDailyQuota rejects impossible or corrupt responses against requested limits', async () => {
   const responses = [
-    { allowed: true, globalCount: 51, visitorCount: 1 },
-    { allowed: true, globalCount: 1, visitorCount: 31 },
+    { allowed: true, globalCount: 11, visitorCount: 1 },
+    { allowed: true, globalCount: 1, visitorCount: 6 },
     { allowed: true, globalCount: 1, visitorCount: 2 },
-    { allowed: false, reason: 'GLOBAL_LIMIT', globalCount: 49, visitorCount: 1 },
-    { allowed: false, reason: 'PER_VISITOR_LIMIT', globalCount: 50, visitorCount: 30 },
-    { allowed: false, reason: 'PER_VISITOR_LIMIT', globalCount: 29, visitorCount: 29 },
+    { allowed: false, reason: 'GLOBAL_LIMIT', globalCount: 9, visitorCount: 1 },
+    { allowed: false, reason: 'PER_VISITOR_LIMIT', globalCount: 10, visitorCount: 5 },
+    { allowed: false, reason: 'PER_VISITOR_LIMIT', globalCount: 4, visitorCount: 4 },
     { allowed: false, reason: 'STALE_DATE', globalCount: -1, visitorCount: 0 },
   ]
 

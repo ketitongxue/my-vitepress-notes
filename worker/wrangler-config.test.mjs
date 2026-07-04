@@ -9,6 +9,18 @@ test('Wrangler schema and assets directory use explicit relative paths', async (
   assert.equal(config.assets.directory, './docs/.vitepress/dist')
 })
 
+test('Wrangler configures the exact QA rate and daily quota limits', async () => {
+  const config = JSON.parse(await readFile(new URL('../wrangler.jsonc', import.meta.url)))
+
+  assert.deepEqual(config.ratelimits, [{
+    name: 'QA_RATE_LIMITER',
+    namespace_id: '20260704',
+    simple: { limit: 3, period: 60 },
+  }])
+  assert.equal(config.vars.DAILY_PER_IP_LIMIT, '5')
+  assert.equal(config.vars.DAILY_GLOBAL_LIMIT, '10')
+})
+
 test('main test script runs Worker tests and Wrangler is pinned', async () => {
   const packageJson = JSON.parse(
     await readFile(new URL('../package.json', import.meta.url)),

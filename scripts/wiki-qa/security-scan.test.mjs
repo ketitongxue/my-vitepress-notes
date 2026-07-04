@@ -151,6 +151,8 @@ test('integrated test command preserves the deployment verification order', asyn
 
 test('README documents setup, secrets, deployment, limits, and privacy', async () => {
   const readme = await readFile(path.join(projectRoot, 'README.md'), 'utf8')
+  const limitsParagraph = '公开问答限制为每个 IP 3 次/分钟、5 次/天，全站 10 次/天。每日配额由单例\n'
+    + 'SQLite Durable Object 原子计数，并按 UTC 日期重置。'
   for (const required of [
     'npm install',
     'npm run qa:index',
@@ -160,11 +162,22 @@ test('README documents setup, secrets, deployment, limits, and privacy', async (
     'npm test',
     'Build command `npm run build`',
     'Deploy command `npx wrangler deploy`',
-    '5 次/分钟',
-    '30 次/天',
-    '50 次/天',
     'sessionStorage',
   ]) assert.ok(readme.includes(required), `README must include ${required}`)
+  assert.ok(readme.includes(limitsParagraph), 'README must include the exact production limits paragraph')
+  assert.ok(
+    !readme.includes('5 次/分钟、30 次/天，全站 50 次/天'),
+    'README must not include the obsolete combined limit statement',
+  )
+
+  const collisionMutation = limitsParagraph
+    .replace(' 3 次/分钟', ' 13 次/分钟')
+    .replace('、5 次/天', '、15 次/天')
+    .replace(' 10 次/天', ' 110 次/天')
+  for (const collisionProneSubstring of ['3 次/分钟', '5 次/天', '10 次/天']) {
+    assert.ok(collisionMutation.includes(collisionProneSubstring))
+  }
+  assert.ok(!collisionMutation.includes(limitsParagraph))
 })
 
 test('tracked files contain no credential or private-data leaks', async () => {
