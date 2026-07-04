@@ -259,6 +259,22 @@ test('stored citation gaps retain their canonical original numbers', () => {
   assert.deepEqual(history[0].sources.map((source) => source.number), [1, 4, 6])
 })
 
+test('stored citations retain only the first source for each canonical number', () => {
+  const history = normalizeStoredHistory([{
+    role: 'assistant',
+    content: 'answer [1]',
+    sources: [
+      { id: 'first', number: 1, title: 'First', url: '/wiki/concepts/first' },
+      { id: 'corrupt', number: 1, title: 'Corrupt', url: '/wiki/entities/corrupt' },
+      { id: 'second', number: 2, title: 'Second', url: '/wiki/concepts/second' },
+    ],
+  }])
+  assert.deepEqual(history[0].sources.map(({ id, number }) => ({ id, number })), [
+    { id: 'first', number: 1 },
+    { id: 'second', number: 2 },
+  ])
+})
+
 test('error colors use theme variables with AA contrast in light and dark modes', async () => {
   const css = await read('docs/.vitepress/theme/custom.css')
   assert.match(css, /--wiki-ask-error-text:\s*#8b1e35/)

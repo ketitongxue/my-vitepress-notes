@@ -41,13 +41,16 @@ export function sanitizeCitations(
     Number.isInteger(receivedSourceCount) ? receivedSourceCount : 0,
   ))
   const seenIds = new Set()
+  const seenNumbers = new Set()
   const result = []
   for (let index = 0; index < limit; index += 1) {
     const value = values[index]
     const number = preserveNumbers ? value?.number : index + 1
     if (!Number.isInteger(number) || number < 1 || number > MAX_CITATIONS) continue
+    if (preserveNumbers && seenNumbers.has(number)) continue
     if (!validCitation(value) || seenIds.has(value.id)) continue
     seenIds.add(value.id)
+    seenNumbers.add(number)
     result.push({
       id: value.id,
       number,
