@@ -160,11 +160,15 @@ test('README documents setup, secrets, deployment, limits, and privacy', async (
     'npm test',
     'Build command `npm run build`',
     'Deploy command `npx wrangler deploy`',
-    '5 次/分钟',
-    '30 次/天',
-    '50 次/天',
+    '3 次/分钟',
+    '5 次/天',
+    '10 次/天',
     'sessionStorage',
   ]) assert.ok(readme.includes(required), `README must include ${required}`)
+  assert.ok(
+    !readme.includes('5 次/分钟、30 次/天，全站 50 次/天'),
+    'README must not include the obsolete combined limit statement',
+  )
 })
 
 test('tracked files contain no credential or private-data leaks', async () => {
