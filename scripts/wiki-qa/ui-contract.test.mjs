@@ -51,6 +51,8 @@ test('component meets interaction, persistence, stream, and safety contracts', a
     assert.match(component, new RegExp(`['"]${event}['"]`), `missing SSE event ${event}`)
   }
   assert.match(client, /PUBLISHED_WIKI_ROUTE/)
+  assert.match(component, /\{\{ source\.number \}\}/)
+  assert.doesNotMatch(component, /sourceIndex\s*\+\s*1/)
   assert.doesNotMatch(component, /v-html/)
 })
 
@@ -225,16 +227,52 @@ test('session storage denial never escapes get, set, or remove helpers', () => {
   assert.equal(getSessionStorage(deniedWindow), null)
 })
 
-test('citations accept only canonical published routes, dedupe, and cap at six', () => {
+test('citations preserve original positions, allow same-page chunks, dedupe IDs, and cap at six', () => {
   const valid = (id, url = `/wiki/concepts/topic-${id}`) => ({ id, title: `T${id}`, url })
   const result = sanitizeCitations([
-    valid('1'), valid('1'), valid('2', '/wiki/entities/entity-2'),
-    valid('3', '/wiki/comparisons/compare-3'), valid('4'), valid('5'), valid('6'), valid('7'),
-    valid('query', '/wiki/concepts/topic?x=1'), valid('hash', '/wiki/concepts/topic#x'),
-    valid('traversal', '/wiki/concepts/../private'), valid('encoded', '/wiki/concepts/%2e%2e'),
-    valid('external', 'https://evil.test/wiki/concepts/topic'),
+    valid('1'),
+    valid('2', '/wiki/entities/entity-2'),
+    valid('bad', '/wiki/concepts/topic?x=1'),
+    valid('4', '/wiki/comparisons/shared-page'),
+    valid('2', '/wiki/concepts/duplicate-id'),
+    valid('6', '/wiki/comparisons/shared-page'),
+    valid('7'),
   ], 20)
-  assert.deepEqual(result.map((item) => item.id), ['1', '2', '3', '4', '5', '6'])
+  assert.deepEqual(result.map(({ id, number, url }) => ({ id, number, url })), [
+    { id: '1', number: 1, url: '/wiki/concepts/topic-1' },
+    { id: '2', number: 2, url: '/wiki/entities/entity-2' },
+    { id: '4', number: 4, url: '/wiki/comparisons/shared-page' },
+    { id: '6', number: 6, url: '/wiki/comparisons/shared-page' },
+  ])
+})
+
+test('stored citation gaps retain their canonical original numbers', () => {
+  const history = normalizeStoredHistory([{
+    role: 'assistant',
+    content: 'answer [1] [4] [6]',
+    sources: [
+      { id: '1', number: 1, title: 'One', url: '/wiki/concepts/one' },
+      { id: '4', number: 4, title: 'Four', url: '/wiki/concepts/shared' },
+      { id: '6', number: 6, title: 'Six', url: '/wiki/concepts/shared' },
+    ],
+  }])
+  assert.deepEqual(history[0].sources.map((source) => source.number), [1, 4, 6])
+})
+
+test('stored citations retain only the first source for each canonical number', () => {
+  const history = normalizeStoredHistory([{
+    role: 'assistant',
+    content: 'answer [1]',
+    sources: [
+      { id: 'first', number: 1, title: 'First', url: '/wiki/concepts/first' },
+      { id: 'corrupt', number: 1, title: 'Corrupt', url: '/wiki/entities/corrupt' },
+      { id: 'second', number: 2, title: 'Second', url: '/wiki/concepts/second' },
+    ],
+  }])
+  assert.deepEqual(history[0].sources.map(({ id, number }) => ({ id, number })), [
+    { id: 'first', number: 1 },
+    { id: 'second', number: 2 },
+  ])
 })
 
 test('error colors use theme variables with AA contrast in light and dark modes', async () => {

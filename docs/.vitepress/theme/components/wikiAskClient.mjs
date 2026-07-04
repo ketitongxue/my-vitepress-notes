@@ -29,19 +29,31 @@ function validCitation(value) {
     && PUBLISHED_WIKI_ROUTE.test(value.url)
 }
 
-export function sanitizeCitations(values, receivedSourceCount = Array.isArray(values) ? values.length : 0) {
+export function sanitizeCitations(
+  values,
+  receivedSourceCount = Array.isArray(values) ? values.length : 0,
+  preserveNumbers = false,
+) {
   if (!Array.isArray(values)) return []
-  const limit = Math.max(0, Math.min(MAX_CITATIONS, Number.isInteger(receivedSourceCount) ? receivedSourceCount : 0))
+  const limit = Math.max(0, Math.min(
+    MAX_CITATIONS,
+    values.length,
+    Number.isInteger(receivedSourceCount) ? receivedSourceCount : 0,
+  ))
   const seenIds = new Set()
-  const seenUrls = new Set()
+  const seenNumbers = new Set()
   const result = []
-  for (const value of values) {
-    if (result.length >= limit) break
-    if (!validCitation(value) || seenIds.has(value.id) || seenUrls.has(value.url)) continue
+  for (let index = 0; index < limit; index += 1) {
+    const value = values[index]
+    const number = preserveNumbers ? value?.number : index + 1
+    if (!Number.isInteger(number) || number < 1 || number > MAX_CITATIONS) continue
+    if (preserveNumbers && seenNumbers.has(number)) continue
+    if (!validCitation(value) || seenIds.has(value.id)) continue
     seenIds.add(value.id)
-    seenUrls.add(value.url)
+    seenNumbers.add(number)
     result.push({
       id: value.id,
+      number,
       title: value.title,
       ...(value.section === undefined ? {} : { section: value.section }),
       url: value.url,
@@ -71,7 +83,7 @@ export function normalizeStoredHistory(values) {
       role: item.role,
       content,
       ...(Array.isArray(item.sources)
-        ? { sources: sanitizeCitations(item.sources, item.sources.length) }
+        ? { sources: sanitizeCitations(item.sources, item.sources.length, true) }
         : {}),
     })
     remaining -= safeCodePoints(content).length
