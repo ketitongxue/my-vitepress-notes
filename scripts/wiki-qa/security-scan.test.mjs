@@ -61,13 +61,52 @@ test('scanner catches POSIX, Windows, UNC, and backslash raw paths without expos
   assert.ok(findings.every((finding) => samples.every((sample) => !finding.includes(sample))))
 })
 
+test('scanner catches generic Unix paths and near-miss fixtures in source and plans', () => {
+  const sourcePaths = [
+    ['', 'opt', 'company', 'secret.md'].join('/'),
+    ['', 'etc', 'company.conf'].join('/'),
+    ['', 'srv', 'app', 'config.json'].join('/'),
+    ['', 'Volumes', 'Private', 'notes.md'].join('/'),
+    ['', 'segment', 'private', 'notes.md'].join('/'),
+    ['', 'Users', 'alice', 'company', 'secret.md'].join('/'),
+    ['raw', 'company-secret.md'].join('/'),
+  ]
+  const sourceFindings = scanText('worker/leak.mjs', sourcePaths.join('\n'))
+  const planFindings = scanText(
+    'docs/superpowers/plans/new-plan.md',
+    ['', 'root', 'company', 'secret.md'].join('/'),
+  )
+  const specFindings = scanText('docs/superpowers/specs/new-spec.md', sourcePaths[0])
+
+  assert.ok(sourceFindings.includes('worker/leak.mjs: local absolute path'))
+  assert.ok(sourceFindings.includes('worker/leak.mjs: private source path'))
+  for (const sample of sourcePaths.slice(0, -1)) {
+    assert.deepEqual(scanText('worker/leak.mjs', sample), ['worker/leak.mjs: local absolute path'])
+  }
+  assert.deepEqual(scanText('worker/leak.mjs', sourcePaths.at(-1)), ['worker/leak.mjs: private source path'])
+  assert.deepEqual(planFindings, ['docs/superpowers/plans/new-plan.md: local absolute path'])
+  assert.deepEqual(specFindings, ['docs/superpowers/specs/new-spec.md: local absolute path'])
+  assert.ok([...sourceFindings, ...planFindings].every(
+    (finding) => sourcePaths.every((sample) => !finding.includes(sample)),
+  ))
+})
+
 test('scanner allows web routes, URLs, imports, and regex source', () => {
   assert.deepEqual(scanText('worker/safe.mjs', [
     '/wiki/concepts/attention',
+    '/notes/static-site-delivery',
+    '/api/ask',
+    '/assets/app.hash.js',
     'https://example.com/raw/article.md',
     "import value from '/worker/module.mjs'",
     String.raw`const pattern = /(?:^|[\\/])raw[\\/]/`,
+    'const isRatio = /2g/.test(value)',
   ].join('\n')), [])
+  const traversingAsset = ['', 'assets', '..', '..', 'etc', 'passwd'].join('/')
+  assert.deepEqual(
+    scanText('worker/unsafe.mjs', traversingAsset),
+    ['worker/unsafe.mjs: local absolute path'],
+  )
 })
 
 test('integrated test command preserves the deployment verification order', async () => {

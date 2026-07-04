@@ -6,30 +6,65 @@ import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
 const TEST_FILES = /(?:^|\/)\w[\w.-]*\.test\.mjs$/
-const POLICY_DOCS = /^docs\/superpowers\/(?:plans|specs)\//
 const TEST_NET = /^(?:192\.0\.2|198\.51\.100|203\.0\.113)\.(?:\d{1,3})$/
-const PRIVATE_FIXTURE_FILES = new Set([
-  'a.md', 'article.md', 'bad.md', 'private-note.md', 'private.log', 'private.md', 'secret.md', 'source.md',
+const TEST_PATH_FIXTURES = new Set([
+  ['', 'Users', 'alice', 'private.md'].join('/'),
+  ['', 'Users', 'alice', 'wiki', 'private.md'].join('/'),
+  ['', 'Users', 'person', 'wiki', 'raw', 'source.md'].join('/'),
+  ['', 'home', 'alice', 'private.md'].join('/'),
+  ['', 'home', 'alice', 'wiki', 'private.md'].join('/'),
+  ['', 'etc', 'passwd'].join('/'),
+  ['', 'tmp', 'private.md'].join('/'),
+  ['', 'tmp', 'bad.md'].join('/'),
+  ['', 'var', 'log', 'private.log'].join('/'),
+  ['', 'concepts', 'a.md'].join('/'),
+  ['', 'custom', 'path', 'file.md'].join('/'),
+  ['', 'workspace', 'secret', 'file.md'].join('/'),
+  ['', 'wiki', 'concepts', '..', 'private'].join('/'),
+  ['', 'wiki', 'concepts', 'Zeta'].join('/'),
+  ['C:', 'Users', 'alice', 'private.md'].join('\\'),
+  ['C:', 'Users', 'alice', 'wiki', 'private.md'].join('\\'),
+  ['raw', 'a.md'].join('/'),
+  ['raw', 'article.md'].join('/'),
+  ['raw', 'bad.md'].join('/'),
+  ['raw', 'private-note.md'].join('/'),
+  ['raw', 'private.md'].join('/'),
+  ['raw', 'articles', 'private.md'].join('/'),
+  ['raw', 'source.md'].join('/'),
 ])
+const SAFE_PROJECT_PATHS = [
+  /^\/wiki\/(?:entities|concepts|comparisons)(?:\/[a-z0-9-]+)?\/?$/,
+  /^\/notes\/[a-z0-9-]+\/?$/,
+  /^\/api\/ask$/,
+  /^\/ask\/index\.html$/,
+  /^\/assets\/[A-Za-z0-9_./-]+$/,
+  /^\/(?:worker|scripts)\/[A-Za-z0-9_./-]+$/,
+]
 
 function addFinding(findings, file, kind) {
   findings.push(`${file}: ${kind}`)
 }
 
-function isFixturePath(value) {
-  const pieces = value.split(/[\\/]/).filter(Boolean)
-  return pieces.some((piece) => /^(?:alice|person|test|fake)$/i.test(piece))
-    || PRIVATE_FIXTURE_FILES.has(pieces.at(-1)?.toLowerCase())
+function isAllowedTestFixture(value) {
+  return TEST_PATH_FIXTURES.has(value)
+    || TEST_PATH_FIXTURES.has(value.replaceAll('\\', '/'))
 }
 
 function withoutWebUrls(text) {
-  return text.replace(/(?:https?:)?\/\/[^\s'"`<>]+/gi, '')
+  return text
+    .replace(/https?:\/\/[^\s'"`<>]+/gi, '')
+    .replace(/(^|[\s(<])\/\/[^\s'"`<>]+/gim, '$1')
+    .replace(/\bfile:\/\//gi, '')
+}
+
+function isSafeProjectPath(value) {
+  if (value.split('/').some((segment) => segment === '.' || segment === '..')) return false
+  return SAFE_PROJECT_PATHS.some((pattern) => pattern.test(value))
 }
 
 export function scanText(file, text, { artifact = false } = {}) {
   const findings = []
   const isTest = TEST_FILES.test(file)
-  const allowDocumentedPath = !artifact && POLICY_DOCS.test(file)
 
   for (const match of text.matchAll(/\bsk-[A-Za-z0-9_-]{20,}\b/g)) {
     if (!(isTest && /^sk-(?:fake|test)-/.test(match[0]))) {
@@ -45,18 +80,23 @@ export function scanText(file, text, { artifact = false } = {}) {
 
   const pathText = withoutWebUrls(text)
   const absolutePaths = [
-    ...pathText.matchAll(/(?:^|[^A-Za-z0-9_:/.-])(\/(?:Users|home|root|private|tmp|var)\/[A-Za-z0-9._~ -][^\s)'"`]*)/gm),
+    ...pathText.matchAll(/(?:^|[^A-Za-z0-9_:/.-])(\/[A-Za-z0-9._~-]+(?:\/[A-Za-z0-9._~-]+)+)/gm),
     ...pathText.matchAll(/(?:^|[^A-Za-z0-9_])(\b[A-Za-z]:[\\/][^\s)'"`]+)/gm),
     ...pathText.matchAll(/(?:^|[^\\])(\\\\[A-Za-z0-9._-]+[\\/][A-Za-z0-9$._-]+(?:[\\/][^\s)'"`]+)?)/gm),
   ]
   for (const match of absolutePaths) {
-    if (!allowDocumentedPath && (artifact || !isTest || !isFixturePath(match[1]))) {
+    const value = match[1].replace(/[.,，。]$/, '')
+    const simpleRegexLiteral = /^\/[A-Za-z0-9_.-]+\/[dgimsuvy]+$/.test(value)
+      || /^\/[A-Za-z0-9_.-]+\/[dgimsuvy]*\.(?:exec|match|replace|search|split|test)$/.test(value)
+    if (!simpleRegexLiteral && !isSafeProjectPath(value)
+      && (artifact || !isTest || !isAllowedTestFixture(value))) {
       addFinding(findings, file, 'local absolute path')
     }
   }
 
   for (const match of pathText.matchAll(/(?:^|[\s/\\('"`])(raw[\\/][A-Za-z0-9_.-]+(?:[\\/][A-Za-z0-9_.-]+)*)(?=$|[\s)'"`\],])/gim)) {
-    if (!allowDocumentedPath && (artifact || !isTest || !isFixturePath(match[1]))) {
+    const value = match[1]
+    if (artifact || !isTest || !isAllowedTestFixture(value)) {
       addFinding(findings, file, 'private source path')
     }
   }
