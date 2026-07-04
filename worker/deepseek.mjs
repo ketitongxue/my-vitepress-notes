@@ -5,6 +5,8 @@ export const MAX_PROVIDER_LINE_CHARS = 64 * 1024
 export const MAX_PROVIDER_EVENT_CHARS = 96 * 1024
 export const MAX_PROVIDER_PENDING_CHARS = 128 * 1024
 export const MAX_CITATION_PENDING_CHARS = 32
+// 1200 output tokens should remain well below this defensive character ceiling.
+export const MAX_ASSISTANT_CHARS = 32 * 1024
 
 export class DeepSeekError extends Error {
   constructor(code) {
@@ -261,6 +263,8 @@ export async function streamDeepSeek({
   const events = parseProviderEvents(reader)
   const citations = createCitationFilter(sources.length)
   let usage = null
+  let decodedAssistantChars = 0
+  let forwardedAssistantChars = 0
   let finalized = false
   let cancelled = false
   let pulling = false
@@ -298,7 +302,13 @@ export async function streamDeepSeek({
     if (completionPrepared) return
     completionPrepared = true
     const tail = citations.flush()
-    if (tail) queued.push({ type: 'delta', text: tail })
+    if (tail) {
+      forwardedAssistantChars += tail.length
+      if (forwardedAssistantChars > MAX_ASSISTANT_CHARS) {
+        throw new DeepSeekError('DEEPSEEK_PROTOCOL')
+      }
+      queued.push({ type: 'delta', text: tail })
+    }
     await closeUpstream({ cancelReader: early, abortUpstream: early })
     queued.push({ type: 'done', usage })
   }
@@ -342,8 +352,18 @@ export async function streamDeepSeek({
           if (nextUsage) usage = nextUsage
           const content = parsed?.choices?.[0]?.delta?.content
           if (typeof content !== 'string' || !content) continue
+          decodedAssistantChars += content.length
+          if (decodedAssistantChars > MAX_ASSISTANT_CHARS) {
+            throw new DeepSeekError('DEEPSEEK_PROTOCOL')
+          }
           const text = citations.push(content)
-          if (text) queued.push({ type: 'delta', text })
+          if (text) {
+            forwardedAssistantChars += text.length
+            if (forwardedAssistantChars > MAX_ASSISTANT_CHARS) {
+              throw new DeepSeekError('DEEPSEEK_PROTOCOL')
+            }
+            queued.push({ type: 'delta', text })
+          }
         }
       } catch (error) {
         await closeUpstream({ cancelReader: true, abortUpstream: true })

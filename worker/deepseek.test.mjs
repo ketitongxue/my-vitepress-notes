@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import {
   DeepSeekError,
+  MAX_ASSISTANT_CHARS,
   MAX_CITATION_PENDING_CHARS,
   MAX_PROVIDER_EVENT_CHARS,
   MAX_PROVIDER_LINE_CHARS,
@@ -274,5 +275,39 @@ test('cancels an upstream connection that remains open after DONE', async () => 
   }))
 
   assert.deepEqual(await collect(stream), [{ type: 'done', usage: null }])
+  assert.equal(cancelled, true)
+})
+
+test('accepts cumulative assistant content exactly at the output ceiling', async () => {
+  const first = '甲'.repeat(Math.floor(MAX_ASSISTANT_CHARS / 2))
+  const second = '乙'.repeat(MAX_ASSISTANT_CHARS - first.length)
+  const stream = await streamDeepSeek(base({
+    fetchImpl: async () => fakeResponse([
+      event({ choices: [{ delta: { content: first } }] }),
+      event({ choices: [{ delta: { content: second } }] }),
+      event('[DONE]'),
+    ]),
+  }))
+
+  const text = (await collect(stream)).filter((item) => item.type === 'delta').map((item) => item.text).join('')
+  assert.equal(text.length, MAX_ASSISTANT_CHARS)
+})
+
+test('rejects aggregate small deltas over the ceiling even when invalid citations filter to empty', async () => {
+  const invalidCitation = '[9]'
+  const content = invalidCitation.repeat(Math.floor(MAX_ASSISTANT_CHARS / invalidCitation.length) + 1)
+  const parts = []
+  for (let offset = 0; offset < content.length; offset += 4_000) {
+    parts.push(event({ choices: [{ delta: { content: content.slice(offset, offset + 4_000) } }] }))
+  }
+  let cancelled = false
+  const stream = await streamDeepSeek(base({
+    fetchImpl: async () => fakeResponse(parts, { cancel() { cancelled = true } }),
+  }))
+
+  await assert.rejects(
+    () => collect(stream),
+    (error) => error instanceof DeepSeekError && error.code === 'DEEPSEEK_PROTOCOL',
+  )
   assert.equal(cancelled, true)
 })
