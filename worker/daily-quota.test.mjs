@@ -141,7 +141,7 @@ test('global reservations never exceed 10 under concurrency', async () => {
     [`visitor/${date}/${'a'.repeat(64)}`]: 5,
     [`visitor/${date}/${'b'.repeat(64)}`]: 3,
   })
-  const results = await Promise.all(Array.from({ length: 6 }, (_, i) =>
+  const results = await Promise.all(Array.from({ length: 20 }, (_, i) =>
     reserveQuota(storage, input({ visitorKey: i.toString(16).padStart(64, '0') }))))
 
   assert.equal(results.filter((result) => result.allowed).length, 2)
