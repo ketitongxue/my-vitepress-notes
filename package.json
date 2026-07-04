@@ -6,6 +6,8 @@
     "wiki:sync": "node scripts/wiki-publish/sync.mjs",
     "wiki:finalize": "node scripts/wiki-publish/finalize.mjs",
     "wiki:validate": "node scripts/wiki-publish/validate.mjs",
+    "qa:index": "node scripts/wiki-qa/indexer.mjs",
+    "build": "npm run qa:index && npm run docs:build",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
