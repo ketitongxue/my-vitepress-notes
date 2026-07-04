@@ -12,6 +12,7 @@ export default defineConfig({
       { text: '主题', link: '/topics/' },
       { text: '笔记', link: '/notes/sustainable-ai-workflow' },
       { text: '知识库', link: '/wiki/' },
+      { text: '问答', link: '/ask/' },
       { text: '关于', link: '/about' }
     ],
     sidebar: {

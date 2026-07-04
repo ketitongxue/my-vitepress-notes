@@ -81,6 +81,237 @@
   line-height: 2;
 }
 
+.wiki-ask {
+  width: min(920px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 48px 0 80px;
+}
+
+.wiki-ask__intro {
+  max-width: 720px;
+  margin-bottom: 32px;
+}
+
+.wiki-ask__intro h1 {
+  margin: 4px 0 12px;
+  font-size: clamp(32px, 6vw, 52px);
+  line-height: 1.1;
+}
+
+.wiki-ask__intro > p:not(.wiki-ask__eyebrow) {
+  color: var(--vp-c-text-2);
+}
+
+.wiki-ask__eyebrow {
+  color: var(--vp-c-brand-1);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+.wiki-ask__examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.wiki-ask button {
+  border: 1px solid var(--vp-c-brand-3);
+  border-radius: 9px;
+  padding: 9px 14px;
+  background: var(--vp-c-brand-3);
+  color: #061512;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.wiki-ask button.secondary,
+.wiki-ask__examples button {
+  border-color: var(--vp-c-border);
+  background: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+  font-weight: 500;
+}
+
+.wiki-ask button:hover:not(:disabled) {
+  border-color: var(--vp-c-brand-1);
+}
+
+.wiki-ask button:focus-visible,
+.wiki-ask textarea:focus-visible,
+.wiki-ask a:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
+}
+
+.wiki-ask button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.wiki-ask__conversation {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 260px;
+  max-height: 58vh;
+  overflow-y: auto;
+  padding: 22px;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 16px;
+  background: linear-gradient(145deg, var(--vp-c-bg-alt), var(--vp-c-bg));
+  scroll-behavior: smooth;
+}
+
+.wiki-ask__empty {
+  margin: auto;
+  color: var(--vp-c-text-3);
+  text-align: center;
+}
+
+.wiki-ask__message {
+  width: min(84%, 720px);
+  padding: 16px 18px;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 14px;
+  background: var(--vp-c-bg-soft);
+}
+
+.wiki-ask__message.is-user {
+  align-self: flex-end;
+  border-color: color-mix(in srgb, var(--vp-c-brand-3) 55%, var(--vp-c-border));
+  background: color-mix(in srgb, var(--vp-c-brand-3) 12%, var(--vp-c-bg-soft));
+}
+
+.wiki-ask__role {
+  margin: 0 0 7px;
+  color: var(--vp-c-brand-1);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.wiki-ask__answer {
+  margin: 0;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.wiki-ask__citations {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--vp-c-divider);
+  list-style: none;
+}
+
+.wiki-ask__citations a {
+  display: flex;
+  flex-direction: column;
+  min-height: 68px;
+  padding: 10px 12px;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 9px;
+  background: var(--vp-c-bg-alt);
+  color: var(--vp-c-text-1);
+  text-decoration: none;
+}
+
+.wiki-ask__citations a:hover {
+  border-color: var(--vp-c-brand-2);
+}
+
+.wiki-ask__citations small {
+  margin-top: 5px;
+  color: var(--vp-c-text-3);
+}
+
+.wiki-ask__loading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--vp-c-text-2);
+}
+
+.wiki-ask__loading span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--vp-c-brand-1);
+  animation: wiki-ask-pulse 1s ease-in-out infinite alternate;
+}
+
+.wiki-ask__status {
+  min-height: 24px;
+  margin: 10px 2px 0;
+  color: var(--vp-c-text-3);
+  font-size: 13px;
+}
+
+.wiki-ask__error {
+  margin: 8px 0;
+  padding: 11px 14px;
+  border: 1px solid #9b4c5d;
+  border-radius: 9px;
+  background: rgb(155 76 93 / 12%);
+  color: #ffc4cf;
+}
+
+.wiki-ask__composer {
+  position: sticky;
+  bottom: 12px;
+  z-index: 2;
+  margin-top: 6px;
+  padding: 16px;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--vp-c-bg-alt) 94%, transparent);
+  box-shadow: 0 14px 40px rgb(0 0 0 / 28%);
+  backdrop-filter: blur(14px);
+}
+
+.wiki-ask__composer label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.wiki-ask__composer textarea {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 9px;
+  padding: 12px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+  font: inherit;
+  line-height: 1.5;
+}
+
+.wiki-ask__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 11px;
+}
+
+.wiki-ask__actions p {
+  margin: 0 auto 0 0;
+  color: var(--vp-c-text-3);
+  font-size: 12px;
+}
+
+@keyframes wiki-ask-pulse {
+  to { opacity: 0.3; transform: scale(0.75); }
+}
+
 @media (max-width: 720px) {
   .garden-section {
     grid-template-columns: 1fr;
@@ -92,5 +323,43 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 4px;
+  }
+
+  .wiki-ask {
+    width: min(100% - 28px, 920px);
+    padding: 28px 0 56px;
+  }
+
+  .wiki-ask__conversation {
+    max-height: 54vh;
+    padding: 14px;
+  }
+
+  .wiki-ask__message {
+    width: 94%;
+    padding: 13px 14px;
+  }
+
+  .wiki-ask__composer {
+    bottom: 6px;
+    padding: 12px;
+  }
+
+  .wiki-ask__actions {
+    flex-wrap: wrap;
+  }
+
+  .wiki-ask__actions p {
+    flex-basis: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wiki-ask__conversation {
+    scroll-behavior: auto;
+  }
+
+  .wiki-ask__loading span {
+    animation: none;
   }
 }
