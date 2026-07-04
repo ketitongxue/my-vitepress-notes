@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, symlink, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, symlink, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -59,6 +59,35 @@ test('metadata contains normalized terms and frequencies', async () => {
   assert.ok(chunk.terms.includes('公开'))
   assert.equal(chunk.frequencies['公开'], 2)
   assert.equal(normalizeSearchText(' Claude-Code，权限！ '), 'claude code 权限')
+})
+
+test('prototype-like search terms have numeric frequencies', () => {
+  const [chunk] = splitDocument({
+    title: 'constructor', type: 'concept', tags: [], section: 'constructor',
+    url: '/wiki/concepts/constructor', body: '# constructor\n\nconstructor constructor',
+  })
+
+  assert.equal(Object.getPrototypeOf(chunk.frequencies), null)
+  assert.equal(typeof chunk.frequencies.constructor, 'number')
+  assert.equal(chunk.frequencies.constructor, 4)
+})
+
+test('page ordering uses locale-independent Unicode code points', async () => {
+  const root = await fixture()
+  await writeFile(path.join(root, 'wiki', 'concepts', 'Zeta.md'), `${frontmatter('Zeta')}# Zeta\n\n内容。`)
+  await writeFile(path.join(root, 'wiki', 'concepts', 'alpha.md'), `${frontmatter('alpha')}# alpha\n\n内容。`)
+
+  const index = await buildIndex(root)
+  assert.deepEqual(index.pages.filter(({ type }) => type === 'concept').map(({ url }) => url), [
+    '/wiki/concepts/Zeta',
+    '/wiki/concepts/alpha',
+    '/wiki/concepts/public',
+  ])
+})
+
+test('the main test command includes wiki QA indexer tests', async () => {
+  const packageJson = JSON.parse(await readFile(new URL('../../package.json', import.meta.url)))
+  assert.match(packageJson.scripts.test, /node --test scripts\/wiki-qa\/\*\.test\.mjs/)
 })
 
 test('private references and unresolved wikilinks are rejected', async () => {

@@ -10,6 +10,10 @@ const PUBLIC_DIRECTORIES = ['comparisons', 'concepts', 'entities']
 const TARGET_MAX = 900
 const TARGET_MIN = 500
 
+function compareCodePoints(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0
+}
+
 export function normalizeSearchText(value) {
   return String(value)
     .normalize('NFKC')
@@ -130,8 +134,12 @@ function splitLongText(text) {
 
 function decorateChunk(page, section, text) {
   const allTerms = searchTerms(`${page.title} ${page.tags.join(' ')} ${section} ${text}`)
-  const frequencies = {}
+  const frequencies = Object.create(null)
   for (const term of allTerms) frequencies[term] = (frequencies[term] ?? 0) + 1
+  const sortedFrequencies = Object.create(null)
+  for (const term of Object.keys(frequencies).sort(compareCodePoints)) {
+    sortedFrequencies[term] = frequencies[term]
+  }
   const id = createHash('sha256').update(page.url + section + text).digest('hex').slice(0, 16)
   return {
     id,
@@ -141,8 +149,8 @@ function decorateChunk(page, section, text) {
     section,
     url: page.url,
     text,
-    terms: Object.keys(frequencies).sort(),
-    frequencies: Object.fromEntries(Object.entries(frequencies).sort(([a], [b]) => a.localeCompare(b))),
+    terms: Object.keys(sortedFrequencies),
+    frequencies: sortedFrequencies,
   }
 }
 
@@ -180,7 +188,7 @@ export async function buildIndex(docsRoot) {
   const { contents } = await scanWikiSnapshot(wikiRoot)
   for (const typeDirectory of PUBLIC_DIRECTORIES) {
     const prefix = `${typeDirectory}/`
-    for (const sourcePath of Object.keys(contents).filter((entry) => entry.startsWith(prefix)).sort()) {
+    for (const sourcePath of Object.keys(contents).filter((entry) => entry.startsWith(prefix)).sort(compareCodePoints)) {
       const markdown = contents[sourcePath]
       if (containsPrivateData(markdown)) {
         throw new Error(`Wiki page contains private data or an unresolved wikilink: ${sourcePath}`)
