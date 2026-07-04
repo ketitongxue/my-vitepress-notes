@@ -11,15 +11,15 @@
   "vars": {
     "ALLOWED_ORIGIN": "https://juzxailab.com",
     "DEEPSEEK_MODEL": "deepseek-v4-flash",
-    "DAILY_PER_IP_LIMIT": "30",
-    "DAILY_GLOBAL_LIMIT": "50"
+    "DAILY_PER_IP_LIMIT": "5",
+    "DAILY_GLOBAL_LIMIT": "10"
   },
   "ratelimits": [
     {
       "name": "QA_RATE_LIMITER",
       "namespace_id": "20260704",
       "simple": {
-        "limit": 5,
+        "limit": 3,
         "period": 60
       }
     }

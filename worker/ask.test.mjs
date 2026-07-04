@@ -35,8 +35,8 @@ function env(overrides = {}) {
     IP_HASH_SALT: 'private-hmac-salt',
     DEEPSEEK_API_KEY: secretKey,
     DEEPSEEK_MODEL: 'deepseek-v4-flash',
-    DAILY_PER_IP_LIMIT: '30',
-    DAILY_GLOBAL_LIMIT: '50',
+    DAILY_PER_IP_LIMIT: '5',
+    DAILY_GLOBAL_LIMIT: '10',
     QA_RATE_LIMITER: { async limit() { return { success: true } } },
     QA_QUOTA: { idFromName() { return 'id' }, get() { return { fetch() {} } } },
     ...overrides,
@@ -118,6 +118,11 @@ test('runs the complete pipeline in order and streams safe meta before delta and
   assert.equal(response.status, 200)
   assert.match(response.headers.get('content-type'), /^text\/event-stream/)
   assert.deepEqual(state.calls.map(([name]) => name), ['hash', 'minute', 'retrieve', 'quota', 'deepseek'])
+  assert.deepEqual(state.calls.find(([name]) => name === 'quota')[1], {
+    visitorKey: 'a'.repeat(64),
+    perVisitorLimit: 5,
+    globalLimit: 10,
+  })
   assert.deepEqual(output, [
     { type: 'meta', data: { sources: [{ id: 'chunk-1', title: '注意力', section: '定义', url: '/wiki/concepts/attention' }] } },
     { type: 'delta', data: { text: '回答 [1]' } },
@@ -238,7 +243,7 @@ test('daily denials map to stable 429 errors and never call DeepSeek', async () 
     const state = baseDeps({
       async reserveDailyQuota() {
         state.calls.push(['quota'])
-        return { allowed: false, reason, globalCount: 50, visitorCount: 30 }
+        return { allowed: false, reason, globalCount: 10, visitorCount: 5 }
       },
     })
     const response = await handleAsk(request(), env(), {}, state.deps)
