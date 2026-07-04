@@ -168,6 +168,45 @@ test('DailyQuota accepts only a valid internal POST /reserve request', async () 
   assert.equal(response.headers.get('cache-control'), 'no-store')
 })
 
+test('DailyQuota accepts complete valid application/json Content-Type values', async () => {
+  const contentTypes = [
+    'application/json; charset=utf-8',
+    'Application/JSON ; charset="utf-8"; profile="quota\\\"v1"',
+  ]
+
+  for (const contentType of contentTypes) {
+    const quota = new DailyQuota({ storage: new MemoryStorage() }, {})
+    const response = await quota.fetch(new Request('https://quota.internal/reserve', {
+      method: 'POST',
+      headers: { 'content-type': contentType },
+      body: JSON.stringify(input()),
+    }))
+    assert.equal(response.status, 200, contentType)
+  }
+})
+
+test('DailyQuota rejects ambiguous or malformed application/json Content-Type values', async () => {
+  const contentTypes = [
+    'application/json; text/plain',
+    'application/json;',
+    'application/json;;charset=utf-8',
+    'application/json, text/plain',
+    'application/json; charset',
+    'application/json; charset="unterminated',
+  ]
+
+  for (const contentType of contentTypes) {
+    const quota = new DailyQuota({ storage: new MemoryStorage() }, {})
+    const response = await quota.fetch(new Request('https://quota.internal/reserve', {
+      method: 'POST',
+      headers: { 'content-type': contentType },
+      body: JSON.stringify(input()),
+    }))
+    assert.equal(response.status, 415, contentType)
+    assert.deepEqual(await response.json(), { error: 'UNSUPPORTED_MEDIA_TYPE' })
+  }
+})
+
 test('DailyQuota rejects invalid methods, paths, media types, bodies, and secret-like fields', async () => {
   const requests = [
     [new Request('https://quota.internal/reserve'), 405, 'METHOD_NOT_ALLOWED'],

@@ -14,7 +14,7 @@ function isTokenCharacter(character) {
   return /^[!#$%&'*+.^_`|~0-9A-Za-z-]$/.test(character)
 }
 
-function isJsonContentType(value) {
+export function isJsonContentType(value) {
   if (typeof value !== 'string') return false
 
   let position = 0

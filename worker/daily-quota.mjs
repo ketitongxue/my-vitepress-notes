@@ -1,3 +1,5 @@
+import { isJsonContentType } from './request.mjs'
+
 const UTC_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const VISITOR_KEY_PATTERN = /^[0-9a-f]{64}$/
 const INPUT_FIELDS = ['date', 'globalLimit', 'perVisitorLimit', 'visitorKey']
@@ -96,7 +98,7 @@ export class DailyQuota {
     const { pathname } = new URL(request.url)
     if (pathname !== '/reserve') return jsonResponse({ error: 'NOT_FOUND' }, 404)
     if (request.method !== 'POST') return jsonResponse({ error: 'METHOD_NOT_ALLOWED' }, 405)
-    if (request.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase() !== 'application/json') {
+    if (!isJsonContentType(request.headers.get('content-type'))) {
       return jsonResponse({ error: 'UNSUPPORTED_MEDIA_TYPE' }, 415)
     }
 
