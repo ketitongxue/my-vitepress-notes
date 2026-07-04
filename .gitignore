@@ -8,4 +8,6 @@
 node_modules/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
+.wrangler/
+worker/generated/wiki-index.json
 .DS_Store

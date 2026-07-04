@@ -9,12 +9,15 @@
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
+    "worker:dev": "wrangler dev",
+    "deploy": "npm run docs:build && wrangler deploy",
     "test:content": "node scripts/content-validator.test.mjs && node scripts/check-content.mjs",
     "test:theme": "node scripts/theme-validator.test.mjs && node scripts/theme-config.test.mjs && node scripts/check-theme.mjs",
     "test": "node --test scripts/wiki-publish/*.test.mjs && npm run wiki:validate && npm run test:content && npm run test:theme && npm run docs:build"
   },
   "devDependencies": {
     "markdown-it": "^14.3.0",
-    "vitepress": "latest"
+    "vitepress": "latest",
+    "wrangler": "latest"
   }
 }

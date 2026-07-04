@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "my-vitepress-notes",
+  "main": "worker/index.mjs",
+  "compatibility_date": "2026-07-04",
+  "assets": {
+    "directory": "docs/.vitepress/dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "vars": {
+    "ALLOWED_ORIGIN": "https://juzxailab.com",
+    "DEEPSEEK_MODEL": "deepseek-v4-flash",
+    "DAILY_PER_IP_LIMIT": "30",
+    "DAILY_GLOBAL_LIMIT": "50"
+  },
+  "ratelimits": [
+    {
+      "name": "QA_RATE_LIMITER",
+      "namespace_id": "20260704",
+      "simple": {
+        "limit": 5,
+        "period": 60
+      }
+    }
+  ]
+}
