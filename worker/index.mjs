@@ -9,6 +9,7 @@ function withNoStore(response) {
 }
 
 export { DailyQuota } from './daily-quota.mjs'
+import { handleAsk } from './ask.mjs'
 
 function notFound() {
   return Response.json(
@@ -42,4 +43,4 @@ export function createWorker({ askHandler = notImplemented } = {}) {
   }
 }
 
-export default createWorker()
+export default createWorker({ askHandler: handleAsk })

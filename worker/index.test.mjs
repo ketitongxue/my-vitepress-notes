@@ -81,13 +81,13 @@ test('all non-API paths are delegated to env.ASSETS.fetch', async () => {
   assert.deepEqual(calls, requests)
 })
 
-test('default worker returns a no-store 501 for POST /api/ask', async () => {
+test('default worker routes POST /api/ask to the production handler', async () => {
   const response = await worker.fetch(
     new Request('https://example.com/api/ask', { method: 'POST' }),
     { ASSETS: { fetch: assert.fail } },
   )
 
-  assert.equal(response.status, 501)
-  assert.deepEqual(await response.json(), { error: 'Not implemented' })
+  assert.equal(response.status, 403)
+  assert.deepEqual(await response.json(), { error: 'INVALID_ORIGIN' })
   assert.equal(response.headers.get('cache-control'), 'no-store')
 })
