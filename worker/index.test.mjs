@@ -87,7 +87,7 @@ test('default worker routes POST /api/ask to the production handler', async () =
     { ASSETS: { fetch: assert.fail } },
   )
 
-  assert.equal(response.status, 403)
-  assert.deepEqual(await response.json(), { error: 'INVALID_ORIGIN' })
+  assert.equal(response.status, 503)
+  assert.deepEqual(await response.json(), { error: 'SERVER_MISCONFIGURED' })
   assert.equal(response.headers.get('cache-control'), 'no-store')
 })

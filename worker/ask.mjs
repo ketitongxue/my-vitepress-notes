@@ -43,6 +43,30 @@ function configuredString(value) {
   return typeof value === 'string' && value.trim() !== '' ? value : null
 }
 
+function validAllowedOrigin(value) {
+  if (!configuredString(value)) return false
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && url.origin === value && url.pathname === '/'
+  } catch {
+    return false
+  }
+}
+
+function productionConfig(env) {
+  const perVisitorLimit = positiveLimit(env?.DAILY_PER_IP_LIMIT)
+  const globalLimit = positiveLimit(env?.DAILY_GLOBAL_LIMIT)
+  const apiKey = configuredString(env?.DEEPSEEK_API_KEY)
+  const model = configuredString(env?.DEEPSEEK_MODEL)
+  const salt = configuredString(env?.IP_HASH_SALT)
+  if (!perVisitorLimit || !globalLimit || perVisitorLimit > globalLimit
+    || !apiKey || !model || !salt
+    || typeof env?.QA_RATE_LIMITER?.limit !== 'function'
+    || typeof env?.QA_QUOTA?.idFromName !== 'function'
+    || typeof env?.QA_QUOTA?.get !== 'function') return null
+  return { perVisitorLimit, globalLimit, apiKey, model, salt }
+}
+
 function safeErrorCode(error) {
   return error instanceof DeepSeekError && SAFE_DEEPSEEK_ERRORS.has(error.code)
     ? error.code
@@ -183,6 +207,10 @@ export async function handleAsk(request, env, _ctx, injected = {}) {
     return response
   }
 
+  if (!validAllowedOrigin(env?.ALLOWED_ORIGIN)) {
+    return finish(jsonError('SERVER_MISCONFIGURED', 503))
+  }
+
   let validation
   try {
     validation = await deps.validateAskRequest(request, env?.ALLOWED_ORIGIN)
@@ -191,9 +219,12 @@ export async function handleAsk(request, env, _ctx, injected = {}) {
   }
   if (!validation.ok) return finish(validation.response)
 
+  const config = productionConfig(env)
+  if (!config) return finish(jsonError('SERVER_MISCONFIGURED', 503))
+
   let visitorKey
   try {
-    visitorKey = await deps.hashVisitor(request.headers.get('cf-connecting-ip'), env?.IP_HASH_SALT)
+    visitorKey = await deps.hashVisitor(request.headers.get('cf-connecting-ip'), config.salt)
   } catch {
     return finish(jsonError('SERVER_MISCONFIGURED', 503))
   }
@@ -220,17 +251,13 @@ export async function handleAsk(request, env, _ctx, injected = {}) {
     return response
   }
 
-  const perVisitorLimit = positiveLimit(env?.DAILY_PER_IP_LIMIT)
-  const globalLimit = positiveLimit(env?.DAILY_GLOBAL_LIMIT)
-  const apiKey = configuredString(env?.DEEPSEEK_API_KEY)
-  const model = configuredString(env?.DEEPSEEK_MODEL)
-  if (!perVisitorLimit || !globalLimit || perVisitorLimit > globalLimit || !apiKey || !model) {
-    return finish(jsonError('SERVER_MISCONFIGURED', 503))
-  }
-
   let quota
   try {
-    quota = await deps.reserveDailyQuota(env, { visitorKey, perVisitorLimit, globalLimit })
+    quota = await deps.reserveDailyQuota(env, {
+      visitorKey,
+      perVisitorLimit: config.perVisitorLimit,
+      globalLimit: config.globalLimit,
+    })
   } catch {
     return finish(jsonError('QUOTA_UNAVAILABLE', 503))
   }
@@ -244,8 +271,8 @@ export async function handleAsk(request, env, _ctx, injected = {}) {
   return modelResponse({
     meta: sources.map(({ meta }) => meta),
     streamFactory: () => deps.streamDeepSeek({
-      apiKey,
-      model,
+      apiKey: config.apiKey,
+      model: config.model,
       question: validation.data.question,
       history: validation.data.history,
       sources: sources.map(({ provider }) => provider),

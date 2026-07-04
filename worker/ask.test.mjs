@@ -38,6 +38,7 @@ function env(overrides = {}) {
     DAILY_PER_IP_LIMIT: '30',
     DAILY_GLOBAL_LIMIT: '50',
     QA_RATE_LIMITER: { async limit() { return { success: true } } },
+    QA_QUOTA: { idFromName() { return 'id' }, get() { return { fetch() {} } } },
     ...overrides,
   }
 }
@@ -158,6 +159,29 @@ test('no confident recall returns weak safe metadata and a local answer without 
     { type: 'delta', data: { text: '知识库中没有足够信息回答这个问题。' } },
     { type: 'done', data: { reason: 'NO_CONFIDENT_RECALL', usage: null } },
   ])
+})
+
+test('no confident recall still fails closed when required production configuration is missing', async () => {
+  for (const missing of [
+    'ALLOWED_ORIGIN',
+    'IP_HASH_SALT',
+    'DEEPSEEK_API_KEY',
+    'DEEPSEEK_MODEL',
+    'DAILY_PER_IP_LIMIT',
+    'DAILY_GLOBAL_LIMIT',
+    'QA_RATE_LIMITER',
+    'QA_QUOTA',
+  ]) {
+    const state = baseDeps({
+      retrieve() { state.calls.push(['retrieve']); return retrieval(false) },
+    })
+    const configured = env()
+    delete configured[missing]
+    const response = await handleAsk(request(), configured, {}, state.deps)
+    assert.equal(response.status, 503, missing)
+    assert.deepEqual(await response.json(), { error: 'SERVER_MISCONFIGURED' }, missing)
+    assert.equal(state.calls.some(([name]) => name === 'quota' || name === 'deepseek'), false, missing)
+  }
 })
 
 test('daily denials map to stable 429 errors and never call DeepSeek', async () => {
