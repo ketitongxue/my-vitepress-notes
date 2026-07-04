@@ -30,6 +30,8 @@ class MemoryStorage {
     this.values = new Map(Object.entries(initial))
     this.mutex = new Mutex()
     this.transactionCount = 0
+    this.listCount = 0
+    this.deleteCount = 0
   }
 
   get(key) {
@@ -46,10 +48,12 @@ class MemoryStorage {
           if (typeof keyOrEntries === 'string') snapshot.set(keyOrEntries, value)
           else for (const [key, entry] of Object.entries(keyOrEntries)) snapshot.set(key, entry)
         },
-        list: async ({ prefix }) => new Map(
-          [...snapshot].filter(([key]) => key.startsWith(prefix)),
-        ),
+        list: async ({ prefix }) => {
+          this.listCount += 1
+          return new Map([...snapshot].filter(([key]) => key.startsWith(prefix)))
+        },
         delete: async (keys) => {
+          this.deleteCount += 1
           for (const key of Array.isArray(keys) ? keys : [keys]) snapshot.delete(key)
         },
       }
@@ -109,7 +113,7 @@ test('allows 30 reservations for one visitor and rejects the 31st without increm
     visitorCount: 30,
   })
   assert.equal(await storage.get('globalCount'), 30)
-  assert.equal(await storage.get(`visitor/${visitorKey}`), 30)
+  assert.equal(await storage.get(`visitor/${date}/${visitorKey}`), 30)
   assert.equal(storage.transactionCount, 31)
 })
 
@@ -134,8 +138,8 @@ test('global reservations never exceed 50 under concurrency', async () => {
   const storage = new MemoryStorage({
     date,
     globalCount: 40,
-    [`visitor/${'a'.repeat(64)}`]: 30,
-    [`visitor/${'b'.repeat(64)}`]: 10,
+    [`visitor/${date}/${'a'.repeat(64)}`]: 30,
+    [`visitor/${date}/${'b'.repeat(64)}`]: 10,
   })
   const results = await Promise.all(Array.from({ length: 20 }, (_, i) =>
     reserveQuota(storage, input({ visitorKey: i.toString(16).padStart(64, '0') }))))
@@ -148,8 +152,8 @@ test('a new UTC date resets global and visitor counters', async () => {
   const storage = new MemoryStorage({
     date: '2026-07-03',
     globalCount: 50,
-    [`visitor/${visitorKey}`]: 30,
-    [`visitor/${'b'.repeat(64)}`]: 20,
+    [`visitor/2026-07-03/${visitorKey}`]: 30,
+    [`visitor/2026-07-03/${'b'.repeat(64)}`]: 20,
   })
 
   const result = await reserveQuota(storage, input())
@@ -161,15 +165,35 @@ test('a new UTC date resets global and visitor counters', async () => {
   })
   assert.equal(await storage.get('date'), date)
   assert.equal(await storage.get('globalCount'), 1)
-  assert.equal(await storage.get(`visitor/${visitorKey}`), 1)
-  assert.equal(await storage.get(`visitor/${'b'.repeat(64)}`), undefined)
+  assert.equal(await storage.get(`visitor/${date}/${visitorKey}`), 1)
+  assert.equal(await storage.get(`visitor/2026-07-03/${'b'.repeat(64)}`), 20)
+})
+
+test('reserve and rollover never scan or bulk-delete visitor state', async () => {
+  const oldDate = '2026-07-03'
+  const oldVisitorKey = `visitor/${oldDate}/${visitorKey}`
+  const storage = new MemoryStorage({
+    date: oldDate,
+    globalCount: 30,
+    [oldVisitorKey]: 30,
+  })
+
+  const result = await reserveQuota(storage, input())
+  const sameDayResult = await reserveQuota(storage, input())
+
+  assert.deepEqual(result, { allowed: true, globalCount: 1, visitorCount: 1 })
+  assert.deepEqual(sameDayResult, { allowed: true, globalCount: 2, visitorCount: 2 })
+  assert.equal(storage.listCount, 0)
+  assert.equal(storage.deleteCount, 0)
+  assert.equal(await storage.get(oldVisitorKey), 30)
+  assert.equal(await storage.get(`visitor/${date}/${visitorKey}`), 2)
 })
 
 test('an out-of-order pre-midnight reservation cannot roll state back after rollover', async () => {
   const storage = new MemoryStorage({
     date: '2026-07-04',
     globalCount: 1,
-    [`visitor/${visitorKey}`]: 1,
+    [`visitor/2026-07-04/${visitorKey}`]: 1,
   })
 
   const [afterMidnight, stale] = await Promise.all([
@@ -186,7 +210,7 @@ test('an out-of-order pre-midnight reservation cannot roll state back after roll
   })
   assert.equal(await storage.get('date'), '2026-07-05')
   assert.equal(await storage.get('globalCount'), 1)
-  assert.equal(await storage.get(`visitor/${visitorKey}`), undefined)
+  assert.equal(await storage.get(`visitor/2026-07-04/${visitorKey}`), 1)
 })
 
 test('corrupt persisted quota state fails closed without mutation', async () => {
@@ -196,11 +220,10 @@ test('corrupt persisted quota state fails closed without mutation', async () => 
     { date, globalCount: Number.MAX_SAFE_INTEGER + 1 },
     { date: 'not-a-date', globalCount: 0 },
     { globalCount: 0 },
-    { date, globalCount: 1, [`visitor/${visitorKey}`]: '1' },
-    { date, globalCount: 1, [`visitor/${visitorKey}`]: -1 },
-    { date, globalCount: 1, [`visitor/${'x'.repeat(64)}`]: 1 },
-    { date, globalCount: 1, [`visitor/${visitorKey}`]: 2 },
-    { date, globalCount: 2, [`visitor/${visitorKey}`]: 1 },
+    { date, globalCount: 1, [`visitor/${date}/${visitorKey}`]: '1' },
+    { date, globalCount: 1, [`visitor/${date}/${visitorKey}`]: -1 },
+    { date, globalCount: 1, [`visitor/${date}/${visitorKey}`]: 2 },
+    { [`visitor/${date}/${visitorKey}`]: 1 },
   ]
 
   for (const state of cases) {

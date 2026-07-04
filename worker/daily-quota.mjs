@@ -81,24 +81,26 @@ function validQuotaResult(value, limits) {
   return value.reason === 'STALE_DATE'
 }
 
-async function readStoredState(txn) {
+async function readStoredState(txn, requestDate, visitorKey) {
   const date = await txn.get('date')
   const globalCount = await txn.get('globalCount')
-  const visitors = await txn.list({ prefix: 'visitor/' })
-  const isEmpty = date === undefined && globalCount === undefined && visitors.size === 0
-  if (isEmpty) return { date: undefined, globalCount: 0, visitors }
-
-  let visitorTotal = 0
-  if (!validUtcDate(date) || !validCounter(globalCount)) throw new Error('CORRUPT_QUOTA_STATE')
-  for (const [key, count] of visitors) {
-    if (!key.startsWith('visitor/')
-      || !VISITOR_KEY_PATTERN.test(key.slice('visitor/'.length))
-      || !validCounter(count)) throw new Error('CORRUPT_QUOTA_STATE')
-    visitorTotal += count
-    if (!Number.isSafeInteger(visitorTotal)) throw new Error('CORRUPT_QUOTA_STATE')
+  const isEmpty = date === undefined && globalCount === undefined
+  if (isEmpty) {
+    const orphanCount = await txn.get(`visitor/${requestDate}/${visitorKey}`)
+    if (orphanCount !== undefined) throw new Error('CORRUPT_QUOTA_STATE')
+    return { date: undefined, globalCount: 0, visitorCount: 0 }
   }
-  if (visitorTotal !== globalCount) throw new Error('CORRUPT_QUOTA_STATE')
-  return { date, globalCount, visitors }
+  if (!validUtcDate(date) || !validCounter(globalCount)) throw new Error('CORRUPT_QUOTA_STATE')
+
+  const visitorCount = await txn.get(`visitor/${date}/${visitorKey}`) ?? 0
+  if (!validCounter(visitorCount) || visitorCount > globalCount) {
+    throw new Error('CORRUPT_QUOTA_STATE')
+  }
+  if (requestDate > date) {
+    const targetCount = await txn.get(`visitor/${requestDate}/${visitorKey}`)
+    if (targetCount !== undefined) throw new Error('CORRUPT_QUOTA_STATE')
+  }
+  return { date, globalCount, visitorCount }
 }
 
 function utcDate(clock) {
@@ -116,23 +118,23 @@ export async function reserveQuota(storage, options) {
 
   const { date, visitorKey, perVisitorLimit, globalLimit } = options
   return storage.transaction(async (txn) => {
-    const stored = await readStoredState(txn)
+    const stored = await readStoredState(txn, date, visitorKey)
     if (stored.date !== undefined && date < stored.date) {
       return {
         allowed: false,
         reason: 'STALE_DATE',
         globalCount: stored.globalCount,
-        visitorCount: stored.visitors.get(`visitor/${visitorKey}`) ?? 0,
+        visitorCount: stored.visitorCount,
       }
     }
     if (stored.date !== date) {
-      if (stored.visitors.size > 0) await txn.delete([...stored.visitors.keys()])
+      // Date-prefixed visitor keys make prior days unreachable without a hot-path scan.
       await txn.put({ date, globalCount: 0 })
     }
 
-    const visitorStorageKey = `visitor/${visitorKey}`
+    const visitorStorageKey = `visitor/${date}/${visitorKey}`
     const globalCount = stored.date === date ? stored.globalCount : 0
-    const visitorCount = stored.date === date ? (stored.visitors.get(visitorStorageKey) ?? 0) : 0
+    const visitorCount = stored.date === date ? stored.visitorCount : 0
 
     if (globalCount >= globalLimit) {
       return { allowed: false, reason: 'GLOBAL_LIMIT', globalCount, visitorCount }
