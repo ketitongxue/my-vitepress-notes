@@ -7,11 +7,13 @@ export default defineConfig({
   appearance: 'force-dark',
   cleanUrls: true,
   lastUpdated: true,
+  srcExclude: ['superpowers/**'],
   themeConfig: {
     nav: [
       { text: '主题', link: '/topics/' },
       { text: '笔记', link: '/notes/sustainable-ai-workflow' },
       { text: '知识库', link: '/wiki/' },
+      { text: '问答', link: '/ask/' },
       { text: '关于', link: '/about' }
     ],
     sidebar: {
