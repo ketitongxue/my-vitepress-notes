@@ -83,16 +83,18 @@ function safeTokenUsage(value) {
 }
 
 function safeSources(retrieval, index) {
-  const publishedUrls = new Set((index?.chunks ?? []).map(({ url }) => url))
-  const chunksById = new Map((retrieval?.chunks ?? []).map((chunk) => [chunk?.id, chunk]))
+  const canonicalById = new Map()
+  for (const chunk of index?.chunks ?? []) {
+    if (!chunk || typeof chunk.id !== 'string' || typeof chunk.title !== 'string'
+      || typeof chunk.section !== 'string' || typeof chunk.text !== 'string'
+      || !WIKI_URL.test(chunk.url)) continue
+    canonicalById.set(chunk.id, canonicalById.has(chunk.id) ? null : chunk)
+  }
   const seen = new Set()
   const sources = []
   for (const candidate of retrieval?.sources ?? []) {
-    const chunk = chunksById.get(candidate?.id)
-    if (!chunk || seen.has(chunk.id) || typeof chunk.id !== 'string'
-      || typeof chunk.title !== 'string' || typeof chunk.section !== 'string'
-      || typeof chunk.text !== 'string' || !WIKI_URL.test(chunk.url)
-      || !publishedUrls.has(chunk.url) || candidate.url !== chunk.url) continue
+    const chunk = canonicalById.get(candidate?.id)
+    if (!chunk || seen.has(chunk.id) || candidate.url !== chunk.url) continue
     seen.add(chunk.id)
     sources.push({
       meta: { id: chunk.id, title: chunk.title, section: chunk.section, url: chunk.url },

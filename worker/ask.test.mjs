@@ -184,6 +184,55 @@ test('no confident recall still fails closed when required production configurat
   }
 })
 
+test('forged and unknown retrieval identities never reach the model, response, or logs', async () => {
+  const privateSentinel = 'PRIVATE_SENTINEL_DO_NOT_LEAK'
+  const state = baseDeps({
+    retrieve() {
+      state.calls.push(['retrieve'])
+      return {
+        confident: true,
+        sources: [{ id: 'forged-id', title: privateSentinel, section: privateSentinel, url: index.chunks[0].url }],
+        chunks: [{ id: 'forged-id', title: privateSentinel, section: privateSentinel, url: index.chunks[0].url, text: privateSentinel }],
+      }
+    },
+  })
+
+  const response = await handleAsk(request(), env(), {}, state.deps)
+  const serialized = `${await response.text()}\n${JSON.stringify(state.logs)}\n${JSON.stringify(state.calls)}`
+  assert.doesNotMatch(serialized, /PRIVATE_SENTINEL_DO_NOT_LEAK/)
+  assert.deepEqual(state.calls.map(([name]) => name), ['hash', 'minute', 'retrieve'])
+})
+
+test('same-ID tampering is ignored and model and meta receive canonical index fields only', async () => {
+  const privateSentinel = 'PRIVATE_SENTINEL_SAME_ID'
+  const canonical = index.chunks[0]
+  const state = baseDeps({
+    retrieve() {
+      state.calls.push(['retrieve'])
+      return {
+        confident: true,
+        sources: [{ id: canonical.id, title: privateSentinel, section: privateSentinel, url: canonical.url }],
+        chunks: [{ ...canonical, title: privateSentinel, section: privateSentinel, text: privateSentinel }],
+      }
+    },
+  })
+
+  const response = await handleAsk(request(), env(), {}, state.deps)
+  const output = await events(response)
+  assert.deepEqual(output[0], {
+    type: 'meta',
+    data: { sources: [{ id: canonical.id, title: canonical.title, section: canonical.section, url: canonical.url }] },
+  })
+  const options = state.calls.find(([name]) => name === 'deepseek')[1]
+  assert.deepEqual(options.sources, [{
+    title: canonical.title,
+    section: canonical.section,
+    url: canonical.url,
+    text: canonical.text,
+  }])
+  assert.doesNotMatch(`${JSON.stringify(output)}\n${JSON.stringify(options.sources)}\n${JSON.stringify(state.logs)}`, /PRIVATE_SENTINEL_SAME_ID/)
+})
+
 test('daily denials map to stable 429 errors and never call DeepSeek', async () => {
   for (const [reason, code] of [['GLOBAL_LIMIT', 'DAILY_GLOBAL_LIMIT'], ['PER_VISITOR_LIMIT', 'DAILY_VISITOR_LIMIT']]) {
     const state = baseDeps({
