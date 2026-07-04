@@ -77,9 +77,10 @@ function isJsonContentType(value) {
 }
 
 async function readBoundedBody(request) {
-  const declaredLength = Number(request.headers.get('content-length'))
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_REQUEST_BYTES) {
-    return { tooLarge: true }
+  const declaredLength = request.headers.get('content-length')
+  if (declaredLength !== null) {
+    if (!/^(?:0|[1-9]\d*)$/.test(declaredLength)) return { invalidLength: true }
+    if (BigInt(declaredLength) > BigInt(MAX_REQUEST_BYTES)) return { tooLarge: true }
   }
 
   if (!request.body) return { text: '' }
@@ -88,11 +89,21 @@ async function readBoundedBody(request) {
   const chunks = []
   let total = 0
   while (true) {
-    const { done, value } = await reader.read()
+    let read
+    try {
+      read = await reader.read()
+    } catch {
+      return { readFailed: true }
+    }
+    const { done, value } = read
     if (done) break
     total += value.byteLength
     if (total > MAX_REQUEST_BYTES) {
-      await reader.cancel()
+      try {
+        await reader.cancel()
+      } catch {
+        // The size decision is already final; cancellation is best-effort cleanup.
+      }
       return { tooLarge: true }
     }
     chunks.push(value)
@@ -104,7 +115,11 @@ async function readBoundedBody(request) {
     body.set(chunk, offset)
     offset += chunk.byteLength
   }
-  return { text: new TextDecoder().decode(body) }
+  try {
+    return { text: new TextDecoder('utf-8', { fatal: true }).decode(body) }
+  } catch {
+    return { invalidEncoding: true }
+  }
 }
 
 function validHistory(history) {
@@ -140,7 +155,9 @@ export async function validateAskRequest(request, allowedOrigin) {
   }
 
   const body = await readBoundedBody(request)
+  if (body.invalidLength) return invalid('INVALID_CONTENT_LENGTH')
   if (body.tooLarge) return invalid('REQUEST_TOO_LARGE', 413)
+  if (body.readFailed || body.invalidEncoding) return invalid('INVALID_JSON')
 
   let parsed
   try {

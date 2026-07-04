@@ -12,7 +12,7 @@ function request(body, options = {}) {
   return new Request('https://juzxailab.com/api/ask', {
     method: options.method ?? 'POST',
     headers,
-    body: typeof body === 'string' ? body : JSON.stringify(body),
+    body: typeof body === 'string' || ArrayBuffer.isView(body) ? body : JSON.stringify(body),
   })
 }
 
@@ -127,4 +127,89 @@ test('rejects a declared or actual request body over the byte cap', async () => 
 
   const oversized = JSON.stringify({ question: 'x', padding: 'a'.repeat(MAX_REQUEST_BYTES) })
   await expectError(request(oversized), 'REQUEST_TOO_LARGE', 413)
+})
+
+test('rejects malformed UTF-8 as INVALID_JSON instead of accepting replacement text', async () => {
+  const prefix = new TextEncoder().encode('{"question":"')
+  const suffix = new TextEncoder().encode('"}')
+  const bytes = new Uint8Array(prefix.length + 2 + suffix.length)
+  bytes.set(prefix)
+  bytes.set([0xc3, 0x28], prefix.length)
+  bytes.set(suffix, prefix.length + 2)
+
+  await expectError(request(bytes), 'INVALID_JSON')
+})
+
+test('an oversized body stays a stable 413 when stream cancellation rejects', async () => {
+  let sent = false
+  const body = new ReadableStream({
+    pull(controller) {
+      if (!sent) {
+        sent = true
+        controller.enqueue(new Uint8Array(MAX_REQUEST_BYTES + 1))
+      }
+    },
+    cancel() {
+      throw new Error('cancel details must not escape')
+    },
+  })
+  const input = new Request('https://juzxailab.com/api/ask', {
+    method: 'POST',
+    headers: { origin: ORIGIN, 'content-type': 'application/json' },
+    body,
+    duplex: 'half',
+  })
+
+  await expectError(input, 'REQUEST_TOO_LARGE', 413)
+})
+
+test('a body stream read failure maps to a stable safe error', async () => {
+  const body = new ReadableStream({
+    pull(controller) {
+      controller.error(new Error('private upstream read detail'))
+    },
+  })
+  const input = new Request('https://juzxailab.com/api/ask', {
+    method: 'POST',
+    headers: { origin: ORIGIN, 'content-type': 'application/json' },
+    body,
+    duplex: 'half',
+  })
+
+  await expectError(input, 'INVALID_JSON')
+})
+
+test('rejects non-canonical Content-Length declarations', async () => {
+  for (const contentLength of ['-1', 'abc', '1, 2', '1.5', '+1', '01', '1 2', ' 1 ']) {
+    const base = request({ question: 'x' })
+    const input = {
+      method: base.method,
+      body: base.body,
+      headers: {
+        get(name) {
+          if (name.toLowerCase() === 'content-length') return contentLength
+          return base.headers.get(name)
+        },
+      },
+    }
+    await expectError(input, 'INVALID_CONTENT_LENGTH')
+  }
+})
+
+test('accepts canonical nonnegative decimal Content-Length', async () => {
+  for (const contentLength of ['0', '1', String(MAX_REQUEST_BYTES)]) {
+    const base = request({ question: 'x' })
+    const input = {
+      method: base.method,
+      body: base.body,
+      headers: {
+        get(name) {
+          if (name.toLowerCase() === 'content-length') return contentLength
+          return base.headers.get(name)
+        },
+      },
+    }
+    const result = await validateAskRequest(input, ORIGIN)
+    assert.equal(result.ok, true, contentLength)
+  }
 })
