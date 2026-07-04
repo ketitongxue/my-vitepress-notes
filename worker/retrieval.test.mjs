@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 
+import { buildIndex } from '../scripts/wiki-qa/indexer.mjs'
 import { retrieve, scoreChunk, tokenizeQuery } from './retrieval.mjs'
 
-const index = JSON.parse(await readFile(new URL('./generated/wiki-index.json', import.meta.url), 'utf8'))
+const index = await buildIndex(fileURLToPath(new URL('../docs', import.meta.url)))
 
 const cases = [
   ['Claude Code 的权限模型是什么？', '/wiki/concepts/claude-code-permission-model'],
@@ -53,6 +54,11 @@ test('history contributes less than the current question', () => {
   )
 })
 
+test('body term frequency is preserved and capped at three matches', () => {
+  const chunk = { title: '', section: '', tags: [], text: 'alpha alpha alpha alpha' }
+  assert.equal(scoreChunk(chunk, ['alpha'], []), 3)
+})
+
 test('retrieval applies page, chunk, and context limits deterministically', () => {
   const first = retrieve(index, '智能体 工作流 上下文 工程 Claude Code 产品 反馈', [])
   const second = retrieve(index, '智能体 工作流 上下文 工程 Claude Code 产品 反馈', [])
@@ -81,4 +87,8 @@ test('a second chunk from the same page is penalized', () => {
 test('irrelevant questions are not confident', () => {
   const result = retrieve(index, '红烧牛肉应该放多少八角和冰糖？', [])
   assert.equal(result.confident, false)
+  assert.ok(result.sources.length <= 3)
+  assert.ok(result.chunks.length <= 3)
+  assert.equal(new Set(result.sources.map((source) => source.url)).size, result.sources.length)
+  assert.ok(result.context.length <= 8_000)
 })

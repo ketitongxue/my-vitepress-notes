@@ -24,7 +24,7 @@ function normalized(value) {
     .replace(/\s+/g, ' ')
 }
 
-export function tokenizeQuery(value) {
+function tokenize(value, deduplicate) {
   const terms = []
   for (const token of normalized(value).split(' ').filter(Boolean)) {
     if (/^[a-z0-9]+$/i.test(token) || token.length <= 2) {
@@ -35,7 +35,11 @@ export function tokenizeQuery(value) {
       }
     }
   }
-  return [...new Set(terms)]
+  return deduplicate ? [...new Set(terms)] : terms
+}
+
+export function tokenizeQuery(value) {
+  return tokenize(value, true)
 }
 
 function termFrequency(terms) {
@@ -48,7 +52,7 @@ function fieldScore(chunk, term) {
   const titleTerms = new Set(tokenizeQuery(chunk.title))
   const sectionTerms = new Set(tokenizeQuery(chunk.section))
   const tagTerms = new Set(tokenizeQuery((chunk.tags ?? []).join(' ')))
-  const bodyFrequencies = termFrequency(tokenizeQuery(chunk.text))
+  const bodyFrequencies = termFrequency(tokenize(chunk.text, false))
   return (titleTerms.has(term) ? FIELD_WEIGHTS.title : 0)
     + (sectionTerms.has(term) ? FIELD_WEIGHTS.section : 0)
     + (tagTerms.has(term) ? FIELD_WEIGHTS.tags : 0)
@@ -86,13 +90,18 @@ export function retrieve(index, question, history = []) {
     .map((chunk) => ({ chunk, rawScore: scoreChunk(chunk, currentTerms, historicalTerms) }))
     .filter(({ rawScore }) => rawScore > 0)
 
+  const highestRawScore = candidates.reduce((highest, item) => Math.max(highest, item.rawScore), 0)
+  const confident = highestRawScore >= CONFIDENCE_SCORE_THRESHOLD
+  const resultChunkLimit = confident ? MAX_CHUNKS : 3
+  const resultPageLimit = confident ? MAX_CHUNKS_PER_PAGE : 1
+
   const selected = []
   const pageCounts = new Map()
   let contextLength = 0
-  while (selected.length < MAX_CHUNKS) {
+  while (selected.length < resultChunkLimit) {
     const ranked = candidates
       .filter(({ chunk }) => !selected.some((item) => item.chunk.id === chunk.id))
-      .filter(({ chunk }) => (pageCounts.get(chunk.url) ?? 0) < MAX_CHUNKS_PER_PAGE)
+      .filter(({ chunk }) => (pageCounts.get(chunk.url) ?? 0) < resultPageLimit)
       .map((candidate) => ({
         ...candidate,
         adjustedScore: candidate.rawScore
@@ -115,9 +124,8 @@ export function retrieve(index, question, history = []) {
     contextLength += separatorLength + rendered.length
   }
 
-  const highestRawScore = candidates.reduce((highest, item) => Math.max(highest, item.rawScore), 0)
   return {
-    confident: highestRawScore >= CONFIDENCE_SCORE_THRESHOLD,
+    confident,
     score: highestRawScore,
     sources: selected.map(({ chunk, adjustedScore }) => sourceFor(chunk, adjustedScore)),
     chunks: selected.map(({ chunk }) => chunk),
