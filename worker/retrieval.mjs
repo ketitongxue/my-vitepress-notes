@@ -27,11 +27,12 @@ function normalized(value) {
 function tokenize(value, deduplicate) {
   const terms = []
   for (const token of normalized(value).split(' ').filter(Boolean)) {
-    if (/^[a-z0-9]+$/i.test(token) || token.length <= 2) {
+    const codePoints = [...token]
+    if (/^[a-z0-9]+$/i.test(token) || codePoints.length <= 2) {
       terms.push(token)
     } else {
-      for (let index = 0; index < token.length - 1; index += 1) {
-        terms.push(token.slice(index, index + 2))
+      for (let index = 0; index < codePoints.length - 1; index += 1) {
+        terms.push(codePoints.slice(index, index + 2).join(''))
       }
     }
   }
@@ -48,22 +49,35 @@ function termFrequency(terms) {
   return frequencies
 }
 
-function fieldScore(chunk, term) {
-  const titleTerms = new Set(tokenizeQuery(chunk.title))
-  const sectionTerms = new Set(tokenizeQuery(chunk.section))
-  const tagTerms = new Set(tokenizeQuery((chunk.tags ?? []).join(' ')))
-  const bodyFrequencies = termFrequency(tokenize(chunk.text, false))
-  return (titleTerms.has(term) ? FIELD_WEIGHTS.title : 0)
-    + (sectionTerms.has(term) ? FIELD_WEIGHTS.section : 0)
-    + (tagTerms.has(term) ? FIELD_WEIGHTS.tags : 0)
-    + Math.min(bodyFrequencies.get(term) ?? 0, 3) * FIELD_WEIGHTS.body
+function compileChunk(chunk) {
+  return {
+    titleTerms: new Set(tokenizeQuery(chunk.title)),
+    sectionTerms: new Set(tokenizeQuery(chunk.section)),
+    tagTerms: new Set(tokenizeQuery((chunk.tags ?? []).join(' '))),
+    bodyFrequencies: termFrequency(tokenize(chunk.text, false)),
+  }
+}
+
+function fieldScore(compiled, term) {
+  return (compiled.titleTerms.has(term) ? FIELD_WEIGHTS.title : 0)
+    + (compiled.sectionTerms.has(term) ? FIELD_WEIGHTS.section : 0)
+    + (compiled.tagTerms.has(term) ? FIELD_WEIGHTS.tags : 0)
+    + Math.min(compiled.bodyFrequencies.get(term) ?? 0, 3) * FIELD_WEIGHTS.body
+}
+
+function scoreTerms(compiled, terms, weight) {
+  let score = 0
+  for (const term of new Set(terms)) score += fieldScore(compiled, term) * weight
+  return score
+}
+
+function scoreCompiled(compiled, currentTerms, historicalTerms) {
+  return scoreTerms(compiled, currentTerms, CURRENT_QUESTION_WEIGHT)
+    + scoreTerms(compiled, historicalTerms, HISTORICAL_QUESTION_WEIGHT)
 }
 
 export function scoreChunk(chunk, currentTerms, historicalTerms = []) {
-  let score = 0
-  for (const term of new Set(currentTerms)) score += fieldScore(chunk, term) * CURRENT_QUESTION_WEIGHT
-  for (const term of new Set(historicalTerms)) score += fieldScore(chunk, term) * HISTORICAL_QUESTION_WEIGHT
-  return score
+  return scoreCompiled(compileChunk(chunk), currentTerms, historicalTerms)
 }
 
 function historyQuestions(history) {
@@ -87,11 +101,19 @@ export function retrieve(index, question, history = []) {
   const currentTerms = tokenizeQuery(question)
   const historicalTerms = tokenizeQuery(historyQuestions(history).join(' '))
   const candidates = (index?.chunks ?? [])
-    .map((chunk) => ({ chunk, rawScore: scoreChunk(chunk, currentTerms, historicalTerms) }))
+    .map((chunk) => {
+      const compiled = compileChunk(chunk)
+      const currentScore = scoreTerms(compiled, currentTerms, CURRENT_QUESTION_WEIGHT)
+      return {
+        chunk,
+        currentScore,
+        rawScore: currentScore + scoreTerms(compiled, historicalTerms, HISTORICAL_QUESTION_WEIGHT),
+      }
+    })
     .filter(({ rawScore }) => rawScore > 0)
 
-  const highestRawScore = candidates.reduce((highest, item) => Math.max(highest, item.rawScore), 0)
-  const confident = highestRawScore >= CONFIDENCE_SCORE_THRESHOLD
+  const highestCurrentScore = candidates.reduce((highest, item) => Math.max(highest, item.currentScore), 0)
+  const confident = highestCurrentScore >= CONFIDENCE_SCORE_THRESHOLD
   const resultChunkLimit = confident ? MAX_CHUNKS : 3
   const resultPageLimit = confident ? MAX_CHUNKS_PER_PAGE : 1
 
@@ -102,9 +124,10 @@ export function retrieve(index, question, history = []) {
     const ranked = candidates
       .filter(({ chunk }) => !selected.some((item) => item.chunk.id === chunk.id))
       .filter(({ chunk }) => (pageCounts.get(chunk.url) ?? 0) < resultPageLimit)
+      .filter((candidate) => confident || candidate.currentScore > 0)
       .map((candidate) => ({
         ...candidate,
-        adjustedScore: candidate.rawScore
+        adjustedScore: (confident ? candidate.rawScore : candidate.currentScore)
           * ((pageCounts.get(candidate.chunk.url) ?? 0) === 1 ? SAME_PAGE_SECOND_CHUNK_MULTIPLIER : 1),
       }))
       .sort((left, right) => right.adjustedScore - left.adjustedScore
@@ -126,7 +149,7 @@ export function retrieve(index, question, history = []) {
 
   return {
     confident,
-    score: highestRawScore,
+    score: highestCurrentScore,
     sources: selected.map(({ chunk, adjustedScore }) => sourceFor(chunk, adjustedScore)),
     chunks: selected.map(({ chunk }) => chunk),
     context: selected.map(({ rendered }) => rendered).join('\n\n'),

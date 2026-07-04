@@ -19,6 +19,10 @@ test('tokenizeQuery normalizes Chinese and Latin search terms', () => {
   assert.deepEqual(tokenizeQuery('Claude_Code：权限模型！'), ['claude', 'code', '权限', '限模', '模型'])
 })
 
+test('tokenizeQuery makes CJK bigrams by Unicode code point', () => {
+  assert.deepEqual(tokenizeQuery('𠀀𠀁𠀂'), ['𠀀𠀁', '𠀁𠀂'])
+})
+
 test('fixed question set puts the expected page in the top three', () => {
   for (const [question, expectedUrl] of cases) {
     const result = retrieve(index, question, [])
@@ -52,6 +56,22 @@ test('history contributes less than the current question', () => {
     scoreChunk(permissionChunk, currentTerms, historicalTerms)
       > scoreChunk(contextChunk, currentTerms, historicalTerms),
   )
+})
+
+test('history cannot make an unrelated current question confident', () => {
+  const result = retrieve(index, '红烧牛肉应该放多少八角和冰糖？', [
+    { role: 'user', content: 'Claude Code 的权限模型是什么？' },
+    { role: 'assistant', content: '它通过不同权限模式控制工具调用。' },
+  ])
+  assert.equal(result.confident, false)
+})
+
+test('long repeated queries stay deterministic without multiplying document preprocessing', () => {
+  const question = Array.from({ length: 300 }, (_, index) => `上下文工程 term${index}`).join(' ')
+  const first = retrieve(index, question, [])
+  const second = retrieve(index, question, [])
+  assert.deepEqual(first, second)
+  assert.ok(first.chunks.length <= 6)
 })
 
 test('body term frequency is preserved and capped at three matches', () => {
