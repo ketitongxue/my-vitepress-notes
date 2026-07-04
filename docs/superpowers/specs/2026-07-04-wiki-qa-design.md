@@ -119,9 +119,11 @@ Worker 使用 DeepSeek OpenAI 兼容的 Chat Completions 接口和模型 ID `dee
 
 - 每个 IP 每分钟最多 5 次
 - 每个匿名 IP 哈希每天最多 30 次
-- 全站每天最多 300 次 DeepSeek 调用
+- 全站每天最多 50 次 DeepSeek 调用
 
-短时限速使用 Cloudflare Rate Limiting binding；每日计数使用 KV。IP 仅经过带服务端盐值的单向哈希后作为 KV 键，日志不记录完整 IP。
+短时限速使用 Cloudflare Rate Limiting binding。个人每日额度和全站每日额度由单例 Durable Object 严格计数，避免 KV 最终一致性导致并发请求突破成本上限。Durable Object 按 UTC 日期保存全站计数和匿名访客计数；日期变化时开始新的计数窗口。
+
+IP 仅经过带服务端盐值的 HMAC-SHA-256 后交给 Durable Object，日志和持久化状态都不记录完整 IP。盐值保存为 Cloudflare Secret `IP_HASH_SALT`。
 
 只有通过输入校验且达到最低召回阈值的请求才消耗 DeepSeek 调用额度。额度值通过 Worker 环境变量配置，但生产环境必须设置上限，不能无限制运行。
 
@@ -157,7 +159,7 @@ Worker 使用 DeepSeek OpenAI 兼容的 Chat Completions 接口和模型 ID `dee
 - 标题、标签、章节和正文权重
 - 多片段去重、长度上限和低相关度拒答
 - 请求结构、Origin、内容类型和大小限制
-- 每分钟、个人每日和全站每日额度
+- 每分钟、个人每日和全站每日额度，包括并发请求下全站 50 次硬上限
 - DeepSeek 请求体、模型 ID、超时、取消和错误转换
 - SSE 事件解析、引用编号校验和无效引用处理
 - `sessionStorage` 最近 6 轮、停止与清空行为
