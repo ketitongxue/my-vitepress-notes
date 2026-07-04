@@ -91,6 +91,18 @@ test('scanner catches generic Unix paths and near-miss fixtures in source and pl
   ))
 })
 
+test('regex-shaped filesystem paths are never exempt by shape alone', () => {
+  const paths = [
+    ['', 'etc', 'g'].join('/'),
+    ['', 'root', 'gi'].join('/'),
+    ['', 'srv', 'm'].join('/'),
+    ['', 'private', 'u.test'].join('/'),
+  ]
+  for (const value of paths) {
+    assert.deepEqual(scanText('worker/leak.mjs', value), ['worker/leak.mjs: local absolute path'])
+  }
+})
+
 test('scanner allows web routes, URLs, imports, and regex source', () => {
   assert.deepEqual(scanText('worker/safe.mjs', [
     '/wiki/concepts/attention',

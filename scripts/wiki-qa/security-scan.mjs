@@ -40,6 +40,18 @@ const SAFE_PROJECT_PATHS = [
   /^\/assets\/[A-Za-z0-9_./-]+$/,
   /^\/(?:worker|scripts)\/[A-Za-z0-9_./-]+$/,
 ]
+const EXACT_REGEX_SOURCE_TOKENS = new Set([
+  ['', '-', 'g'].join('/'),
+  ['', '2g', '.test'].join('/'),
+  ['', 'allowed', 'i'].join('/'),
+  ['', 'hash', 'i'].join('/'),
+  ['', 'publicPath', 'i'].join('/'),
+  ['', 'reference-missing', 'i'].join('/'),
+  ['', 'relative', 'i'].join('/'),
+  ['', 'source', 'i'].join('/'),
+  ['', 'status', 'i'].join('/'),
+  ['', 'wikilink', 'i'].join('/'),
+])
 
 function addFinding(findings, file, kind) {
   findings.push(`${file}: ${kind}`)
@@ -60,6 +72,10 @@ function withoutWebUrls(text) {
 function isSafeProjectPath(value) {
   if (value.split('/').some((segment) => segment === '.' || segment === '..')) return false
   return SAFE_PROJECT_PATHS.some((pattern) => pattern.test(value))
+}
+
+function isKnownRegexSource(file, value) {
+  return /\.[cm]?[jt]s$/.test(file) && EXACT_REGEX_SOURCE_TOKENS.has(value)
 }
 
 export function scanText(file, text, { artifact = false } = {}) {
@@ -86,9 +102,7 @@ export function scanText(file, text, { artifact = false } = {}) {
   ]
   for (const match of absolutePaths) {
     const value = match[1].replace(/[.,，。]$/, '')
-    const simpleRegexLiteral = /^\/[A-Za-z0-9_.-]+\/[dgimsuvy]+$/.test(value)
-      || /^\/[A-Za-z0-9_.-]+\/[dgimsuvy]*\.(?:exec|match|replace|search|split|test)$/.test(value)
-    if (!simpleRegexLiteral && !isSafeProjectPath(value)
+    if (!isKnownRegexSource(file, value) && !isSafeProjectPath(value)
       && (artifact || !isTest || !isAllowedTestFixture(value))) {
       addFinding(findings, file, 'local absolute path')
     }
