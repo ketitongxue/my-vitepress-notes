@@ -23,5 +23,19 @@
         "period": 60
       }
     }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "QA_QUOTA",
+        "class_name": "DailyQuota"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["DailyQuota"]
+    }
   ]
 }

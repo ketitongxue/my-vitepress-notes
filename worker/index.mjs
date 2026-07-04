@@ -8,6 +8,8 @@ function withNoStore(response) {
   })
 }
 
+export { DailyQuota } from './daily-quota.mjs'
+
 function notFound() {
   return Response.json(
     { error: 'Not found' },
