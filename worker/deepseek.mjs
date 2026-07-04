@@ -18,13 +18,13 @@ function statusError(status) {
 }
 
 function formatSources(sources) {
-  return sources.map((source, index) => [
-    `[${index + 1}]`,
-    `标题: ${source.title}`,
-    `章节: ${source.section}`,
-    `站内路径: ${source.url}`,
-    `内容: ${source.text}`,
-  ].join('\n')).join('\n\n')
+  return sources.map((source, index) => JSON.stringify({
+    citation: `[${index + 1}]`,
+    title: source.title,
+    section: source.section,
+    url: source.url,
+    text: source.text,
+  }).replace(/[<>&]/g, (character) => `\\u${character.codePointAt(0).toString(16).padStart(4, '0')}`)).join('\n')
 }
 
 function systemPrompt(sources) {
@@ -44,6 +44,7 @@ function requestBody({ model, question, history, sources }) {
   return JSON.stringify({
     model,
     stream: true,
+    stream_options: { include_usage: true },
     max_tokens: MAX_TOKENS,
     messages: [
       { role: 'system', content: systemPrompt(sources) },
@@ -79,30 +80,19 @@ function createCitationFilter(sourceCount) {
         break
       }
       output += input.slice(cursor, open)
-      let end = open + 1
-      while (end < input.length && /[0-9]/.test(input[end])) end += 1
-
-      if (end === open + 1) {
-        if (!final && end === input.length) pending = input.slice(open)
-        else output += '['
-        cursor = open + 1
-        if (pending) break
-        continue
-      }
-      if (end === input.length) {
-        if (!final) pending = input.slice(open)
+      const close = input.indexOf(']', open + 1)
+      if (close < 0) {
+        const remainder = input.slice(open + 1)
+        if (!final && /^[+\-\s\d]*$/.test(remainder)) pending = input.slice(open)
         else output += input.slice(open)
         break
       }
-      if (input[end] !== ']') {
-        output += input.slice(open, end)
-        cursor = end
-        continue
-      }
-
-      const citation = Number(input.slice(open + 1, end))
-      if (citation >= 1 && citation <= sourceCount) output += input.slice(open, end + 1)
-      cursor = end + 1
+      const inner = input.slice(open + 1, close)
+      const citationLike = /^[+\-\s]*\d[\d\s]*$/.test(inner)
+      const canonical = /^[1-9]\d*$/.test(inner)
+      const citation = canonical ? Number(inner) : 0
+      if (!citationLike || (canonical && citation <= sourceCount)) output += input.slice(open, close + 1)
+      cursor = close + 1
     }
     return output
   }
@@ -128,11 +118,25 @@ async function* parseProviderEvents(reader) {
   while (true) {
     const { done, value } = await reader.read()
     buffer += decoder.decode(value, { stream: !done })
-    let lineEnd
-    while ((lineEnd = buffer.indexOf('\n')) >= 0) {
-      let line = buffer.slice(0, lineEnd)
-      buffer = buffer.slice(lineEnd + 1)
-      if (line.endsWith('\r')) line = line.slice(0, -1)
+    while (true) {
+      let lineEnd = -1
+      let separatorLength = 0
+      for (let index = 0; index < buffer.length; index += 1) {
+        if (buffer[index] === '\n') {
+          lineEnd = index
+          separatorLength = 1
+          break
+        }
+        if (buffer[index] === '\r') {
+          if (index + 1 === buffer.length && !done) break
+          lineEnd = index
+          separatorLength = buffer[index + 1] === '\n' ? 2 : 1
+          break
+        }
+      }
+      if (lineEnd < 0) break
+      const line = buffer.slice(0, lineEnd)
+      buffer = buffer.slice(lineEnd + separatorLength)
       if (line === '') {
         const event = dispatch()
         if (event !== null) yield event
@@ -145,7 +149,6 @@ async function* parseProviderEvents(reader) {
     if (done) break
   }
 
-  if (buffer.endsWith('\r')) buffer = buffer.slice(0, -1)
   if (buffer === 'data') dataLines.push('')
   else if (buffer.startsWith('data:')) dataLines.push(buffer.slice(5).replace(/^ /, ''))
   const event = dispatch()
@@ -264,4 +267,3 @@ export async function streamDeepSeek({
     },
   })
 }
-
