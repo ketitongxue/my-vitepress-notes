@@ -13,7 +13,7 @@ import {
 
 type AskState = 'idle' | 'retrieving' | 'streaming' | 'complete' | 'error'
 type Role = 'user' | 'assistant'
-type Citation = { id: string; title: string; section?: string; url: string }
+type Citation = { id: string; number: number; title: string; section?: string; url: string }
 type ChatMessage = { role: Role; content: string; sources?: Citation[] }
 
 const STORAGE_KEY = 'wiki-ask:v1:history'
@@ -203,9 +203,9 @@ onMounted(loadHistory)
         <p class="wiki-ask__role">{{ message.role === 'user' ? '你' : '知识库助手' }}</p>
         <p class="wiki-ask__answer">{{ message.content || '…' }}</p>
         <ul v-if="message.sources?.length" class="wiki-ask__citations" aria-label="回答引用">
-          <li v-for="(source, sourceIndex) in message.sources" :key="source.id">
+          <li v-for="source in message.sources" :key="source.id">
             <a :href="source.url">
-              <span>[{{ sourceIndex + 1 }}] {{ source.title }}</span>
+              <span>[{{ source.number }}] {{ source.title }}</span>
               <small v-if="source.section">{{ source.section }}</small>
             </a>
           </li>
