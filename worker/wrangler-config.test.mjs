@@ -35,6 +35,10 @@ test('main test script runs Worker tests and Wrangler is pinned', async () => {
 
 test('Cloudflare builds use Node 22', async () => {
   const nodeVersion = await readFile(new URL('../.node-version', import.meta.url), 'utf8')
+  const readme = await readFile(new URL('../README.md', import.meta.url), 'utf8')
 
   assert.equal(nodeVersion.trim(), '22')
+  assert.match(readme, /要求 Node\.js 22 或更高版本。/, 'README Node requirement')
+  assert.match(readme, /Node\.js：`22`/, 'README Cloudflare Node')
+  assert.doesNotMatch(readme, /Node\.js(?:：`| )20/, 'README must not recommend Node 20')
 })
