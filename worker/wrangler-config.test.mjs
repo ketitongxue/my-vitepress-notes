@@ -32,3 +32,9 @@ test('main test script runs Worker tests and Wrangler is pinned', async () => {
   assert.doesNotMatch(packageJson.scripts.build, /npm run build/)
   assert.equal(packageJson.devDependencies.wrangler, '4.107.0')
 })
+
+test('Cloudflare builds use Node 22', async () => {
+  const nodeVersion = await readFile(new URL('../.node-version', import.meta.url), 'utf8')
+
+  assert.equal(nodeVersion.trim(), '22')
+})
