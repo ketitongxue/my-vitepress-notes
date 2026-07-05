@@ -35,7 +35,7 @@ function formatSources(sources) {
 
 function systemPrompt(sources) {
   return [
-    '你是“柯提的 AI 纪元”知识库问答助手。',
+    '你是“AI 纪元”知识库问答助手。',
     '只依据提供的知识片段回答，使用中文，答案清晰简洁。',
     '如果资料不足，明确说明知识库信息不足；不要凭空补充。',
     `引用只能使用 [1] 到 [${sources.length}]，不要构造站外引用或 URL。`,

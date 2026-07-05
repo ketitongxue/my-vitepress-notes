@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: 柯提的 AI 纪元
+  name: AI 纪元
   text: 探索智能时代的知识、工具与创造
   tagline: 持续记录 AI、产品、工程与个人实践之间的连接。
   actions:

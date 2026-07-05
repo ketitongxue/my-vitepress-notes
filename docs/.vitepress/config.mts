@@ -2,7 +2,7 @@ import { defineConfig } from 'vitepress'
 
 export default defineConfig({
   lang: 'zh-CN',
-  title: '柯提的 AI 纪元',
+  title: 'AI 纪元',
   description: '探索智能时代的知识、工具与创造',
   appearance: 'force-dark',
   cleanUrls: true,
