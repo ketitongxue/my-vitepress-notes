@@ -3,7 +3,7 @@ title: "智能体任务简报"
 type: "concept"
 tags: ["agent", "ai-coding", "planning", "context-engineering", "workflow"]
 created: "2026-06-13"
-updated: "2026-07-02"
+updated: "2026-07-05"
 ---
 
 # 智能体任务简报
@@ -34,6 +34,8 @@ updated: "2026-07-02"
 
 [SDD 规格生命周期](/wiki/concepts/sdd-spec-lifecycle)把规划与对齐区分开来。起草提案还不够：在实现前，人类与智能体应明确检查假设、边界、失败行为、性能约束、绕过路径和存在争议的决定。许多代价高昂的偏离都可在对齐阶段避免。
 
+对于最小可用版本，[SDD 95-5 原则](/wiki/concepts/sdd-95-5-principle)把简报压缩为四个标题：构建什么、不构建什么、边界与验收、如何验证。这样，新用户无需安装任何 SDD 工具，也能得到一份可用规格。
+
 ## 与智能体工作的关系
 
 智能体任务简报是一种[上下文工程](/wiki/concepts/context-engineering)模式，因为它在模型开始推理前塑造输入上下文。它也是 [AI 编程工程循环](/wiki/concepts/ai-coding-engineering-loop)的一部分：先写简报，再实现；依据简报验证；发现缺口后更新简报或持久规范。
@@ -55,3 +57,4 @@ updated: "2026-07-02"
 - [AI 产品设计润色工作流](/wiki/concepts/ai-product-design-polish-workflow)
 - [SDD 规格生命周期](/wiki/concepts/sdd-spec-lifecycle)
 - [SDD 分层采用模型](/wiki/concepts/sdd-layered-adoption-model)
+- [SDD 95-5 原则](/wiki/concepts/sdd-95-5-principle)

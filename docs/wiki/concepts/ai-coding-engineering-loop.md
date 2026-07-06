@@ -3,7 +3,7 @@ title: "AI 编程工程循环"
 type: "concept"
 tags: ["ai-coding", "workflow", "planning", "evaluation", "synthesis"]
 created: "2026-06-13"
-updated: "2026-07-02"
+updated: "2026-07-05"
 ---
 
 # AI 编程工程循环
@@ -41,6 +41,8 @@ AI 编程工程循环代表一种转变：从逐条提示式编程，转向人�
 [产品分析迭代循环](/wiki/concepts/product-analytics-iteration-loop)闭合发布后循环。用户可以访问产品后，智能体辅助工作流应安装测量工具、检查真实行为、依据假设修改产品，再次测量同一信号。
 
 [SDD 规格生命周期](/wiki/concepts/sdd-spec-lifecycle)把实现循环进一步明确为规划、对齐、执行、测试和归档。[SDD 分层采用模型](/wiki/concepts/sdd-layered-adoption-model)决定项目需要多少纪律，而 [AI 知识工程反馈循环](/wiki/concepts/ai-knowledge-engineering-feedback-loop)确保审查发现能够改进未来的记忆、技能、hooks 和规范。
+
+[SDD 95-5 原则](/wiki/concepts/sdd-95-5-principle)让入口保持务实：先手写最小可用规格，再只对那些已经证明会重复出现的步骤进行工具化。工具选择应建立在对工作流的理解之上，而不是先于这种理解。
 
 ## 为什么重要
 
@@ -95,3 +97,4 @@ AI 编程工程循环代表一种转变：从逐条提示式编程，转向人�
 - [SDD 分层采用模型](/wiki/concepts/sdd-layered-adoption-model)
 - [SDD 规格生命周期](/wiki/concepts/sdd-spec-lifecycle)
 - [AI 知识工程反馈循环](/wiki/concepts/ai-knowledge-engineering-feedback-loop)
+- [SDD 95-5 原则](/wiki/concepts/sdd-95-5-principle)

@@ -3,7 +3,7 @@ title: "规格驱动开发"
 type: "concept"
 tags: ["workflow", "ai-coding", "planning", "evaluation", "context-engineering"]
 created: "2026-06-13"
-updated: "2026-07-02"
+updated: "2026-07-05"
 ---
 
 # 规格驱动开发
@@ -26,6 +26,8 @@ updated: "2026-07-02"
 四层方法论材料把这个简单循环扩展为 [SDD 规格生命周期](/wiki/concepts/sdd-spec-lifecycle)：规划、对齐、执行、测试和归档。其核心观点是，SDD 不只是更好的第一条提示词或静态系统设计文档，而是一个同时保留当前事实和决策历史的受管理变更生命周期。
 
 [SDD 分层采用模型](/wiki/concepts/sdd-layered-adoption-model)让采用程度与项目相称。小型项目可能只需要澄清和项目常量，长期或争议较大的系统则可加入变更跟踪、多角色审阅和强制 TDD 门禁。
+
+[SDD 95-5 原则](/wiki/concepts/sdd-95-5-principle)补充了采用顺序：先养成编写小型结构化规格的习惯，再比较或安装工作流工具。只有反复手工使用暴露出值得消除或强制执行的具体步骤后，才应引入自动化。
 
 ## 规格中应包含什么
 
@@ -55,3 +57,4 @@ SDD 把审阅从主观品味转化为清单验证。人类不再问“我喜欢�
 - [SDD 分层采用模型](/wiki/concepts/sdd-layered-adoption-model)
 - [SDD 规格生命周期](/wiki/concepts/sdd-spec-lifecycle)
 - [AI 知识工程反馈循环](/wiki/concepts/ai-knowledge-engineering-feedback-loop)
+- [SDD 95-5 原则](/wiki/concepts/sdd-95-5-principle)

@@ -5,10 +5,10 @@ description: 面向 AI 编程、智能体工程与产品实践的中文知识库
 
 # LLM Wiki 中文知识库
 
-这里收录 42 篇经过整理的中文知识页面，涵盖实体、核心概念与对比分析。
+这里收录 43 篇经过整理的中文知识页面，涵盖实体、核心概念与对比分析。
 
-- 页面总数：**42**
-- 最近同步日期：**2026-07-03**
+- 页面总数：**43**
+- 最近同步日期：**2026-07-05**
 
 ## 实体
 
@@ -47,6 +47,7 @@ description: 面向 AI 编程、智能体工程与产品实践的中文知识库
 - [产品邮件投递工作流](/wiki/concepts/product-email-delivery-workflow)
 - [产品反馈循环](/wiki/concepts/product-feedback-loop)
 - [渐进式披露](/wiki/concepts/progressive-disclosure)
+- [SDD 95-5 原则](/wiki/concepts/sdd-95-5-principle)
 - [SDD 分层采用模型](/wiki/concepts/sdd-layered-adoption-model)
 - [SDD 规格生命周期](/wiki/concepts/sdd-spec-lifecycle)
 - [无服务器定时任务](/wiki/concepts/serverless-scheduled-jobs)
