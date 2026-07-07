@@ -3,7 +3,7 @@ title: "上下文工程"
 type: "concept"
 tags: ["context-engineering", "agent", "workflow", "ai-coding"]
 created: "2026-06-13"
-updated: "2026-06-20"
+updated: "2026-07-07"
 ---
 
 # 上下文工程
@@ -22,12 +22,15 @@ updated: "2026-06-20"
 
 在[智能体 Harness 工程](/wiki/concepts/agent-harness-engineering)中，上下文是智能体的 RAM；运行框架必须把活动工具描述、压缩、外部记忆、提醒和交接当作运行时资源管理。资源放置要考虑加载时机、能否跨压缩、上下文成本和权威性，从而区分提示型控制与 [Claude Code Hooks](/wiki/concepts/claude-code-hooks)、权限等框架级控制。
 
+[RAG 上下文剪枝](/wiki/concepts/rag-context-pruning)增加了按查询过滤的动态层：小型列表式模型在昂贵生成模型读取前，删除对完整答案没有贡献的检索文本块。因此，上下文工程既包括静态加载架构，也包括检索后的动态裁剪。
+
 ## 机制地图
 
 - [Claude Code 记忆文件](/wiki/concepts/claude-code-memory-files)让稳定项目规则始终可用。
 - [Claude Code 技能](/wiki/concepts/claude-code-skills)仅在相关时加载领域流程。
 - [Claude Code Hooks](/wiki/concepts/claude-code-hooks)把确定性行为移出主上下文。
 - [渐进式披露](/wiki/concepts/progressive-disclosure)避免一次加载全部知识。
+- [RAG 上下文剪枝](/wiki/concepts/rag-context-pruning)在生成前过滤高召回检索集合。
 - [智能体任务简报](/wiki/concepts/agent-task-briefing)在实现前塑造任务上下文。
 - [苏格拉底式规格细化](/wiki/concepts/socratic-spec-refinement)通过编码前对话发现缺失上下文。
 - [Claude Code 子智能体](/wiki/concepts/claude-code-subagents)把嘈杂工作隔离到可丢弃窗口。

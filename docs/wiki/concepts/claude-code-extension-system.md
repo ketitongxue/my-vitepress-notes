@@ -3,7 +3,7 @@ title: "Claude Code 扩展系统"
 type: "concept"
 tags: ["ai-coding", "developer-tool", "agent", "tool-use", "workflow"]
 created: "2026-06-13"
-updated: "2026-06-20"
+updated: "2026-07-06"
 ---
 
 # Claude Code 扩展系统
@@ -44,6 +44,8 @@ Claude Code 扩展系统是一组机制，可把基础终端智能体变成了�
 - MCP 提供工具连接。
 - 插件是分发容器。
 
+这也可以概括为一套[声明式智能体配置](/wiki/concepts/declarative-agent-configuration)：项目记忆回答“项目是什么、哪些事实必须成立”，角色文件回答“谁行动、拥有什么权限”，技能回答“重复工作怎样执行”，工具负责实际动作，Hooks 和权限负责强制边界。
+
 这种分工有助于避免一种机制承担过多职责。例如，简单提示模板通常应成为技能，而不是子智能体；高噪声测试运行器通常应成为子智能体，而不是永久加载的记忆规则。同样，“总是运行格式化器”应成为 hook，而不是记忆中的提醒，因为需要的是执行，而不是回忆指令。
 
 ## 相关内容
@@ -52,3 +54,4 @@ Claude Code 扩展系统是一组机制，可把基础终端智能体变成了�
 - [AI 编程工程循环](/wiki/concepts/ai-coding-engineering-loop)
 - [Claude Code 权限模型](/wiki/concepts/claude-code-permission-model)
 - [多智能体架构模式](/wiki/comparisons/multi-agent-architecture-patterns)
+- [声明式智能体配置](/wiki/concepts/declarative-agent-configuration)

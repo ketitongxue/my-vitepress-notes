@@ -3,7 +3,7 @@ title: "渐进式披露"
 type: "concept"
 tags: ["context-engineering", "workflow", "synthesis", "ai-coding"]
 created: "2026-06-13"
-updated: "2026-06-13"
+updated: "2026-07-07"
 ---
 
 # 渐进式披露
@@ -23,6 +23,8 @@ Claude Code 技能材料描述了三层模式：
 这是[上下文工程](/wiki/concepts/context-engineering)对稀缺上下文窗口的回答：系统先花少量 token 正确路由，只在深度有用时才为深度付费。
 
 长上下文材料将这一点扩展到稀缺性之外。即便模型能容纳全部材料，[长上下文失效模式](/wiki/concepts/long-context-failure-modes)也表明，不必要的活跃上下文可能污染、干扰、混淆当前任务，或与之冲突。因此，渐进式披露也是一种可靠性模式。
+
+[RAG 上下文剪枝](/wiki/concepts/rag-context-pruning)是检索文档的运行时对应机制：渐进式披露把信息延迟到需要时再加载，剪枝则在检索后删除对当前答案没有贡献的文本块，两者分别控制检索前后的上下文。
 
 ## 设计启发式规则
 
@@ -45,3 +47,4 @@ Claude Code 技能材料描述了三层模式：
 - [Claude Code 技能](/wiki/concepts/claude-code-skills)
 - [技能设计模式](/wiki/concepts/skill-design-patterns)
 - [长上下文失效模式](/wiki/concepts/long-context-failure-modes)
+- [RAG 上下文剪枝](/wiki/concepts/rag-context-pruning)

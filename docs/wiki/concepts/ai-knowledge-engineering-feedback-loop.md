@@ -3,7 +3,7 @@ title: "AI 知识工程反馈循环"
 type: "concept"
 tags: ["ai-coding", "workflow", "context-engineering", "memory", "synthesis"]
 created: "2026-07-02"
-updated: "2026-07-02"
+updated: "2026-07-06"
 ---
 
 # AI 知识工程反馈循环
@@ -23,6 +23,8 @@ AI 编程智能体了解通用软件模式，但不会自动知道项目已经�
 5. 未来的智能体会话继承改进后的规则集。
 
 这就是[规格驱动开发](/wiki/concepts/spec-driven-development)背后的知识复利机制。
+
+[声明式智能体配置](/wiki/concepts/declarative-agent-configuration)进一步给出了知识放置模型：稳定项目事实进入记忆，角色边界进入智能体文件，可复用流程进入技能，确定性要求进入测试或 Hooks。知识的价值不只是被记录，而是能在后续工作中自动进入正确控制面。
 
 ## 知识层级
 
@@ -65,3 +67,4 @@ AI 编程智能体了解通用软件模式，但不会自动知道项目已经�
 - [技能设计模式](/wiki/concepts/skill-design-patterns)
 - [Claude Code 记忆文件](/wiki/concepts/claude-code-memory-files)
 - [Claude Code Hooks](/wiki/concepts/claude-code-hooks)
+- [声明式智能体配置](/wiki/concepts/declarative-agent-configuration)

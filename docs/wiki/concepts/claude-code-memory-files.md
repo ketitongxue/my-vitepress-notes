@@ -3,7 +3,7 @@ title: "Claude Code 记忆文件"
 type: "concept"
 tags: ["ai-coding", "memory", "context-engineering", "workflow"]
 created: "2026-06-13"
-updated: "2026-06-20"
+updated: "2026-07-06"
 ---
 
 # Claude Code 记忆文件
@@ -31,6 +31,8 @@ project-root/.claude/rules/*.md
 
 记忆文件减少重复提示，使智能体行为更可预测。它是具体的[上下文工程](/wiki/concepts/context-engineering)机制：项目携带自己的工作契约，而不是期望智能体从聊天中推断约束。
 
+从[声明式智能体配置](/wiki/concepts/declarative-agent-configuration)看，记忆不是数据库或聊天记录，而是经过版本管理的项目意图与约束说明，类似每个新智能体会话开始前都会阅读的入职手册。
+
 根目录 `CLAUDE.md` 在会话开始时加载，并在压缩后持续相关，所以每一行都有反复出现的 token 与注意力成本。子目录 `CLAUDE.md` 仅在 Claude 读取该目录下文件时按需加载。因此根记忆应放稳定的全局事实，而不是冗长流程或狭窄规则。
 
 ## 哪些内容属于记忆
@@ -38,6 +40,8 @@ project-root/.claude/rules/*.md
 模板强调的规则包括：写代码前确认计划、避免无关改动、优先复用现有函数、不把配置硬编码、实现后测试、清理调试日志，以及不要占用用户拥有的端口或浏览器实例。
 
 这些规则通过让验证和范围控制成为环境的一部分，支撑 [AI 编程工程循环](/wiki/concepts/ai-coding-engineering-loop)。
+
+实用的项目记忆通常覆盖六类稳定信息：项目目标、技术栈、编码约定、目录职责、开发流程，以及特殊的安全、性能或合规约束。共享记忆应像代码一样接受审阅，及时删除陈旧规则。
 
 ## 写作原则
 
@@ -59,3 +63,4 @@ project-root/.claude/rules/*.md
 - [规格驱动开发](/wiki/concepts/spec-driven-development)
 - [Claude Code 技能](/wiki/concepts/claude-code-skills)
 - [Claude Code Hooks](/wiki/concepts/claude-code-hooks)
+- [声明式智能体配置](/wiki/concepts/declarative-agent-configuration)

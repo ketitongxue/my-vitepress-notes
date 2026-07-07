@@ -3,7 +3,7 @@ title: "技能设计模式"
 type: "concept"
 tags: ["developer-tool", "workflow", "context-engineering", "tool-use", "ai-coding"]
 created: "2026-06-13"
-updated: "2026-07-02"
+updated: "2026-07-06"
 ---
 
 # 技能设计模式
@@ -18,6 +18,16 @@ updated: "2026-07-02"
 | 脚本增强 | 计算或转换是确定性的。 | 把可重复逻辑放进 `scripts/`，并告诉智能体何时运行。 |
 | 知识分层 | 领域规则很多。 | 内联常用检查；更深分支则路由到参考资料。 |
 | 工具隔离 | 不同任务的风险不同。 | 视情况使用允许工具、只读模式或分叉上下文。 |
+
+## 能力成熟路径
+
+能力封装通常沿三层路径演进：
+
+1. **标准作业程序：** 一个 `SKILL.md` 用明确步骤处理稳定任务。
+2. **专家系统：** 引用、模板和脚本覆盖有意义的变体，同时保持入口文件可读。
+3. **组织工作流：** 多个角色通过受治理的流水线使用专门技能，并配置审阅和质量门禁。
+
+扩展应由真实的任务差异和复用需求驱动；简单任务不应从第三层开始。
 
 ## 与工具的关系
 
@@ -40,3 +50,5 @@ SDD 方法论材料把项目技能视为活的知识资产。第一版通常比�
 - [Claude Code 扩展系统](/wiki/concepts/claude-code-extension-system)
 - [AI 知识工程反馈循环](/wiki/concepts/ai-knowledge-engineering-feedback-loop)
 - [SDD 规格生命周期](/wiki/concepts/sdd-spec-lifecycle)
+- [声明式智能体配置](/wiki/concepts/declarative-agent-configuration)
+- [智能体流水线编排](/wiki/concepts/agent-pipeline-orchestration)
