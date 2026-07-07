@@ -5,10 +5,10 @@ description: 面向 AI 编程、智能体工程与产品实践的中文知识库
 
 # LLM Wiki 中文知识库
 
-这里收录 43 篇经过整理的中文知识页面，涵盖实体、核心概念与对比分析。
+这里收录 45 篇经过整理的中文知识页面，涵盖实体、核心概念与对比分析。
 
-- 页面总数：**43**
-- 最近同步日期：**2026-07-05**
+- 页面总数：**45**
+- 最近同步日期：**2026-07-07**
 
 ## 实体
 
@@ -34,6 +34,7 @@ description: 面向 AI 编程、智能体工程与产品实践的中文知识库
 - [Claude Code 技能](/wiki/concepts/claude-code-skills)
 - [Claude Code 子智能体](/wiki/concepts/claude-code-subagents)
 - [上下文工程](/wiki/concepts/context-engineering)
+- [声明式智能体配置](/wiki/concepts/declarative-agent-configuration)
 - [长上下文失效模式](/wiki/concepts/long-context-failure-modes)
 - [最小可复现问题报告](/wiki/concepts/minimal-reproducible-problem-report)
 - [模型能力公开信号](/wiki/concepts/model-capability-public-signals)
@@ -47,6 +48,7 @@ description: 面向 AI 编程、智能体工程与产品实践的中文知识库
 - [产品邮件投递工作流](/wiki/concepts/product-email-delivery-workflow)
 - [产品反馈循环](/wiki/concepts/product-feedback-loop)
 - [渐进式披露](/wiki/concepts/progressive-disclosure)
+- [RAG 上下文剪枝](/wiki/concepts/rag-context-pruning)
 - [SDD 95-5 原则](/wiki/concepts/sdd-95-5-principle)
 - [SDD 分层采用模型](/wiki/concepts/sdd-layered-adoption-model)
 - [SDD 规格生命周期](/wiki/concepts/sdd-spec-lifecycle)

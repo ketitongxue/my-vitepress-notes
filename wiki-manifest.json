@@ -17,10 +17,10 @@
     },
     {
       "source": "concepts/agent-harness-engineering.md",
-      "hash": "5faf0728c716334ee45a5dea4172e588733cb1c3ee20b0995532c8823fa181d9",
+      "hash": "f9ab413d6aec14602aaba203a4b06708650b1a43a6391bcb7b07d1a9265a39a4",
       "publicPath": "docs/wiki/concepts/agent-harness-engineering.md",
       "status": "published",
-      "syncedAt": "2026-07-03T00:00:00.000Z"
+      "syncedAt": "2026-07-07T14:03:23.055Z"
     },
     {
       "source": "concepts/agent-headless-execution.md",
@@ -31,10 +31,10 @@
     },
     {
       "source": "concepts/agent-pipeline-orchestration.md",
-      "hash": "d38e8dd0744da55a1465a4074d9b5789decee3880f1c40265825878ded40f524",
+      "hash": "7422ae58d48be1273a6a8b98a0d1e524793d30d89132ce154551c00e7629d833",
       "publicPath": "docs/wiki/concepts/agent-pipeline-orchestration.md",
       "status": "published",
-      "syncedAt": "2026-07-03T00:00:00.000Z"
+      "syncedAt": "2026-07-07T14:03:23.055Z"
     },
     {
       "source": "concepts/agent-task-briefing.md",
@@ -59,10 +59,10 @@
     },
     {
       "source": "concepts/ai-knowledge-engineering-feedback-loop.md",
-      "hash": "16892e7a574ac041ff2e64712b082b6554ef1a4b1f259e0c7d9e2a81cc5b2123",
+      "hash": "1985486488a1cafe2d719a48d8c5fa18a1cef2dd005cb0154de558d3615ff6ec",
       "publicPath": "docs/wiki/concepts/ai-knowledge-engineering-feedback-loop.md",
       "status": "published",
-      "syncedAt": "2026-07-03T00:00:00.000Z"
+      "syncedAt": "2026-07-07T14:03:23.055Z"
     },
     {
       "source": "concepts/ai-product-design-polish-workflow.md",
@@ -80,10 +80,10 @@
     },
     {
       "source": "concepts/claude-code-extension-system.md",
-      "hash": "4a926353cd5534a2dbd09b51dbdcb39515862cb785b02e1643bc760f2615afe6",
+      "hash": "ef86752467a21fd0083b9391b5896cf2f1a6cedec2ca002110fd703331d2c07d",
       "publicPath": "docs/wiki/concepts/claude-code-extension-system.md",
       "status": "published",
-      "syncedAt": "2026-07-03T00:00:00.000Z"
+      "syncedAt": "2026-07-07T14:03:23.055Z"
     },
     {
       "source": "concepts/claude-code-hooks.md",
@@ -94,10 +94,10 @@
     },
     {
       "source": "concepts/claude-code-memory-files.md",
-      "hash": "5e6efe3e3c596e9909b83bc60a5f4ed2ffa11c1dd0f7ba8c7621e56eb5de8994",
+      "hash": "0b532cf61a01923c4914b2f731e9346ec039e726e70f97fc3ef6640216d3d9e5",
       "publicPath": "docs/wiki/concepts/claude-code-memory-files.md",
       "status": "published",
-      "syncedAt": "2026-07-03T00:00:00.000Z"
+      "syncedAt": "2026-07-07T14:03:23.055Z"
     },
     {
       "source": "concepts/claude-code-permission-model.md",
@@ -108,31 +108,38 @@
     },
     {
       "source": "concepts/claude-code-skills.md",
-      "hash": "6a6ad067e1575d1e668af866b3f44ca5e02f3e93689c27714554026f3142e951",
+      "hash": "7c4f8acd2c1c9dfe31f1181c94fef298b97966122851d94cb325baf274742899",
       "publicPath": "docs/wiki/concepts/claude-code-skills.md",
       "status": "published",
-      "syncedAt": "2026-07-03T00:00:00.000Z"
+      "syncedAt": "2026-07-07T14:03:23.055Z"
     },
     {
       "source": "concepts/claude-code-subagents.md",
-      "hash": "8c9bb1af708b9304f9b9bf58399935725d4429cbea620630acebfb9d905cf155",
+      "hash": "90e07703bed7d5aef945eedf85336288b53bb00d5e0ec94de5fcd029622c022f",
       "publicPath": "docs/wiki/concepts/claude-code-subagents.md",
       "status": "published",
-      "syncedAt": "2026-07-03T00:00:00.000Z"
+      "syncedAt": "2026-07-07T14:03:23.055Z"
     },
     {
       "source": "concepts/context-engineering.md",
-      "hash": "bb3bfa29213dcc5ab50bc14f6bdd13fc21427f716f284d0e84c518a120b10733",
+      "hash": "44dc521066391508198a3425c1612b48a7e5d3239fb020adff0e60677b1da058",
       "publicPath": "docs/wiki/concepts/context-engineering.md",
       "status": "published",
-      "syncedAt": "2026-07-03T00:00:00.000Z"
+      "syncedAt": "2026-07-07T14:03:23.055Z"
+    },
+    {
+      "source": "concepts/declarative-agent-configuration.md",
+      "hash": "0fb13bea30e496bc73a443a6c15aeebdf21337ab88462fc73a0b2f2d1adb191c",
+      "publicPath": "docs/wiki/concepts/declarative-agent-configuration.md",
+      "status": "published",
+      "syncedAt": "2026-07-07T14:03:23.055Z"
     },
     {
       "source": "concepts/long-context-failure-modes.md",
-      "hash": "cf8c8ac714c0ddd40e4bc81d44dc1e3ae50b6b6b8b26bcc775636c93d5ea6409",
+      "hash": "f63926093e85b87a71612db3166b4c8dec174c48db4d03bcc47f65ab3a9fac4d",
       "publicPath": "docs/wiki/concepts/long-context-failure-modes.md",
       "status": "published",
-      "syncedAt": "2026-07-03T00:00:00.000Z"
+      "syncedAt": "2026-07-07T14:03:23.055Z"
     },
     {
       "source": "concepts/minimal-reproducible-problem-report.md",
@@ -213,10 +220,17 @@
     },
     {
       "source": "concepts/progressive-disclosure.md",
-      "hash": "31222f913e574495094c4d77ef98cc149a101a52cf9aa3dda91fd0b1ed0fd40f",
+      "hash": "9f0149017bd4e94b818280a40d2a0d2de36f00eb6cda8b2ddfc82776be67ca1e",
       "publicPath": "docs/wiki/concepts/progressive-disclosure.md",
       "status": "published",
-      "syncedAt": "2026-07-03T00:00:00.000Z"
+      "syncedAt": "2026-07-07T14:03:23.055Z"
+    },
+    {
+      "source": "concepts/rag-context-pruning.md",
+      "hash": "22e7a78bbc56675fad5e58f68603eeeea81a8b843f62f04b74d12cdc64acfbe7",
+      "publicPath": "docs/wiki/concepts/rag-context-pruning.md",
+      "status": "published",
+      "syncedAt": "2026-07-07T14:03:23.055Z"
     },
     {
       "source": "concepts/sdd-95-5-principle.md",
@@ -248,10 +262,10 @@
     },
     {
       "source": "concepts/skill-design-patterns.md",
-      "hash": "3a9aa4ae4e8776c35da7f26d3a9df293b5220b17da215977ab016d5ebe78e8b4",
+      "hash": "3a2b52b00ec5fd9294bd1dbce559d677b2ce2df7b8fed6c9e4b8294f7415bd9e",
       "publicPath": "docs/wiki/concepts/skill-design-patterns.md",
       "status": "published",
-      "syncedAt": "2026-07-03T00:00:00.000Z"
+      "syncedAt": "2026-07-07T14:03:23.055Z"
     },
     {
       "source": "concepts/smart-technical-questioning.md",

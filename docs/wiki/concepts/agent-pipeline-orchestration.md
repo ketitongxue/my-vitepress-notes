@@ -3,7 +3,7 @@ title: "智能体流水线编排"
 type: "concept"
 tags: ["agent", "delegation", "workflow", "planning", "automation"]
 created: "2026-06-13"
-updated: "2026-06-13"
+updated: "2026-07-06"
 ---
 
 # 智能体流水线编排
@@ -32,7 +32,11 @@ updated: "2026-06-13"
 - 尚未解决的风险。
 - 下一阶段所需的输入。
 
+对于顺序数据流程，权限边界也应跟随阶段变化：采集者可以访问网络但不能写入权威数据，分析者读取证据但不修改来源，整理者写入规范文件但不抓取新事实。结构化文件或经过校验的 JSON 通常比复制完整对话更适合作为移交契约。[声明式智能体配置](/wiki/concepts/declarative-agent-configuration)可把这些角色、权限和输出要求固化为可审阅文件。
+
 ## 相关内容
 
 - [多智能体架构模式](/wiki/comparisons/multi-agent-architecture-patterns)
 - [AI 编程工程循环](/wiki/concepts/ai-coding-engineering-loop)
+- [声明式智能体配置](/wiki/concepts/declarative-agent-configuration)
+- [Claude Code 技能](/wiki/concepts/claude-code-skills)

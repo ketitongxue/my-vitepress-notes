@@ -3,7 +3,7 @@ title: "智能体 Harness 工程"
 type: "concept"
 tags: ["agent", "agent-harness", "context-engineering", "tool-use", "safety", "evaluation", "cost"]
 created: "2026-06-17"
-updated: "2026-06-20"
+updated: "2026-07-07"
 ---
 
 # 智能体 Harness 工程
@@ -37,6 +37,8 @@ updated: "2026-06-20"
 
 模型选择相关内容把 harness 视角继续向上游扩展。Harness 不应把模型视为可以随意互换的品牌选项。在部署智能体之前，公开排名、置信区间、价格、延迟和供应商可用性都是运行时设计预算的一部分。
 
+[RAG 上下文剪枝](/wiki/concepts/rag-context-pruning)为 Harness 增加了一层上下文中间件：小型列表式模型可以先过滤工具返回的高召回检索结果，再把必要证据交给主智能体，以适度延迟和召回风险换取更低成本与更多工作容量。[声明式智能体配置](/wiki/concepts/declarative-agent-configuration)则把记忆、角色、技能、工具和强制规则组织为可审阅的运行契约。
+
 ## 相关内容
 
 - [框架优先与 Harness 优先的智能体架构](/wiki/comparisons/framework-vs-harness-agent-architecture)
@@ -46,3 +48,5 @@ updated: "2026-06-20"
 - [长上下文失效模式](/wiki/concepts/long-context-failure-modes)
 - [Claude Code 子智能体](/wiki/concepts/claude-code-subagents)
 - [模型能力公开信号](/wiki/concepts/model-capability-public-signals)
+- [声明式智能体配置](/wiki/concepts/declarative-agent-configuration)
+- [RAG 上下文剪枝](/wiki/concepts/rag-context-pruning)
