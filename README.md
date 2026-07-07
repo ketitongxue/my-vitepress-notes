@@ -4,7 +4,7 @@
 
 ## 本地开发
 
-要求 Node.js 20 或更高版本。
+要求 Node.js 22 或更高版本。版本以根目录 `.node-version` 为准。
 
 ```bash
 npm install
@@ -43,7 +43,7 @@ Cloudflare Workers 连接此 GitHub 仓库，并在 `main` 分支更新后自动
 - 生产分支：`main`
 - Build command `npm run build`
 - Deploy command `npx wrangler deploy`
-- Node.js：`20`
+- Node.js：`22`（由根目录 `.node-version` 指定）
 
 `npm run build` 会先重新生成问答索引，再构建 VitePress 静态资源；Wrangler 随后同时发布
 Worker 和这些静态资源。部署前必须已配置上述两个 Secrets。

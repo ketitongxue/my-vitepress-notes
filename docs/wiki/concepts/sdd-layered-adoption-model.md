@@ -3,7 +3,7 @@ title: "SDD 分层采用模型"
 type: "concept"
 tags: ["ai-coding", "workflow", "planning", "evaluation", "context-engineering"]
 created: "2026-07-02"
-updated: "2026-07-02"
+updated: "2026-07-05"
 ---
 
 # SDD 分层采用模型
@@ -32,6 +32,8 @@ SDD 分层采用模型是一套成熟度框架，用于在 AI 辅助开发中逐
 
 这样可以避免把[规格驱动开发](/wiki/concepts/spec-driven-development)变成仪式。流程成本应与项目寿命、协作成本和失败风险相匹配。
 
+[SDD 95-5 原则](/wiki/concepts/sdd-95-5-principle)把第一道采用门槛进一步降低：先手写一份包含意图、非目标、边界、验收标准和验证方式的最小功能规格。等这套手工循环成为习惯，并显现出反复出现的自动化需求后，再加入工具。
+
 ## 机制边界
 
 L1 将稳定项目事实映射到 [Claude Code 记忆文件](/wiki/concepts/claude-code-memory-files)，并将可重复的澄清过程映射到技能。L2 把当前变更映射到 [SDD 规格生命周期](/wiki/concepts/sdd-spec-lifecycle)。L3 使用类似 [Claude Code 子智能体](/wiki/concepts/claude-code-subagents)的隔离角色。L4 则以测试和明确的转换门禁强化 [AI 编程工程循环](/wiki/concepts/ai-coding-engineering-loop)。
@@ -53,3 +55,4 @@ L1 将稳定项目事实映射到 [Claude Code 记忆文件](/wiki/concepts/clau
 - [智能体任务简报](/wiki/concepts/agent-task-briefing)
 - [Claude Code 记忆文件](/wiki/concepts/claude-code-memory-files)
 - [Claude Code 子智能体](/wiki/concepts/claude-code-subagents)
+- [SDD 95-5 原则](/wiki/concepts/sdd-95-5-principle)

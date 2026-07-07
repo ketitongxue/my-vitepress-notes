@@ -69,6 +69,7 @@ export default defineConfig({
             { text: '产品邮件投递工作流', link: '/wiki/concepts/product-email-delivery-workflow' },
             { text: '产品反馈循环', link: '/wiki/concepts/product-feedback-loop' },
             { text: '渐进式披露', link: '/wiki/concepts/progressive-disclosure' },
+            { text: 'SDD 95-5 原则', link: '/wiki/concepts/sdd-95-5-principle' },
             { text: 'SDD 分层采用模型', link: '/wiki/concepts/sdd-layered-adoption-model' },
             { text: 'SDD 规格生命周期', link: '/wiki/concepts/sdd-spec-lifecycle' },
             { text: '无服务器定时任务', link: '/wiki/concepts/serverless-scheduled-jobs' },
