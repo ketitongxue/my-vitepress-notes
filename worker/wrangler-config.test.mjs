@@ -7,6 +7,7 @@ test('Wrangler schema and assets directory use explicit relative paths', async (
 
   assert.equal(config.$schema, './node_modules/wrangler/config-schema.json')
   assert.equal(config.assets.directory, './docs/.vitepress/dist')
+  assert.equal(config.build.command, 'npm run qa:index')
 })
 
 test('Wrangler configures the exact QA rate and daily quota limits', async () => {

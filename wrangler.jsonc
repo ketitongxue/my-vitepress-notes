@@ -3,6 +3,9 @@
   "name": "my-vitepress-notes",
   "main": "worker/index.mjs",
   "compatibility_date": "2026-07-04",
+  "build": {
+    "command": "npm run qa:index"
+  },
   "assets": {
     "directory": "./docs/.vitepress/dist",
     "binding": "ASSETS",
