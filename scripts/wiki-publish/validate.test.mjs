@@ -6,7 +6,7 @@ import path from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 
-import { sha256 } from './core.mjs'
+import { scanWikiSnapshot, sha256 } from './core.mjs'
 import { validatePublishedWiki } from './validate.mjs'
 
 const CHINESE_BODY = '这是一个完整的中文知识页面，用于说明发布校验机制如何保护内容质量以及站内链接的正确性。'
@@ -67,7 +67,18 @@ test('validates finance public paths and URL prefix', async (t) => {
     docsDirectory: 'finance',
     urlPrefix: '/finance',
   }
+  const snapshot = await scanWikiSnapshot(input.docsRoot, { collection })
+  assert.equal(snapshot.inventory['concepts/good.md'].publicPath, 'docs/finance/concepts/good.md')
   assert.deepEqual(await validatePublishedWiki({ ...input, collection }), { errors: [], warnings: [] })
+})
+
+test('finance validation CLI names the selected collection when no publication exists', async (t) => {
+  const site = await mkdtemp(path.join(tmpdir(), 'finance-validate-empty-'))
+  t.after(() => rm(site, { recursive: true, force: true }))
+
+  const result = await run(site, ['--collection', 'finance'])
+  assert.equal(result.code, 0, result.stderr)
+  assert.match(result.stdout, /no published finance yet/i)
 })
 
 test('finance validation CLI pairs docs/finance with finance-manifest.json', async (t) => {

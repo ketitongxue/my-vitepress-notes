@@ -119,7 +119,7 @@ export async function validatePublishedWiki({ docsRoot, manifest, collection = c
   if (manifest?.version !== 1) errors.push('manifest: version must be 1')
   if (!Array.isArray(manifest?.pages)) errors.push('manifest: pages must be an array')
 
-  const snapshot = await scanWikiSnapshot(docsRoot)
+  const snapshot = await scanWikiSnapshot(docsRoot, { collection })
   const diskFiles = new Set(Object.keys(snapshot.inventory))
 
   const manifestSources = new Set()
@@ -174,7 +174,7 @@ async function main() {
   const manifestPath = path.join(site, collection.manifestFile)
   const [hasDocs, hasManifest] = await Promise.all([exists(docsRoot), exists(manifestPath)])
   if (!hasDocs && !hasManifest) {
-    console.log('no published wiki yet')
+    console.log(`no published ${collection.name} yet`)
     return
   }
   if (!hasDocs || !hasManifest) throw new Error(`docs/${collection.docsDirectory} and ${collection.manifestFile} must either both exist or both be absent`)
