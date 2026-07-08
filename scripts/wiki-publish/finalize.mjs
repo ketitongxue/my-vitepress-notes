@@ -136,13 +136,18 @@ async function replacePublication({ site, stagedWiki, stagedManifest, collection
   const hadWiki = await exists(wiki)
   const hadManifest = await exists(manifest)
   if (hadWiki !== hadManifest) throw new Error(`docs/${collection.docsDirectory} and ${collection.manifestFile} must both exist or both be absent`)
+  const transactionKind = hadWiki ? 'existing' : 'initial'
+  const preparedMarker = path.join(site, `${collection.publishPrefix}.transaction-prepared-${transactionKind}-${token}`)
+  const installedMarker = path.join(site, `${collection.publishPrefix}.transaction-installed-${token}`)
   await mkdir(path.dirname(wiki), { recursive: true })
+  await writeFile(preparedMarker, '')
   if (hadWiki) await renameFile(wiki, wikiBackup)
   try {
     if (hadManifest) await renameFile(manifest, manifestBackup)
     try {
       await renameFile(stagedWiki, wiki)
       await renameFile(stagedManifest, manifest)
+      await renameFile(preparedMarker, installedMarker)
     } catch (error) {
       await rm(wiki, { recursive: true, force: true })
       if (await exists(manifestBackup)) await renameFile(manifestBackup, manifest)
@@ -151,18 +156,23 @@ async function replacePublication({ site, stagedWiki, stagedManifest, collection
       throw error
     }
     await Promise.all([rm(wikiBackup, { recursive: true, force: true }), rm(manifestBackup, { force: true })])
+    await rm(installedMarker, { force: true })
   } catch (error) {
     if (hadWiki && !(await exists(wiki)) && await exists(wikiBackup)) await renameFile(wikiBackup, wiki)
     throw error
   }
 }
 
-async function recoverPublication(site, collection) {
+export async function recoverPublication(site, collection) {
   const entries = await readdir(site)
   const tokens = new Set(entries.flatMap((entry) => {
     const escaped = collection.publishPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const match = new RegExp(`^${escaped}\\.backup-(?:wiki|manifest)-(.+)$`).exec(entry)
-    return match ? [match[1]] : []
+    const backup = new RegExp(`^${escaped}\\.backup-(?:wiki|manifest)-(.+)$`).exec(entry)
+    if (backup) return [backup[1]]
+    const prepared = new RegExp(`^${escaped}\\.transaction-prepared-(?:initial|existing)-(.+)$`).exec(entry)
+    if (prepared) return [prepared[1]]
+    const installed = new RegExp(`^${escaped}\\.transaction-installed-(.+)$`).exec(entry)
+    return installed ? [installed[1]] : []
   }))
   if (tokens.size > 1) throw new Error('Cannot recover publication: multiple backup transactions')
   if (!tokens.size) return
@@ -171,9 +181,41 @@ async function recoverPublication(site, collection) {
   const manifest = path.join(site, collection.manifestFile)
   const wikiBackup = path.join(site, `${collection.publishPrefix}.backup-wiki-${token}`)
   const manifestBackup = path.join(site, `${collection.publishPrefix}.backup-manifest-${token}`)
-  const [hasWiki, hasManifest, hasWikiBackup, hasManifestBackup] = await Promise.all(
-    [wiki, manifest, wikiBackup, manifestBackup].map(exists),
+  const initialMarker = path.join(site, `${collection.publishPrefix}.transaction-prepared-initial-${token}`)
+  const existingMarker = path.join(site, `${collection.publishPrefix}.transaction-prepared-existing-${token}`)
+  const installedMarker = path.join(site, `${collection.publishPrefix}.transaction-installed-${token}`)
+  const [hasWiki, hasManifest, hasWikiBackup, hasManifestBackup, hasInitialMarker, hasExistingMarker, hasInstalledMarker] = await Promise.all(
+    [wiki, manifest, wikiBackup, manifestBackup, initialMarker, existingMarker, installedMarker].map(exists),
   )
+  const markerCount = [hasInitialMarker, hasExistingMarker, hasInstalledMarker].filter(Boolean).length
+  if (markerCount > 1) throw new Error('Cannot recover publication: conflicting transaction markers')
+  if (hasInstalledMarker) {
+    if (!hasWiki || !hasManifest) throw new Error('Cannot recover publication: installed transaction is incomplete')
+    await Promise.all([
+      rm(wikiBackup, { recursive: true, force: true }),
+      rm(manifestBackup, { force: true }),
+      rm(installedMarker, { force: true }),
+    ])
+    return
+  }
+  if (hasInitialMarker || hasExistingMarker) {
+    if (hasInitialMarker) {
+      await rm(wiki, { recursive: true, force: true })
+      await rm(manifest, { force: true })
+    } else {
+      if (hasWikiBackup) {
+        await rm(wiki, { recursive: true, force: true })
+        await rename(wikiBackup, wiki)
+      }
+      if (hasManifestBackup) {
+        await rm(manifest, { force: true })
+        await rename(manifestBackup, manifest)
+      }
+    }
+    await rm(hasInitialMarker ? initialMarker : existingMarker, { force: true })
+    return
+  }
+  // Backward compatibility for backup-only transactions created by older versions.
   if (!hasWiki && hasWikiBackup) await rename(wikiBackup, wiki)
   if (!hasManifest && hasManifestBackup) {
     if (hasWiki && hasWikiBackup) {

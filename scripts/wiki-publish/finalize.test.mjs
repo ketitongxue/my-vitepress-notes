@@ -5,7 +5,8 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { sha256 } from './core.mjs'
-import { finalize } from './finalize.mjs'
+import { collectionConfig } from './collections.mjs'
+import { finalize, recoverPublication } from './finalize.mjs'
 import { prepareMirror } from './prepare.mjs'
 
 const BODY = '这是一个完整的中文知识页面，用于验证安全发布流程、链接与内容质量都符合公开要求。'
@@ -177,6 +178,46 @@ test('rolls back a newly installed wiki when a crash occurs before manifest inst
   await finalize({ site })
   assert.equal(await readFile(path.join(site, 'docs', 'wiki', source), 'utf8'), original)
   assert.equal(JSON.parse(await readFile(path.join(site, 'wiki-manifest.json'), 'utf8')).pages.length, 1)
+})
+
+test('recovers every initial publication transaction interruption point', async (t) => {
+  const collection = collectionConfig('finance')
+  for (const state of ['marker-only', 'wiki-installed', 'pair-installed', 'committed']) await t.test(state, async (st) => {
+    const site = await mkdtemp(path.join(tmpdir(), 'finance-initial-recovery-'))
+    st.after(() => rm(site, { recursive: true, force: true }))
+    await mkdir(path.join(site, 'docs'), { recursive: true })
+    const token = 'crash'
+    const preparedMarker = path.join(site, `.finance-publish.transaction-prepared-initial-${token}`)
+    const installedMarker = path.join(site, `.finance-publish.transaction-installed-${token}`)
+    await writeFile(state === 'committed' ? installedMarker : preparedMarker, '')
+    if (state !== 'marker-only') {
+      await mkdir(path.join(site, 'docs', 'finance'), { recursive: true })
+      await writeFile(path.join(site, 'docs', 'finance', 'partial.md'), 'new docs\n')
+    }
+    if (state === 'pair-installed' || state === 'committed') {
+      await writeFile(path.join(site, 'finance-manifest.json'), '{"version":1,"pages":[]}\n')
+    }
+
+    await recoverPublication(site, collection)
+
+    if (state === 'committed') {
+      assert.equal(await readFile(path.join(site, 'docs', 'finance', 'partial.md'), 'utf8'), 'new docs\n')
+      assert.match(await readFile(path.join(site, 'finance-manifest.json'), 'utf8'), /pages/)
+    } else {
+      await assert.rejects(readFile(path.join(site, 'docs', 'finance', 'partial.md')), /ENOENT/)
+      await assert.rejects(readFile(path.join(site, 'finance-manifest.json')), /ENOENT/)
+    }
+    await assert.rejects(readFile(preparedMarker), /ENOENT/)
+    await assert.rejects(readFile(installedMarker), /ENOENT/)
+  })
+})
+
+test('rejects multiple publication recovery transactions without mutation', async (t) => {
+  const site = await mkdtemp(path.join(tmpdir(), 'finance-multiple-recovery-'))
+  t.after(() => rm(site, { recursive: true, force: true }))
+  await writeFile(path.join(site, '.finance-publish.transaction-prepared-initial-one'), '')
+  await writeFile(path.join(site, '.finance-publish.transaction-prepared-initial-two'), '')
+  await assert.rejects(recoverPublication(site, collectionConfig('finance')), /multiple backup transactions/i)
 })
 
 test('rejects non-canonical report sources and inventory keys before mutation', async (t) => {

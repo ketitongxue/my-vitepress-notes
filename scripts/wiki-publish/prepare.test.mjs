@@ -107,3 +107,49 @@ test('mid-batch preparation failure preserves public and prior prepared bytes', 
   assert.equal(await readFile(path.join(site, 'docs', 'finance', 'concepts', 'test.md'), 'utf8'), 'public bytes\n')
   assert.deepEqual(await readFile(path.join(site, '.finance-work', 'prepared', 'concepts', 'test.md')), prepared)
 })
+
+test('startup restores the old prepared batch when replacement crashed after backup rename', async (t) => {
+  const site = await fixture(t)
+  const prepared = path.join(site, '.finance-work', 'prepared')
+  const backup = path.join(site, '.finance-work', 'prepared.backup-crash')
+  const candidate = path.join(site, '.finance-work.prepared-candidate-crash')
+  await mkdir(path.join(backup, 'concepts'), { recursive: true })
+  await writeFile(path.join(backup, 'concepts', 'old.md'), 'old prepared bytes\n')
+  await mkdir(candidate)
+  await writeFile(path.join(candidate, 'partial.md'), 'partial candidate\n')
+
+  await assert.rejects(prepareMirror({
+    collectionName: 'finance', site,
+    writePrepared: async () => { throw new Error('stop after recovery') },
+  }), /stop after recovery/)
+
+  assert.equal(await readFile(path.join(prepared, 'concepts', 'old.md'), 'utf8'), 'old prepared bytes\n')
+  await assert.rejects(readFile(path.join(candidate, 'partial.md')), /ENOENT/)
+})
+
+test('startup removes an orphan candidate left before prepared replacement', async (t) => {
+  const site = await fixture(t)
+  const prepared = path.join(site, '.finance-work', 'prepared')
+  const candidate = path.join(site, '.finance-work.prepared-candidate-crash')
+  await mkdir(path.join(prepared, 'concepts'), { recursive: true })
+  await writeFile(path.join(prepared, 'concepts', 'old.md'), 'old prepared bytes\n')
+  await mkdir(candidate)
+
+  await assert.rejects(prepareMirror({
+    collectionName: 'finance', site,
+    writePrepared: async () => { throw new Error('stop after recovery') },
+  }), /stop after recovery/)
+
+  assert.equal(await readFile(path.join(prepared, 'concepts', 'old.md'), 'utf8'), 'old prepared bytes\n')
+  await assert.rejects(readFile(candidate), /ENOENT/)
+})
+
+test('startup safely rejects ambiguous prepared replacement transactions', async (t) => {
+  const site = await fixture(t)
+  await mkdir(path.join(site, '.finance-work.prepared-candidate-one'))
+  await mkdir(path.join(site, '.finance-work', 'prepared.backup-two'))
+  await assert.rejects(
+    prepareMirror({ collectionName: 'finance', site }),
+    /multiple transactions/i,
+  )
+})

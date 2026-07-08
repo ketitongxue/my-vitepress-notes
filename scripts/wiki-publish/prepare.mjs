@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { access, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -15,12 +15,41 @@ async function exists(candidate) {
   }
 }
 
-async function replacePrepared(temp, target) {
-  const backup = `${target}.backup-${randomUUID()}`
+function prepareTransactionPaths(site, collection, token) {
+  const target = path.join(site, collection.workDirectory, 'prepared')
+  return {
+    target,
+    candidate: path.join(site, `${collection.workDirectory}.prepared-candidate-${token}`),
+    backup: `${target}.backup-${token}`,
+  }
+}
+
+export async function recoverPrepared(site, collection) {
+  const [siteEntries, workEntries] = await Promise.all([
+    readdir(site),
+    readdir(path.join(site, collection.workDirectory)),
+  ])
+  const candidatePrefix = `${collection.workDirectory}.prepared-candidate-`
+  const backupPrefix = 'prepared.backup-'
+  const tokens = new Set([
+    ...siteEntries.filter((entry) => entry.startsWith(candidatePrefix)).map((entry) => entry.slice(candidatePrefix.length)),
+    ...workEntries.filter((entry) => entry.startsWith(backupPrefix)).map((entry) => entry.slice(backupPrefix.length)),
+  ])
+  if (tokens.size > 1) throw new Error(`Cannot recover ${collection.name} prepared batch: multiple transactions`)
+  if (!tokens.size) return
+  const [token] = tokens
+  const { target, candidate, backup } = prepareTransactionPaths(site, collection, token)
+  const [hasTarget, hasBackup] = await Promise.all([exists(target), exists(backup)])
+  if (!hasTarget && hasBackup) await rename(backup, target)
+  else if (hasBackup) await rm(backup, { recursive: true, force: true })
+  await rm(candidate, { recursive: true, force: true })
+}
+
+async function replacePrepared(candidate, target, backup) {
   const hadTarget = await exists(target)
   if (hadTarget) await rename(target, backup)
   try {
-    await rename(temp, target)
+    await rename(candidate, target)
   } catch (error) {
     if (hadTarget) await rename(backup, target)
     throw error
@@ -50,9 +79,11 @@ export async function prepareMirror({ collectionName, site = process.cwd(), writ
   if (collection.mode !== 'mirror') throw new Error(`${collection.name} is not a mirror collection`)
   const lock = await acquireLock(site, collection)
   const workRoot = path.join(site, collection.workDirectory)
-  const temp = path.join(site, `${collection.workDirectory}.prepared-tmp-${randomUUID()}`)
+  const token = randomUUID()
+  const { target, candidate, backup } = prepareTransactionPaths(site, collection, token)
   try {
     await lock.assertOwned()
+    await recoverPrepared(site, collection)
     const report = JSON.parse(await readFile(path.join(workRoot, 'report.json'), 'utf8'))
     const snapshot = await scanWikiSnapshot(path.join(workRoot, 'source'), { collection })
     const known = knownTargets(snapshot.inventory, collection)
@@ -67,17 +98,17 @@ export async function prepareMirror({ collectionName, site = process.cwd(), writ
       if (containsPrivateData(markdown, collection)) throw new Error(`${source}: sanitized page still contains private data`)
       prepared.set(source, markdown)
     }
-    await mkdir(temp)
+    await mkdir(candidate)
     for (const [source, markdown] of prepared) {
-      const target = path.join(temp, ...source.split('/'))
-      await mkdir(path.dirname(target), { recursive: true })
-      await writePrepared(target, markdown)
+      const output = path.join(candidate, ...source.split('/'))
+      await mkdir(path.dirname(output), { recursive: true })
+      await writePrepared(output, markdown)
     }
     await lock.assertOwned()
-    await replacePrepared(temp, path.join(workRoot, 'prepared'))
+    await replacePrepared(candidate, target, backup)
     return { prepared: prepared.size }
   } finally {
-    await rm(temp, { recursive: true, force: true })
+    await rm(candidate, { recursive: true, force: true })
     await lock.release()
   }
 }
