@@ -2,7 +2,7 @@
 
 ## 目标
 
-将 `/Users/keti/Documents/finance-wiki` 的 42 个概念页和 6 个实体页发布到现有 VitePress 网站，同时保留现有 LLM Wiki 的发布、导航和问答行为。
+将由 `FINANCE_WIKI_PATH` 指定的 42 个概念页和 6 个实体页发布到现有 VitePress 网站，同时保留现有 LLM Wiki 的发布、导航和问答行为。
 
 ## 方案选择
 

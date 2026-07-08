@@ -24,7 +24,7 @@ Implemented and verified the Finance publication and independent navigation.
 - `npm run finance:validate`: passed, 48 published pages.
 - Focused publisher suites: 39 tests passed, 0 failed.
 - `git diff --check`: passed.
-- Private marker audit (`sources:`, `raw/`, `[[`, `/Users/`, `/data/data/`): no matches.
+- Private marker audit (source metadata, raw references, wikilinks, local paths, and Android data paths): no matches.
 - Filename audit: only the intentional public template example ``specs/<功能名>.md`` remains; no source filename or `原始来源` prose remains.
 
 ## Concerns
@@ -44,5 +44,5 @@ Implemented and verified the Finance publication and independent navigation.
 - `node scripts/theme-config.test.mjs`: `theme config tests passed`.
 - `npm run finance:validate`: `48 published pages`.
 - `git diff --check`: exit 0 with no output.
-- `rg -n 'sources:|raw/|\[\[|/Users/|/data/data/' docs/finance`: exit 1, no matches.
+- Private-marker search across `docs/finance`: exit 1, no matches.
 - `rg -n '`[^`]+\.md`|原始来源|^## (来源|参考资料|参考文献|Sources?|References?)\s*$|[ \t]+$' docs/finance`: only the intentional public template example ``specs/<功能名>.md`` matched; no provenance heading, source filename, `原始来源`, or trailing whitespace remained.

@@ -16,6 +16,13 @@ npm run worker:dev
 `docs/wiki/comparisons` 生成公开检索索引。Worker 使用关键词检索选取相关片段，再由
 DeepSeek 生成带站内引用的流式回答；不会读取本地 `llm_wiki` 或其他私有来源。
 
+同步两个知识库时只通过环境变量提供本地来源，不在命令或仓库文件中写入本机绝对路径：
+
+```bash
+LLM_WIKI_PATH="$LLM_WIKI_PATH" npm run wiki:sync
+FINANCE_WIKI_PATH="$FINANCE_WIKI_PATH" npm run finance:sync
+```
+
 本地启动 Worker 前，在项目根目录创建不纳入 Git 的 `.dev.vars`，配置
 `DEEPSEEK_API_KEY` 和 `IP_HASH_SALT`。生产环境使用 Cloudflare Secrets：
 

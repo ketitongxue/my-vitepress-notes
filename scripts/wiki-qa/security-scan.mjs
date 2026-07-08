@@ -1,10 +1,13 @@
 import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { constants } from 'node:fs'
-import { lstat, open, readdir, realpath } from 'node:fs/promises'
+import { access, lstat, open, readFile, readdir, realpath } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
+
+import { collectionConfig } from '../wiki-publish/collections.mjs'
+import { validatePublishedWiki } from '../wiki-publish/validate.mjs'
 
 const execFileAsync = promisify(execFile)
 const MAX_SCAN_FILE_BYTES = 16 * 1024 * 1024
@@ -23,6 +26,7 @@ const TEST_PATH_FIXTURES = new Set([
   ['', 'concepts', 'a.md'].join('/'),
   ['', 'custom', 'path', 'file.md'].join('/'),
   ['', 'workspace', 'secret', 'file.md'].join('/'),
+  ['', 'workspace', 'private.md'].join('/'),
   ['', 'wiki', 'concepts', '..', 'private'].join('/'),
   ['', 'wiki', 'concepts', 'Zeta'].join('/'),
   ['C:', 'Users', 'alice', 'private.md'].join('\\'),
@@ -33,10 +37,13 @@ const TEST_PATH_FIXTURES = new Set([
   ['raw', 'private-note.md'].join('/'),
   ['raw', 'private.md'].join('/'),
   ['raw', 'articles', 'private.md'].join('/'),
+  ['raw', 'articles', 'source.md'].join('/'),
+  ['raw', 'papers', 'book.md'].join('/'),
   ['raw', 'source.md'].join('/'),
 ])
 const SAFE_PROJECT_PATHS = [
-  /^\/wiki\/(?:entities|concepts|comparisons)(?:\/[a-z0-9-]+)?\/?$/,
+  /^\/(?:wiki|finance)\/(?:entities|concepts|comparisons)(?:\/[a-z0-9-]+)?\/?$/,
+  /^\/MACD\/RSI$/,
   /^\/notes\/[a-z0-9-]+\/?$/,
   /^\/api\/ask$/,
   /^\/ask\/index\.html$/,
@@ -47,7 +54,10 @@ const EXACT_REGEX_SOURCE_TOKENS = new Set([
   ['', '-', 'g'].join('/'),
   ['', '2g', '.test'].join('/'),
   ['', 'allowed', 'i'].join('/'),
+  ['', 'absolute path', 'i'].join('/'),
+  ['', 'collection', 'i'].join('/'),
   ['', 'hash', 'i'].join('/'),
+  ['', 'mirror', 'i'].join('/'),
   ['', 'publicPath', 'i'].join('/'),
   ['', 'reference-missing', 'i'].join('/'),
   ['', 'relative', 'i'].join('/'),
@@ -399,8 +409,37 @@ export async function scanArtifactFiles(projectRoot) {
   }
 }
 
+async function exists(candidate) {
+  try {
+    await access(candidate)
+    return true
+  } catch (error) {
+    if (error?.code === 'ENOENT') return false
+    throw error
+  }
+}
+
+export async function scanPublishedCollections(projectRoot) {
+  const findings = []
+  for (const name of ['wiki', 'finance']) {
+    const collection = collectionConfig(name)
+    const docsRoot = path.join(projectRoot, 'docs', collection.docsDirectory)
+    const manifestPath = path.join(projectRoot, collection.manifestFile)
+    const [hasDocs, hasManifest] = await Promise.all([exists(docsRoot), exists(manifestPath)])
+    if (!hasDocs || !hasManifest) {
+      findings.push(`${name}: published documents and manifest must both exist`)
+      continue
+    }
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+    const result = await validatePublishedWiki({ docsRoot, manifest, collection })
+    findings.push(...result.errors.map((error) => `${name}: ${error}`))
+  }
+  return findings
+}
+
 export async function scanRepository(projectRoot) {
   return [
+    ...await scanPublishedCollections(projectRoot),
     ...await scanTrackedFiles(projectRoot),
     ...await scanArtifactFiles(projectRoot),
   ]

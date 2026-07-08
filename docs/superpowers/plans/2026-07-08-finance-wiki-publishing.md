@@ -252,7 +252,7 @@ git commit -m "feat: prepare finance wiki mirror"
 - Modify: `scripts/theme-config.test.mjs`
 
 **Interfaces:**
-- Consumes: Finance commands from Tasks 2 and 3 and `/Users/keti/Documents/finance-wiki` supplied through `FINANCE_WIKI_PATH`.
+- Consumes: Finance commands from Tasks 2 and 3 and the source supplied through `FINANCE_WIKI_PATH`.
 - Produces: stable `/finance/`, `/finance/concepts/<slug>`, and `/finance/entities/<slug>` routes.
 
 - [ ] **Step 1: Write failing navigation tests**
@@ -272,7 +272,7 @@ Expected: FAIL because `/finance/` navigation does not exist.
 Run:
 
 ```bash
-env FINANCE_WIKI_PATH=/Users/keti/Documents/finance-wiki npm run finance:sync
+FINANCE_WIKI_PATH="$FINANCE_WIKI_PATH" npm run finance:sync
 npm run finance:prepare
 npm run finance:finalize
 ```
@@ -288,7 +288,7 @@ Add the Finance top-nav item and an independent sidebar with `实体`, `概念`,
 Run:
 
 ```bash
-rg -n 'sources:|raw/|\[\[|/Users/|/data/data/' docs/finance
+rg -n 'sources:|raw/|\[\[|/Users/' docs/finance
 rg -n '`[^`]+\.md`|原始来源' docs/finance
 ```
 
