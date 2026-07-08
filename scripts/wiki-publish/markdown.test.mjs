@@ -98,8 +98,23 @@ test('converts an unlabelled published wikilink', () => {
   })
 })
 
+test('converts table-escaped Finance wikilink labels', () => {
+  const known = new Map([['strategy', '/finance/concepts/strategy']])
+  assert.deepEqual(convertWikilinks('[[strategy\\|策略]]', known), {
+    markdown: '[策略](/finance/concepts/strategy)',
+    warnings: [],
+  })
+})
+
 test('strips inline and standalone Finance provenance markers', () => {
   assert.equal(stripProvenance('正文。^[raw/articles/source.md]\n> ^[raw/papers/book.md]\n'), '正文。\n')
+})
+
+test('strips prose-only source filename clauses from Finance copy', () => {
+  assert.equal(
+    stripProvenance('该论文有更详细的实证（参见原始来源 `factor-investing-methods-and-practice.md` 第38861行起）。\n'),
+    '该论文有更详细的实证。\n',
+  )
 })
 
 test('detects private metadata, raw references, absolute paths, and remaining wikilinks', () => {
@@ -127,4 +142,5 @@ test('detects private metadata, raw references, absolute paths, and remaining wi
   assert.equal(containsPrivateData('See http://example.com/Users/alice/wiki.'), false)
   assert.equal(containsPrivateData('See //example.com/Users/alice/wiki.'), false)
   assert.equal(containsPrivateData('See <https://example.com/Users/alice/wiki>. also.'), false)
+  assert.equal(containsPrivateData('价格从 +8%/+9% 向涨停价移动。', { urlPrefix: '/finance' }), false)
 })

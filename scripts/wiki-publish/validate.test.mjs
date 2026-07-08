@@ -122,6 +122,17 @@ test('allows wiki links and HTTP(S) URLs without treating them as absolute paths
   assert.doesNotMatch((await validatePublishedWiki(input)).errors.join('\n'), /absolute path/i)
 })
 
+test('allows financial ratios and technical product names without treating them as paths', async (t) => {
+  const input = await fixture(t, {
+    content: `${CHINESE_BODY}\n价格从 +8%/+9% 移动，使用 C++/FPGA 与左侧交易/均值回归。`,
+    page: { publicPath: 'docs/finance/concepts/good.md' },
+  })
+  assert.doesNotMatch(
+    (await validatePublishedWiki({ ...input, collection: { docsDirectory: 'finance', urlPrefix: '/finance' } })).errors.join('\n'),
+    /absolute path/i,
+  )
+})
+
 test('rejects residual wikilinks', async (t) => {
   assert.match(await errorsFor(t, `${CHINESE_BODY}\n[[concepts/secret]]`), /wikilink/i)
 })

@@ -1,0 +1,341 @@
+{
+  "version": 1,
+  "pages": [
+    {
+      "source": "concepts/a-share-market-rules.md",
+      "hash": "1ab8c43658ab80aacf41d0a778bfd718fd03a76f331c7b064240f58a269ade3a",
+      "publicPath": "docs/finance/concepts/a-share-market-rules.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/active-portfolio-management.md",
+      "hash": "e2e7c27de8168b8122cf95cd766af6537456f1d232b82d865a81fad0cc0aa382",
+      "publicPath": "docs/finance/concepts/active-portfolio-management.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/ai-ml-foundations.md",
+      "hash": "a46cad535951a1406e24fc91cf961650386c94618bf5aede347ab0a84339c8d5",
+      "publicPath": "docs/finance/concepts/ai-ml-foundations.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/ai-quant-agent-workflow.md",
+      "hash": "b890769d4daff4ccb91f86b224735ad1fe602fc1df288f2ecd93678378d740be",
+      "publicPath": "docs/finance/concepts/ai-quant-agent-workflow.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/ai-quant-trading-learning-path.md",
+      "hash": "c18604da3366da8908d6e714f865ae6876131d03be57d2eebe4aae5c16345c64",
+      "publicPath": "docs/finance/concepts/ai-quant-trading-learning-path.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/alpha-decay-and-strategy-capacity.md",
+      "hash": "ad6976403ace52bac0c5cec882bbdb460b757e523140b670b08fee00159c72e6",
+      "publicPath": "docs/finance/concepts/alpha-decay-and-strategy-capacity.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/alternative-data.md",
+      "hash": "b1e5b390cf58ddd5245e627ac4a96ce1c1bb5890e0268429dc473f700ecc0a08",
+      "publicPath": "docs/finance/concepts/alternative-data.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/asymmetric-payoff-and-position-sizing.md",
+      "hash": "c6ef3a8c076b341658dc13e334c92116a103c53c2409612c9b0f8322b796e401",
+      "publicPath": "docs/finance/concepts/asymmetric-payoff-and-position-sizing.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/backtesting-bias-and-frictions.md",
+      "hash": "e78593302382770336eb4194fd52cd2576a31f279474bf240196ce203f05d1d0",
+      "publicPath": "docs/finance/concepts/backtesting-bias-and-frictions.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/black-box-correlation-models.md",
+      "hash": "7e17a06a698db4219416e37b7ac9bd675a86b3e2cb25cd07571322915ec44d9f",
+      "publicPath": "docs/finance/concepts/black-box-correlation-models.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/centaur-human-ai.md",
+      "hash": "0fae689d15db15bdae51c20a2312fa777dddaf7dc1be1cc28681c2ff08b09207",
+      "publicPath": "docs/finance/concepts/centaur-human-ai.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/changlun-quantitative.md",
+      "hash": "466fc043ec63ae0599e9c821730ea252c9d533f067fcec98f9a4a243635ca908",
+      "publicPath": "docs/finance/concepts/changlun-quantitative.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/derivatives-and-leverage.md",
+      "hash": "3b0cda38f4aaac17cc2feee48b6dce89591f9859b796da00e31b1d842a06bdc8",
+      "publicPath": "docs/finance/concepts/derivatives-and-leverage.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/factor-investing.md",
+      "hash": "c7c0c10870e285f94154a67ceb50fb58c33ffea70ea40fe32132d25ab1a617ba",
+      "publicPath": "docs/finance/concepts/factor-investing.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/fat-tail-and-convergence-arbitrage.md",
+      "hash": "ac3753715c5ce74e5483777c09556d5f300c0a90dbc55bd1d9e309b9bbbe78ea",
+      "publicPath": "docs/finance/concepts/fat-tail-and-convergence-arbitrage.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/flash-crash-liquidity.md",
+      "hash": "aea5bffe773df7c1dde8bb3388c676ba75302d91ba6fcb1566526afc5de9ff6f",
+      "publicPath": "docs/finance/concepts/flash-crash-liquidity.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/fractal-market-structure.md",
+      "hash": "419ce44902bcfe5ee100762043175e541478fd9a058346ccbf7927f8421e642b",
+      "publicPath": "docs/finance/concepts/fractal-market-structure.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/infinite-game-long-termism.md",
+      "hash": "d6cf8e6fb920b247109168361ec4b616368345094e8dfbe21915d87391659030",
+      "publicPath": "docs/finance/concepts/infinite-game-long-termism.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/kelly-criterion.md",
+      "hash": "a563e3305040d23d75d73040990e5882fae7ba03902519b9f5b2bdd350d91850",
+      "publicPath": "docs/finance/concepts/kelly-criterion.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/market-data-quality.md",
+      "hash": "a4e033c2b686a427e9028715b38176fd297d447d293c91102f85f9eb2fdaeb78",
+      "publicPath": "docs/finance/concepts/market-data-quality.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/market-microstructure.md",
+      "hash": "0849e573f67645f255de500fcdd878d0ed5aab6b7ad6dbc69cd25a9f0d1e2143",
+      "publicPath": "docs/finance/concepts/market-microstructure.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/nlp-financial-text.md",
+      "hash": "9488cc29c4c49940d65c6dbc02495f421167f1bb9cca5641b8fd3bb148566ac0",
+      "publicPath": "docs/finance/concepts/nlp-financial-text.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/operational-risk-fat-finger.md",
+      "hash": "7c4508070f1810ab6c1e63ad8ba9735ce0c342b331784e6ff5df35488c1f2a45",
+      "publicPath": "docs/finance/concepts/operational-risk-fat-finger.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/overfitting-lookahead-bias.md",
+      "hash": "281625fd5a363649d906cd3857029e03c449b5140a23e2f4bc16261adbf85529",
+      "publicPath": "docs/finance/concepts/overfitting-lookahead-bias.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/positive-expected-value.md",
+      "hash": "f92739a217919783674e0f4838d82b96bc3d7ec8c016347a9ba51bcc0b32bbd9",
+      "publicPath": "docs/finance/concepts/positive-expected-value.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/qmt-miniqmt-trading-system.md",
+      "hash": "9c9dfcc669a0560e24d86e09de6dbc923572264c0bbe87bea847dc7316b4602a",
+      "publicPath": "docs/finance/concepts/qmt-miniqmt-trading-system.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/quant-learning-roadmap.md",
+      "hash": "ae9ed9ed32cdefbb5a62045b0409c6fbe6bd7cfb2774c5e3f81e83fe9cb3cbbc",
+      "publicPath": "docs/finance/concepts/quant-learning-roadmap.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/quant-performance-attribution.md",
+      "hash": "91137982c74eba9d3a5f115169e0a6932f327473e37f80411cd33bad7733c0c6",
+      "publicPath": "docs/finance/concepts/quant-performance-attribution.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/quant-strategy-taxonomy.md",
+      "hash": "faa85863a09bd9ad46594cd136ec668670abdb2bd6d0f468017479313377881a",
+      "publicPath": "docs/finance/concepts/quant-strategy-taxonomy.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/quant-trading-thinking-paradigm.md",
+      "hash": "7119f6b0dc8c115f2ab6ba5976442b2d9a72920b8c7e709c6e8b6238facf4b3d",
+      "publicPath": "docs/finance/concepts/quant-trading-thinking-paradigm.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/quantitative-investing-knowledge-map.md",
+      "hash": "502fd36b058bd87fd69ce7e98b977fb90ec738fb58376999a7a175f4dbb74808",
+      "publicPath": "docs/finance/concepts/quantitative-investing-knowledge-map.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/quantitative-trading-algorithms-data-models-optimization.md",
+      "hash": "2a72510ac00408e9074d5e977c397851b559c3ad4b936d5432a3654912f93ecb",
+      "publicPath": "docs/finance/concepts/quantitative-trading-algorithms-data-models-optimization.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/reflexivity-theory.md",
+      "hash": "ede17ff837c9b7b9b4c3162b2cfc4eb39a149003d97a3c79334162f36de230d5",
+      "publicPath": "docs/finance/concepts/reflexivity-theory.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/sdd-95-5-principle.md",
+      "hash": "577fd21631e1447df0b400a997bad8f324a80b20f87c05abe48365a1ed4e3dc9",
+      "publicPath": "docs/finance/concepts/sdd-95-5-principle.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/short-squeeze-gamma.md",
+      "hash": "42b058343ada9b5247c6549afc654505b404e726b850ac997f5668a442faa3e5",
+      "publicPath": "docs/finance/concepts/short-squeeze-gamma.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/statistical-arbitrage.md",
+      "hash": "dc3b4e6b1087aba4e380feb2f4b5d3307a8d9598d980a11b1e4da34be9c92fbf",
+      "publicPath": "docs/finance/concepts/statistical-arbitrage.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/stock-profiling.md",
+      "hash": "cb168840a94680c75733c7277bdda001323cb5ff4c9d63254585f80c60ce046a",
+      "publicPath": "docs/finance/concepts/stock-profiling.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/strategy-trio-trend-grid-momentum.md",
+      "hash": "ef75ca66a2e432b4aaba457dc33d240120681bea67e086f5775207d81b2a69d0",
+      "publicPath": "docs/finance/concepts/strategy-trio-trend-grid-momentum.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/time-series-forecasting-quant-system.md",
+      "hash": "435df538dbe3671d0969f3634197eff41f3f5fd9773dc7a01292c8c16fac503c",
+      "publicPath": "docs/finance/concepts/time-series-forecasting-quant-system.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/unstable-equilibrium-trade.md",
+      "hash": "0e3a68f7a159f53cffe90ac35c880fed69ce404a7b1f09a32aecf84fcbd8c08a",
+      "publicPath": "docs/finance/concepts/unstable-equilibrium-trade.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/value-trap.md",
+      "hash": "09bea55fe717fc61839813daea2abf2b891a92c80b0f93e6c72858e0ebcc5af1",
+      "publicPath": "docs/finance/concepts/value-trap.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "concepts/vision-multimodal-kline.md",
+      "hash": "4e65ccf813aea5f3f8a18739adb8002e32caccedbd1b5ddaaf5b7d54e3b22f49",
+      "publicPath": "docs/finance/concepts/vision-multimodal-kline.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "entities/benjamin-graham.md",
+      "hash": "0377950fdb9d62d644d59376a10ffc2fdc462a245bbf2a0761b3f8c5f85d4ed2",
+      "publicPath": "docs/finance/entities/benjamin-graham.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "entities/edward-thorp.md",
+      "hash": "4e7654888df8da8f570517ea2c0fe8ba3214923de93304deac8c4274c55c7789",
+      "publicPath": "docs/finance/entities/edward-thorp.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "entities/george-soros.md",
+      "hash": "6226ea184c00b2b9feb31815ec1333ef4457aa89b2af23d5589fe741f594556a",
+      "publicPath": "docs/finance/entities/george-soros.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "entities/james-simons.md",
+      "hash": "25091ded5278421384a1cdc3bcf94fd38eece5fce82d802469407a31459e8dda",
+      "publicPath": "docs/finance/entities/james-simons.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "entities/ltcm.md",
+      "hash": "7248f6e9cd893b1a3336f9dbdf2e0c1d728e2a04282480b516c6d5b049b616c6",
+      "publicPath": "docs/finance/entities/ltcm.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    },
+    {
+      "source": "entities/warren-buffett.md",
+      "hash": "3241fdca74ef621e3718fbdf74b35a9b58159e39892f079f515513c1561dcabb",
+      "publicPath": "docs/finance/entities/warren-buffett.md",
+      "status": "published",
+      "syncedAt": "2026-07-08T02:18:53.599Z"
+    }
+  ]
+}

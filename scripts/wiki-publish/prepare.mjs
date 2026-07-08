@@ -17,6 +17,9 @@ function knownTargets(inventory, collection) {
     aliases.set(slug, aliases.has(slug) && aliases.get(slug) !== url ? null : url)
   }
   for (const [slug, url] of aliases) if (url) known.set(slug, url)
+  if (collection.name === 'finance' && known.has('ai-quant-agent-workflow')) {
+    known.set('ai-agent-system', known.get('ai-quant-agent-workflow'))
+  }
   return known
 }
 

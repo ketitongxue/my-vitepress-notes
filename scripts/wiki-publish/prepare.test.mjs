@@ -72,6 +72,18 @@ test('rejects ambiguous short Finance wikilinks when section basenames collide',
   await assert.rejects(prepareMirror({ collectionName: 'finance', site }), /unresolved wikilink.*risk/i)
 })
 
+test('resolves the legacy Finance Agent page name to its published route', async (t) => {
+  const site = await fixture(t, { body: SOURCE.replace('[[other|其他页面]]', '[[ai-agent-system|Agent]]') })
+  await writeFile(path.join(site, '.finance-work', 'source', 'concepts', 'ai-quant-agent-workflow.md'), `---\ntitle: Agent\n---\n${'中文内容'.repeat(10)}\n`)
+
+  await prepareMirror({ collectionName: 'finance', site })
+
+  assert.match(
+    await readFile(path.join(site, 'docs', 'finance', 'concepts', 'test.md'), 'utf8'),
+    /\[Agent\]\(\/finance\/concepts\/ai-quant-agent-workflow\)/,
+  )
+})
+
 test('refuses mirror preparation for curated Wiki translation mode', async (t) => {
   const site = await fixture(t)
   await assert.rejects(prepareMirror({ collectionName: 'wiki', site }), /mirror/i)
