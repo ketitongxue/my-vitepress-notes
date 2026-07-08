@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
+import { collectionConfig } from './collections.mjs'
 import {
   ALLOWED_SECTIONS,
   diffInventory,
@@ -68,9 +69,27 @@ test('sha256 is stable and content-sensitive', () => {
 
 test('publicPath maps allowed source paths and rejects paths outside them', () => {
   assert.equal(publicPath('concepts/a.md'), 'docs/wiki/concepts/a.md')
+  assert.equal(
+    publicPath('concepts/x.md', collectionConfig('finance')),
+    'docs/finance/concepts/x.md',
+  )
   assert.throws(() => publicPath('raw/a.md'), /allowed/i)
   assert.throws(() => publicPath('../concepts/a.md'), /allowed/i)
   assert.throws(() => publicPath('/concepts/a.md'), /relative/i)
+})
+
+test('scanWiki uses the selected collection namespace in its inventory', async (t) => {
+  const root = await temporaryWiki(t)
+  await writeFile(path.join(root, 'entities', 'market.md'), 'market')
+
+  const inventory = await scanWiki(root, {
+    collection: collectionConfig('finance'),
+  })
+
+  assert.equal(
+    inventory['entities/market.md'].publicPath,
+    'docs/finance/entities/market.md',
+  )
 })
 
 test('scanWiki rejects symlinks in allowed directories', async (t) => {

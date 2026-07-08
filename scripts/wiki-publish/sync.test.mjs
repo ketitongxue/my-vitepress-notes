@@ -32,7 +32,7 @@ async function run(site, args = [], env = {}, timeout = 10_000) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [cli, ...args], {
       cwd: site,
-      env: { ...process.env, LLM_WIKI_PATH: '', ...env },
+      env: { ...process.env, LLM_WIKI_PATH: '', FINANCE_WIKI_PATH: '', ...env },
     })
     let stdout = ''
     let stderr = ''
@@ -44,6 +44,16 @@ async function run(site, args = [], env = {}, timeout = 10_000) {
       resolve({ code, stderr, stdout })
     })
   })
+}
+
+async function exists(candidate) {
+  try {
+    await access(candidate)
+    return true
+  } catch (error) {
+    if (error?.code === 'ENOENT') return false
+    throw error
+  }
 }
 
 async function json(file) {
@@ -138,6 +148,60 @@ test('sync writes relative change report and allowed source snapshots without to
   })
   assert.equal(await readFile(path.join(site, 'docs', 'wiki', 'keep.md'), 'utf8'), 'published\n')
   assert.equal(await readFile(path.join(site, '.wiki-work', 'source', 'entities', 'new.md'), 'utf8'), 'new\n')
+})
+
+test('finance sync isolates inventory, workspace, and source environment', async (t) => {
+  const financeRoot = await temporaryDirectory(t, 'sync-finance-')
+  const site = await temporaryDirectory(t, 'sync-site-')
+  await mkdir(path.join(financeRoot, 'concepts'), { recursive: true })
+  await writeFile(path.join(financeRoot, 'concepts', 'a.md'), 'finance\n')
+
+  const report = await sync({
+    collectionName: 'finance',
+    env: { FINANCE_WIKI_PATH: financeRoot },
+    site,
+  })
+
+  assert.equal(report.inventory['concepts/a.md'].publicPath, 'docs/finance/concepts/a.md')
+  assert.equal(await exists(path.join(site, '.finance-work', 'report.json')), true)
+  assert.equal(await exists(path.join(site, '.wiki-work')), false)
+})
+
+test('finance and wiki sync use independent locks and recovery workspaces', async (t) => {
+  const wiki = await temporaryDirectory(t, 'sync-wiki-')
+  const finance = await temporaryDirectory(t, 'sync-finance-')
+  const site = await temporaryDirectory(t, 'sync-site-')
+  await Promise.all([
+    mkdir(path.join(wiki, 'concepts'), { recursive: true }),
+    mkdir(path.join(finance, 'concepts'), { recursive: true }),
+    mkdir(path.join(site, '.wiki-work.backup-crash')),
+    mkdir(path.join(site, '.finance-work.backup-crash')),
+  ])
+  await Promise.all([
+    writeFile(path.join(wiki, 'concepts', 'a.md'), 'wiki\n'),
+    writeFile(path.join(finance, 'concepts', 'a.md'), 'finance\n'),
+    writeFile(path.join(site, '.wiki-work.backup-crash', 'old'), 'wiki'),
+    writeFile(path.join(site, '.finance-work.backup-crash', 'old'), 'finance'),
+  ])
+
+  const [wikiResult, financeResult] = await Promise.all([
+    sync({ env: { LLM_WIKI_PATH: wiki }, site }),
+    sync({ collectionName: 'finance', env: { FINANCE_WIKI_PATH: finance }, site }),
+  ])
+
+  assert.equal(wikiResult.inventory['concepts/a.md'].publicPath, 'docs/wiki/concepts/a.md')
+  assert.equal(financeResult.inventory['concepts/a.md'].publicPath, 'docs/finance/concepts/a.md')
+  assert.equal(await readFile(path.join(site, '.wiki-work', 'source', 'concepts', 'a.md'), 'utf8'), 'wiki\n')
+  assert.equal(await readFile(path.join(site, '.finance-work', 'source', 'concepts', 'a.md'), 'utf8'), 'finance\n')
+})
+
+test('sync CLI validates collection arguments before sync flags', async (t) => {
+  const site = await temporaryDirectory(t, 'sync-site-')
+  for (const args of [['--collection'], ['--collection', '--wiki'], ['--collection', 'wiki', '--collection', 'finance']]) {
+    const result = await run(site, args)
+    assert.equal(result.code, 1)
+    assert.match(result.stderr, /collection/i)
+  }
 })
 
 test('sync exits 1 with usage when no wiki path is configured', async (t) => {

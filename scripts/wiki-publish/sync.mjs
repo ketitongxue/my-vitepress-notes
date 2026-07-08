@@ -13,19 +13,19 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { diffInventory, scanWikiSnapshot } from './core.mjs'
+import { collectionConfig } from './collections.mjs'
 import { parseFrontmatter } from './markdown.mjs'
 
-const USAGE = 'Usage: npm run wiki:sync -- --wiki <path> (or set LLM_WIKI_PATH)'
-
-function wikiPath(argv, env) {
+function wikiPath(argv, env, collection) {
+  const usage = `Usage: npm run ${collection.name}:sync -- --wiki <path> (or set ${collection.envKey})`
   const index = argv.indexOf('--wiki')
   if (index !== -1) {
     const value = argv[index + 1]
-    if (!value || value.startsWith('--')) throw new Error(USAGE)
+    if (!value || value.startsWith('--')) throw new Error(usage)
     return value
   }
-  if (env.LLM_WIKI_PATH) return env.LLM_WIKI_PATH
-  throw new Error(USAGE)
+  if (env[collection.envKey]) return env[collection.envKey]
+  throw new Error(usage)
 }
 
 async function exists(candidate) {
@@ -38,16 +38,16 @@ async function exists(candidate) {
   }
 }
 
-async function publishedInventory(site) {
+async function publishedInventory(site, collection) {
   let manifest
   try {
-    manifest = JSON.parse(await readFile(path.join(site, 'wiki-manifest.json'), 'utf8'))
+    manifest = JSON.parse(await readFile(path.join(site, collection.manifestFile), 'utf8'))
   } catch (error) {
     if (error?.code === 'ENOENT') return {}
     throw error
   }
   if (!Array.isArray(manifest.pages)) {
-    throw new Error('wiki-manifest.json must contain a pages array')
+    throw new Error(`${collection.manifestFile} must contain a pages array`)
   }
 
   const inventory = {}
@@ -55,10 +55,10 @@ async function publishedInventory(site) {
     String(left.source).localeCompare(String(right.source)),
   )) {
     if (typeof page.source !== 'string' || typeof page.hash !== 'string') {
-      throw new Error('wiki-manifest.json pages require source and hash')
+      throw new Error(`${collection.manifestFile} pages require source and hash`)
     }
     if (Object.hasOwn(inventory, page.source)) {
-      throw new Error(`wiki-manifest.json contains duplicate source: ${page.source}`)
+      throw new Error(`${collection.manifestFile} contains duplicate source: ${page.source}`)
     }
     inventory[page.source] = {
       hash: page.hash,
@@ -139,11 +139,11 @@ async function reclaimStaleLock(lock, observedOwner) {
   return false
 }
 
-export async function acquireLock(site) {
-  const lock = path.join(site, '.wiki-sync.lock')
+export async function acquireLock(site, collection = collectionConfig('wiki')) {
+  const lock = path.join(site, collection.lockName)
   for (;;) {
     const token = randomUUID()
-    const candidate = path.join(site, `.wiki-sync.candidate-${token}`)
+    const candidate = path.join(site, `${collection.lockName.replace(/\.lock$/, '')}.candidate-${token}`)
     try {
       await mkdir(candidate)
       await writeFile(
@@ -165,7 +165,7 @@ export async function acquireLock(site) {
     return {
       assertOwned: async () => {
         if (!sameOwner(await readLockOwner(lock), { pid: process.pid, token })) {
-          throw new Error('Wiki sync lock ownership was lost')
+          throw new Error(`${collection.name} sync lock ownership was lost`)
         }
       },
       release: async () => {
@@ -177,14 +177,14 @@ export async function acquireLock(site) {
   }
 }
 
-async function recoverWorkspace(site, target) {
+async function recoverWorkspace(site, target, collection = collectionConfig('wiki')) {
   const entries = await readdir(site)
   const backups = entries
-    .filter((entry) => entry.startsWith('.wiki-work.backup-'))
+    .filter((entry) => entry.startsWith(`${collection.workDirectory}.backup-`))
     .sort()
     .map((entry) => path.join(site, entry))
   if (!(await exists(target)) && backups.length > 1) {
-    throw new Error('Cannot recover wiki workspace: multiple orphaned backups')
+    throw new Error(`Cannot recover ${collection.name} workspace: multiple orphaned backups`)
   }
   if (!(await exists(target)) && backups.length === 1) {
     await rename(backups[0], target)
@@ -208,19 +208,29 @@ async function replaceDirectory(temp, target) {
   if (hadTarget) await rm(backup, { recursive: true, force: true })
 }
 
-export async function sync({ argv = process.argv.slice(2), env = process.env, site = process.cwd() } = {}) {
-  const wiki = wikiPath(argv, env)
-  const workDirectory = path.join(site, '.wiki-work')
-  const lock = await acquireLock(site)
+export async function sync({ collectionName = 'wiki', argv = process.argv.slice(2), env = process.env, site = process.cwd() } = {}) {
+  const collectionFlags = argv.flatMap((value, index) => value === '--collection' ? [index] : [])
+  if (collectionFlags.length > 1) throw new Error('Duplicate --collection value')
+  if (collectionFlags.length === 1) {
+    const index = collectionFlags[0]
+    const value = argv[index + 1]
+    if (!value || value.startsWith('--')) throw new Error('Missing --collection value')
+    collectionName = value
+    argv = [...argv.slice(0, index), ...argv.slice(index + 2)]
+  }
+  const collection = collectionConfig(collectionName)
+  const wiki = wikiPath(argv, env, collection)
+  const workDirectory = path.join(site, collection.workDirectory)
+  const lock = await acquireLock(site, collection)
   try {
     await lock.assertOwned()
-    await recoverWorkspace(site, workDirectory)
-    const previous = await publishedInventory(site)
-    const { contents, inventory } = await scanWikiSnapshot(wiki)
+    await recoverWorkspace(site, workDirectory, collection)
+    const previous = await publishedInventory(site, collection)
+    const { contents, inventory } = await scanWikiSnapshot(wiki, { collection })
     const changes = diffInventory(previous, inventory)
-    const publishedRoot = path.join(site, 'docs', 'wiki')
+    const publishedRoot = path.join(site, 'docs', collection.docsDirectory)
     const published = await exists(publishedRoot)
-      ? await scanWikiSnapshot(publishedRoot)
+      ? await scanWikiSnapshot(publishedRoot, { collection })
       : { inventory: {} }
     const translationBaselines = Object.fromEntries(
       [...changes.added, ...changes.changed].map((source) => [
@@ -235,13 +245,13 @@ export async function sync({ argv = process.argv.slice(2), env = process.env, si
       translationBaselines,
     }
 
-    const temp = path.join(site, `.wiki-work.tmp-${randomUUID()}`)
+    const temp = path.join(site, `${collection.workDirectory}.tmp-${randomUUID()}`)
     try {
       await mkdir(path.join(temp, 'source'), { recursive: true })
       await copySnapshots(contents, path.join(temp, 'source'))
-      const verified = await scanWikiSnapshot(wiki)
+      const verified = await scanWikiSnapshot(wiki, { collection })
       if (JSON.stringify(verified.inventory) !== JSON.stringify(inventory)) {
-        throw new Error('Wiki changed while snapshots were being staged')
+        throw new Error(`${collection.name} changed while snapshots were being staged`)
       }
       await lock.assertOwned()
       await writeFile(path.join(temp, 'report.json'), `${JSON.stringify(report, null, 2)}\n`)
@@ -259,7 +269,7 @@ export async function sync({ argv = process.argv.slice(2), env = process.env, si
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     const report = await sync()
-    console.log(`Wiki sync: ${report.added.length} added, ${report.changed.length} changed, ${report.unchanged.length} unchanged, ${report.deleted.length} deleted`)
+    console.log(`Sync: ${report.added.length} added, ${report.changed.length} changed, ${report.unchanged.length} unchanged, ${report.deleted.length} deleted`)
   } catch (error) {
     console.error(error.message)
     process.exitCode = 1

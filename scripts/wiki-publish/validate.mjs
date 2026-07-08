@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import MarkdownIt from 'markdown-it'
 
 import { ALLOWED_SECTIONS, scanWikiSnapshot } from './core.mjs'
+import { collectionConfig } from './collections.mjs'
 import { parseFrontmatter } from './markdown.mjs'
 
 const PAGE_FIELDS = new Set(['source', 'hash', 'publicPath', 'status', 'syncedAt'])
@@ -49,14 +50,14 @@ function internalLinks(markdown) {
   return links
 }
 
-function linkTarget(source, href) {
+function linkTarget(source, href, collection) {
   if (!href || href.startsWith('#') || /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(href)) return null
   const clean = decodeURIComponent(href.split(/[?#]/, 1)[0])
   if (!clean) return null
   if (clean.split('/').includes('..')) throw new Error('traversal')
-  if (clean === '/wiki' || clean === '/wiki/') return 'index.md'
-  if (clean.startsWith('/wiki/')) {
-    const target = clean.slice('/wiki/'.length).replace(/\/$/, '')
+  if (clean === collection.urlPrefix || clean === `${collection.urlPrefix}/`) return 'index.md'
+  if (clean.startsWith(`${collection.urlPrefix}/`)) {
+    const target = clean.slice(`${collection.urlPrefix}/`.length).replace(/\/$/, '')
     return target.endsWith('.md') ? target : `${target}.md`
   }
   if (clean.startsWith('/')) throw new Error('outside wiki')
@@ -65,25 +66,25 @@ function linkTarget(source, href) {
   return target.endsWith('.md') ? target : `${target}.md`
 }
 
-function containsAbsolutePath(markdown) {
+function containsAbsolutePath(markdown, collection) {
   const withoutUrls = markdown.replace(
     /https?:\/\/[^\s<>)]+|(^|[\s(<])\/\/[^\s<>)]+/gim,
     (_url, protocolRelativePrefix) => protocolRelativePrefix || '',
   )
-  const hasUnixAbsolutePath = [...withoutUrls.matchAll(/(?:^|[^\p{L}\p{N}_/])\/(?!\/)([^\s)\]}>]+)/gu)]
+  const hasUnixAbsolutePath = [...withoutUrls.matchAll(/(?:^|[^\p{L}\p{N}_/+*%])\/(?!\/)(?=[A-Za-z_.~])([^\s)\]}>]+)/gu)]
     .some((match) => {
       const candidate = `/${match[1]}`
-      return candidate !== '/wiki' && !candidate.startsWith('/wiki/')
+      return candidate !== collection.urlPrefix && !candidate.startsWith(`${collection.urlPrefix}/`)
     })
   return hasUnixAbsolutePath
     || /(?:^|[^\p{L}\p{N}_])[A-Za-z]:[\\/]/u.test(withoutUrls)
 }
 
-function contentErrors(source, markdown, knownFiles) {
+function contentErrors(source, markdown, knownFiles, collection) {
   const errors = []
   if (/(^|\n)\s*sources\s*:/i.test(markdown)) errors.push(`${source}: contains sources: metadata`)
   if (/(?:^|[\s\\/])raw[\\/]/i.test(markdown)) errors.push(`${source}: contains raw/ path`)
-  if (containsAbsolutePath(markdown)) {
+  if (containsAbsolutePath(markdown, collection)) {
     errors.push(`${source}: contains an absolute path`)
   }
   if (markdown.includes('[[')) errors.push(`${source}: contains a residual wikilink`)
@@ -98,7 +99,7 @@ function contentErrors(source, markdown, knownFiles) {
   for (const href of internalLinks(body)) {
     let target
     try {
-      target = linkTarget(source, href)
+      target = linkTarget(source, href, collection)
     } catch (error) {
       const kind = error?.message === 'traversal' ? 'link traversal' : 'broken link'
       errors.push(`${source}: ${kind} ${href}`)
@@ -111,14 +112,14 @@ function contentErrors(source, markdown, knownFiles) {
   return errors
 }
 
-export async function validatePublishedWiki({ docsRoot, manifest }) {
+export async function validatePublishedWiki({ docsRoot, manifest, collection = collectionConfig('wiki') }) {
   const errors = []
   const warnings = []
   const pages = Array.isArray(manifest?.pages) ? manifest.pages : []
   if (manifest?.version !== 1) errors.push('manifest: version must be 1')
   if (!Array.isArray(manifest?.pages)) errors.push('manifest: pages must be an array')
 
-  const snapshot = await scanWikiSnapshot(docsRoot)
+  const snapshot = await scanWikiSnapshot(docsRoot, { collection })
   const diskFiles = new Set(Object.keys(snapshot.inventory))
 
   const manifestSources = new Set()
@@ -142,37 +143,43 @@ export async function validatePublishedWiki({ docsRoot, manifest }) {
       if (manifestPublicPaths.has(page.publicPath)) errors.push(`${label}: duplicate publicPath ${page.publicPath}`)
       manifestPublicPaths.add(page.publicPath)
     }
-    if (page.publicPath !== `docs/wiki/${page.source}`) errors.push(`${label}: invalid publicPath`)
+    if (page.publicPath !== `docs/${collection.docsDirectory}/${page.source}`) errors.push(`${label}: invalid publicPath`)
     if (page.status !== 'published') errors.push(`${label}: invalid status`)
     if (typeof page.syncedAt !== 'string' || !Number.isFinite(Date.parse(page.syncedAt))) errors.push(`${label}: invalid syncedAt`)
   }
 
   for (const source of diskFiles) {
-    if (!manifestSources.has(source)) errors.push(`docs/wiki: extra file ${source}`)
+    if (!manifestSources.has(source)) errors.push(`docs/${collection.docsDirectory}: extra file ${source}`)
   }
   for (const source of manifestSources) {
     if (!diskFiles.has(source)) {
-      errors.push(`docs/wiki: missing file ${source}`)
+      errors.push(`docs/${collection.docsDirectory}: missing file ${source}`)
       continue
     }
     const markdown = snapshot.contents[source]
-    errors.push(...contentErrors(source, markdown, diskFiles))
+    errors.push(...contentErrors(source, markdown, diskFiles, collection))
   }
   return { errors: errors.sort(), warnings: warnings.sort() }
 }
 
 async function main() {
   const site = process.cwd()
-  const docsRoot = path.join(site, 'docs', 'wiki')
-  const manifestPath = path.join(site, 'wiki-manifest.json')
+  const argv = process.argv.slice(2)
+  const indexes = argv.flatMap((value, index) => value === '--collection' ? [index] : [])
+  if (indexes.length > 1) throw new Error('Duplicate --collection value')
+  if (indexes.length && (!argv[indexes[0] + 1] || argv[indexes[0] + 1].startsWith('--'))) throw new Error('Missing --collection value')
+  if ((indexes.length && argv.length !== 2) || (!indexes.length && argv.length)) throw new Error('Unexpected validation arguments')
+  const collection = collectionConfig(indexes.length ? argv[indexes[0] + 1] : 'wiki')
+  const docsRoot = path.join(site, 'docs', collection.docsDirectory)
+  const manifestPath = path.join(site, collection.manifestFile)
   const [hasDocs, hasManifest] = await Promise.all([exists(docsRoot), exists(manifestPath)])
   if (!hasDocs && !hasManifest) {
-    console.log('no published wiki yet')
+    console.log(`no published ${collection.name} yet`)
     return
   }
-  if (!hasDocs || !hasManifest) throw new Error('docs/wiki and wiki-manifest.json must either both exist or both be absent')
+  if (!hasDocs || !hasManifest) throw new Error(`docs/${collection.docsDirectory} and ${collection.manifestFile} must either both exist or both be absent`)
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
-  const result = await validatePublishedWiki({ docsRoot, manifest })
+  const result = await validatePublishedWiki({ docsRoot, manifest, collection })
   if (result.errors.length) {
     for (const error of result.errors) console.error(error)
     process.exitCode = 1

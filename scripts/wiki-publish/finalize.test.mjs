@@ -5,7 +5,9 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { sha256 } from './core.mjs'
-import { finalize } from './finalize.mjs'
+import { collectionConfig } from './collections.mjs'
+import { finalize, recoverPublication } from './finalize.mjs'
+import { prepareMirror } from './prepare.mjs'
 
 const BODY = '这是一个完整的中文知识页面，用于验证安全发布流程、链接与内容质量都符合公开要求。'
 
@@ -178,6 +180,46 @@ test('rolls back a newly installed wiki when a crash occurs before manifest inst
   assert.equal(JSON.parse(await readFile(path.join(site, 'wiki-manifest.json'), 'utf8')).pages.length, 1)
 })
 
+test('recovers every initial publication transaction interruption point', async (t) => {
+  const collection = collectionConfig('finance')
+  for (const state of ['marker-only', 'wiki-installed', 'pair-installed', 'committed']) await t.test(state, async (st) => {
+    const site = await mkdtemp(path.join(tmpdir(), 'finance-initial-recovery-'))
+    st.after(() => rm(site, { recursive: true, force: true }))
+    await mkdir(path.join(site, 'docs'), { recursive: true })
+    const token = 'crash'
+    const preparedMarker = path.join(site, `.finance-publish.transaction-prepared-initial-${token}`)
+    const installedMarker = path.join(site, `.finance-publish.transaction-installed-${token}`)
+    await writeFile(state === 'committed' ? installedMarker : preparedMarker, '')
+    if (state !== 'marker-only') {
+      await mkdir(path.join(site, 'docs', 'finance'), { recursive: true })
+      await writeFile(path.join(site, 'docs', 'finance', 'partial.md'), 'new docs\n')
+    }
+    if (state === 'pair-installed' || state === 'committed') {
+      await writeFile(path.join(site, 'finance-manifest.json'), '{"version":1,"pages":[]}\n')
+    }
+
+    await recoverPublication(site, collection)
+
+    if (state === 'committed') {
+      assert.equal(await readFile(path.join(site, 'docs', 'finance', 'partial.md'), 'utf8'), 'new docs\n')
+      assert.match(await readFile(path.join(site, 'finance-manifest.json'), 'utf8'), /pages/)
+    } else {
+      await assert.rejects(readFile(path.join(site, 'docs', 'finance', 'partial.md')), /ENOENT/)
+      await assert.rejects(readFile(path.join(site, 'finance-manifest.json')), /ENOENT/)
+    }
+    await assert.rejects(readFile(preparedMarker), /ENOENT/)
+    await assert.rejects(readFile(installedMarker), /ENOENT/)
+  })
+})
+
+test('rejects multiple publication recovery transactions without mutation', async (t) => {
+  const site = await mkdtemp(path.join(tmpdir(), 'finance-multiple-recovery-'))
+  t.after(() => rm(site, { recursive: true, force: true }))
+  await writeFile(path.join(site, '.finance-publish.transaction-prepared-initial-one'), '')
+  await writeFile(path.join(site, '.finance-publish.transaction-prepared-initial-two'), '')
+  await assert.rejects(recoverPublication(site, collectionConfig('finance')), /multiple backup transactions/i)
+})
+
 test('rejects non-canonical report sources and inventory keys before mutation', async (t) => {
   const cases = [
     { field: 'deleted', source: 'concepts/../entities/x.md' },
@@ -269,4 +311,141 @@ test('safely rejects a legacy report with added or changed sources but no transl
   delete legacy.translationBaselines
   await writeFile(reportPath, JSON.stringify(legacy))
   await assert.rejects(finalize({ site }), /require translationBaselines/i)
+})
+
+test('initial Finance finalization installs collection outputs and rolls both back on manifest-install failure', async (t) => {
+  const source = 'concepts/first.md'
+  for (const fail of [false, true]) await t.test(fail ? 'rollback' : 'success', async (st) => {
+    const site = await mkdtemp(path.join(tmpdir(), 'finance-finalize-'))
+    st.after(() => rm(site, { recursive: true, force: true }))
+    await mkdir(path.join(site, '.finance-work'), { recursive: true })
+    await mkdir(path.join(site, '.finance-work', 'prepared', 'concepts'), { recursive: true })
+    const content = `---\ntitle: 金融概念\n---\n${BODY}\n`
+    await writeFile(path.join(site, '.finance-work', 'prepared', source), content)
+    await writeFile(path.join(site, '.finance-work', 'report.json'), JSON.stringify({
+      generatedAt: '2026-07-08T00:00:00.000Z', added: [source], changed: [], unchanged: [], deleted: [],
+      inventory: { [source]: { hash: sha256('source'), publicPath: `docs/finance/${source}` } },
+      translationBaselines: { [source]: null },
+    }))
+    const renameFile = async (from, to) => {
+      if (fail && to === path.join(site, 'finance-manifest.json')) throw new Error('injected manifest failure')
+      return rename(from, to)
+    }
+    if (fail) {
+      await assert.rejects(finalize({ collectionName: 'finance', site, renameFile }), /injected/)
+      await assert.rejects(readFile(path.join(site, 'docs', 'finance', source)), /ENOENT/)
+      await assert.rejects(readFile(path.join(site, 'finance-manifest.json')), /ENOENT/)
+    } else {
+      await finalize({ collectionName: 'finance', site })
+      assert.equal(JSON.parse(await readFile(path.join(site, 'finance-manifest.json'), 'utf8')).pages.length, 1)
+      assert.match(await readFile(path.join(site, 'docs', 'finance', 'index.md'), 'utf8'), /\/finance\/concepts\/first/)
+    }
+  })
+})
+
+test('Finance finalization rejects unchanged prepared bytes without Wiki translation override', async (t) => {
+  const source = 'concepts/same.md'
+  const site = await mkdtemp(path.join(tmpdir(), 'finance-finalize-'))
+  t.after(() => rm(site, { recursive: true, force: true }))
+  await mkdir(path.join(site, '.finance-work'), { recursive: true })
+  await mkdir(path.join(site, '.finance-work', 'prepared', 'concepts'), { recursive: true })
+  const content = `---\ntitle: 金融概念\n---\n${BODY}\n`
+  await writeFile(path.join(site, '.finance-work', 'prepared', source), content)
+  await writeFile(path.join(site, '.finance-work', 'report.json'), JSON.stringify({
+    generatedAt: '2026-07-08T00:00:00.000Z', added: [source], changed: [], unchanged: [], deleted: [],
+    inventory: { [source]: { hash: sha256('source'), publicPath: `docs/finance/${source}` } },
+    translationBaselines: { [source]: sha256(content) },
+  }))
+  await assert.rejects(finalize({ collectionName: 'finance', site, argv: ['--confirm-translation', source] }), /unknown finalize argument|not updated/i)
+})
+
+test('incremental Finance finalization commits or rolls back collection outputs atomically', async (t) => {
+  const source = 'concepts/risk.md'
+  for (const fail of [false, true]) await t.test(fail ? 'rollback' : 'success', async (st) => {
+    const site = await mkdtemp(path.join(tmpdir(), 'finance-finalize-incremental-'))
+    st.after(() => rm(site, { recursive: true, force: true }))
+    await mkdir(path.join(site, '.finance-work'), { recursive: true })
+    await mkdir(path.join(site, 'docs', 'finance', 'concepts'), { recursive: true })
+    await mkdir(path.join(site, '.finance-work', 'prepared', 'concepts'), { recursive: true })
+    const previous = `---\ntitle: 旧风险页面\n---\n${BODY}\n`
+    const prepared = previous.replace('旧风险页面', '新风险页面')
+    const oldManifest = { version: 1, pages: [{
+      source, hash: sha256('old source'), publicPath: `docs/finance/${source}`,
+      status: 'published', syncedAt: '2026-07-01T00:00:00.000Z',
+    }] }
+    await writeFile(path.join(site, 'docs', 'finance', source), previous)
+    await writeFile(path.join(site, '.finance-work', 'prepared', source), prepared)
+    await writeFile(path.join(site, 'finance-manifest.json'), `${JSON.stringify(oldManifest, null, 2)}\n`)
+    await writeFile(path.join(site, '.finance-work', 'report.json'), JSON.stringify({
+      generatedAt: '2026-07-08T00:00:00.000Z', added: [], changed: [source], unchanged: [], deleted: [],
+      inventory: { [source]: { hash: sha256('new source'), publicPath: `docs/finance/${source}` } },
+      translationBaselines: { [source]: sha256(previous) },
+    }))
+    const beforeManifest = await readFile(path.join(site, 'finance-manifest.json'))
+    const renameFile = async (from, to) => {
+      if (fail && to === path.join(site, 'finance-manifest.json') && from.includes('.finance-publish.tmp-')) {
+        throw new Error('injected incremental manifest failure')
+      }
+      return rename(from, to)
+    }
+
+    if (fail) {
+      await assert.rejects(finalize({ collectionName: 'finance', site, renameFile }), /injected incremental/)
+      assert.deepEqual(await readFile(path.join(site, 'finance-manifest.json')), beforeManifest)
+      assert.equal(await readFile(path.join(site, 'docs', 'finance', source), 'utf8'), previous)
+    } else {
+      await finalize({ collectionName: 'finance', site })
+      const manifest = JSON.parse(await readFile(path.join(site, 'finance-manifest.json'), 'utf8'))
+      assert.equal(manifest.pages[0].hash, sha256('new source'))
+      assert.equal(await readFile(path.join(site, 'docs', 'finance', source), 'utf8'), prepared)
+    }
+  })
+})
+
+test('rejects mismatched publication pairs before mutation', async (t) => {
+  for (const present of ['docs', 'manifest']) await t.test(present, async (st) => {
+    const site = await mkdtemp(path.join(tmpdir(), 'finance-mismatch-'))
+    st.after(() => rm(site, { recursive: true, force: true }))
+    await mkdir(path.join(site, '.finance-work'), { recursive: true })
+    await writeFile(path.join(site, '.finance-work', 'report.json'), JSON.stringify({
+      generatedAt: '2026-07-08T00:00:00.000Z', added: [], changed: [], unchanged: [], deleted: [], inventory: {},
+    }))
+    if (present === 'docs') {
+      await mkdir(path.join(site, 'docs', 'finance'), { recursive: true })
+      await writeFile(path.join(site, 'docs', 'finance', 'sentinel.txt'), 'docs survive\n')
+    } else {
+      await writeFile(path.join(site, 'finance-manifest.json'), '{"version":1,"pages":[]}\n')
+    }
+    await assert.rejects(finalize({ collectionName: 'finance', site }), /both exist or both be absent/i)
+    if (present === 'docs') assert.equal(await readFile(path.join(site, 'docs', 'finance', 'sentinel.txt'), 'utf8'), 'docs survive\n')
+    else assert.equal(await readFile(path.join(site, 'finance-manifest.json'), 'utf8'), '{"version":1,"pages":[]}\n')
+  })
+})
+
+test('prepare and finalize serialize and publish only the complete prepared batch', async (t) => {
+  const source = 'concepts/test.md'
+  const site = await mkdtemp(path.join(tmpdir(), 'finance-prepare-finalize-'))
+  t.after(() => rm(site, { recursive: true, force: true }))
+  await mkdir(path.join(site, '.finance-work', 'source', 'concepts'), { recursive: true })
+  const raw = `---\ntitle: 金融概念\n---\n${BODY}\n`
+  await writeFile(path.join(site, '.finance-work', 'source', source), raw)
+  await writeFile(path.join(site, '.finance-work', 'report.json'), JSON.stringify({
+    generatedAt: '2026-07-08T00:00:00.000Z', added: [source], changed: [], unchanged: [], deleted: [],
+    inventory: { [source]: { hash: sha256(raw), publicPath: `docs/finance/${source}` } },
+    translationBaselines: { [source]: null },
+  }))
+  let releaseWrite
+  const paused = new Promise((resolve) => { releaseWrite = resolve })
+  let entered
+  const writing = new Promise((resolve) => { entered = resolve })
+  const preparing = prepareMirror({
+    collectionName: 'finance', site,
+    writePrepared: async (...args) => { entered(); await paused; return writeFile(...args) },
+  })
+  await writing
+  const finalizing = finalize({ collectionName: 'finance', site })
+  releaseWrite()
+  await Promise.all([preparing, finalizing])
+  assert.equal(JSON.parse(await readFile(path.join(site, 'finance-manifest.json'), 'utf8')).pages.length, 1)
+  assert.match(await readFile(path.join(site, 'docs', 'finance', source), 'utf8'), /金融概念/)
 })

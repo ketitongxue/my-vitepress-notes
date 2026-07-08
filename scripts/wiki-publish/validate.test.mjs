@@ -1,13 +1,27 @@
 import assert from 'node:assert/strict'
 import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises'
+import { spawn } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
+import { fileURLToPath } from 'node:url'
 
-import { sha256 } from './core.mjs'
+import { scanWikiSnapshot, sha256 } from './core.mjs'
 import { validatePublishedWiki } from './validate.mjs'
 
 const CHINESE_BODY = '这是一个完整的中文知识页面，用于说明发布校验机制如何保护内容质量以及站内链接的正确性。'
+const cli = fileURLToPath(new URL('./validate.mjs', import.meta.url))
+
+async function run(site, args = []) {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, [cli, ...args], { cwd: site })
+    let stdout = ''
+    let stderr = ''
+    child.stdout.on('data', (chunk) => { stdout += chunk })
+    child.stderr.on('data', (chunk) => { stderr += chunk })
+    child.on('close', (code) => resolve({ code, stderr, stdout }))
+  })
+}
 
 async function fixture(t, { source = 'concepts/good.md', content, page = {} } = {}) {
   const root = await mkdtemp(path.join(tmpdir(), 'wiki-validate-'))
@@ -44,6 +58,51 @@ test('accepts a complete Chinese published page', async (t) => {
   })
 })
 
+test('validates finance public paths and URL prefix', async (t) => {
+  const input = await fixture(t, {
+    content: `${CHINESE_BODY}\n[本站页面](/finance/concepts/good)`,
+    page: { publicPath: 'docs/finance/concepts/good.md' },
+  })
+  const collection = {
+    docsDirectory: 'finance',
+    urlPrefix: '/finance',
+  }
+  const snapshot = await scanWikiSnapshot(input.docsRoot, { collection })
+  assert.equal(snapshot.inventory['concepts/good.md'].publicPath, 'docs/finance/concepts/good.md')
+  assert.deepEqual(await validatePublishedWiki({ ...input, collection }), { errors: [], warnings: [] })
+})
+
+test('finance validation CLI names the selected collection when no publication exists', async (t) => {
+  const site = await mkdtemp(path.join(tmpdir(), 'finance-validate-empty-'))
+  t.after(() => rm(site, { recursive: true, force: true }))
+
+  const result = await run(site, ['--collection', 'finance'])
+  assert.equal(result.code, 0, result.stderr)
+  assert.match(result.stdout, /no published finance yet/i)
+})
+
+test('finance validation CLI pairs docs/finance with finance-manifest.json', async (t) => {
+  const site = await mkdtemp(path.join(tmpdir(), 'finance-validate-site-'))
+  t.after(() => rm(site, { recursive: true, force: true }))
+  await mkdir(path.join(site, 'docs', 'finance', 'concepts'), { recursive: true })
+  const markdown = `${CHINESE_BODY}\n`
+  await writeFile(path.join(site, 'docs', 'finance', 'concepts', 'good.md'), markdown)
+  await writeFile(path.join(site, 'finance-manifest.json'), JSON.stringify({
+    version: 1,
+    pages: [{
+      source: 'concepts/good.md',
+      hash: sha256(markdown),
+      publicPath: 'docs/finance/concepts/good.md',
+      status: 'published',
+      syncedAt: '2026-07-03T00:00:00.000Z',
+    }],
+  }))
+
+  const result = await run(site, ['--collection', 'finance'])
+  assert.equal(result.code, 0, result.stderr)
+  assert.match(result.stdout, /1 published page/)
+})
+
 test('rejects sources metadata and raw paths', async (t) => {
   assert.match(await errorsFor(t, `---\nsources: private\n---\n${CHINESE_BODY}`), /sources:/i)
   assert.match(await errorsFor(t, `${CHINESE_BODY}\nraw/private-note.md`), /raw\//i)
@@ -53,6 +112,7 @@ test('rejects macOS, Linux, and Windows absolute paths', async (t) => {
   assert.match(await errorsFor(t, `${CHINESE_BODY}\n/Users/alice/private.md`), /absolute path/i)
   assert.match(await errorsFor(t, `${CHINESE_BODY}\n/home/alice/private.md`), /absolute path/i)
   assert.match(await errorsFor(t, `${CHINESE_BODY}\n/etc/passwd\n/tmp/private.md\n/var/log/private.log`), /absolute path/i)
+  assert.match(await errorsFor(t, `${CHINESE_BODY}\n"/Users/alice/private.md"\n'/home/alice/private.md'\n\`/workspace/private.md\``), /absolute path/i)
   assert.match(await errorsFor(t, `${CHINESE_BODY}\nC:\\Users\\alice\\private.md`), /absolute path/i)
 })
 
@@ -61,6 +121,17 @@ test('allows wiki links and HTTP(S) URLs without treating them as absolute paths
     content: `${CHINESE_BODY}\n[本站页面](/wiki/concepts/good)\nhttps://example.com/private/path\nhttp://example.com/Users/alice`,
   })
   assert.doesNotMatch((await validatePublishedWiki(input)).errors.join('\n'), /absolute path/i)
+})
+
+test('allows financial ratios and technical product names without treating them as paths', async (t) => {
+  const input = await fixture(t, {
+    content: `${CHINESE_BODY}\n价格从 +8%/+9% 移动，使用 C++/FPGA 与左侧交易/均值回归。`,
+    page: { publicPath: 'docs/finance/concepts/good.md' },
+  })
+  assert.doesNotMatch(
+    (await validatePublishedWiki({ ...input, collection: { docsDirectory: 'finance', urlPrefix: '/finance' } })).errors.join('\n'),
+    /absolute path/i,
+  )
 })
 
 test('rejects residual wikilinks', async (t) => {

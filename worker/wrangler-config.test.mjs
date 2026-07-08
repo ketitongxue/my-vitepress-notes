@@ -28,6 +28,7 @@ test('main test script runs Worker tests and Wrangler is pinned', async () => {
   )
 
   assert.match(packageJson.scripts.test, /node --test worker\/\*\.test\.mjs/)
+  assert.match(packageJson.scripts.test, /npm run wiki:validate && npm run finance:validate/)
   assert.equal(packageJson.scripts['worker:dev'], 'npm run qa:index && wrangler dev')
   assert.equal(packageJson.scripts.deploy, 'npm run build && wrangler deploy')
   assert.doesNotMatch(packageJson.scripts.build, /npm run build/)

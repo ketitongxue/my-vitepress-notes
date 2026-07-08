@@ -26,6 +26,13 @@ assert.ok(
   'the main navigation must link to the wiki landing page'
 )
 
+assert.ok(
+  config.site.themeConfig.nav.some(
+    (item) => item.text === '金融知识库' && item.link === '/finance/'
+  ),
+  'the main navigation must link to the Finance landing page'
+)
+
 const wikiSidebar = config.site.themeConfig.sidebar['/wiki/']
 assert.deepEqual(
   wikiSidebar.map((group) => group.text),
@@ -80,6 +87,60 @@ assert.deepEqual(
   wikiSidebar.map(({ text, items }) => ({ text, items })),
   indexGroups,
   'wiki sidebar titles and order must match the Chinese wiki index'
+)
+
+const financeSidebar = config.site.themeConfig.sidebar['/finance/']
+assert.ok(financeSidebar, 'the theme must define an independent /finance/ sidebar')
+assert.deepEqual(
+  financeSidebar.map((group) => group.text),
+  ['实体', '概念', '对比分析'],
+  'the Finance sidebar must use the three Chinese index sections'
+)
+
+const financeSidebarItems = financeSidebar.flatMap((group) => group.items)
+const financeManifest = JSON.parse(await readFile('finance-manifest.json', 'utf8'))
+assert.equal(financeManifest.pages.length, 48, 'the Finance manifest must contain exactly 48 pages')
+assert.equal(financeSidebarItems.length, 48, 'the Finance sidebar must list exactly 48 pages')
+
+const financeSidebarLinks = financeSidebarItems.map((item) => item.link)
+assert.equal(
+  new Set(financeSidebarLinks).size,
+  financeSidebarLinks.length,
+  'every Finance sidebar link must be unique'
+)
+assert.equal(
+  financeSidebarLinks.some((link) => sidebarLinks.includes(link)),
+  false,
+  'Finance and wiki routes must not overlap'
+)
+
+const financeManifestLinks = new Map(financeManifest.pages.map((page) => [
+  `/${page.publicPath.replace(/^docs\//, '').replace(/\.md$/, '')}`,
+  page.source
+]))
+const missingFinanceSources = [...financeManifestLinks]
+  .filter(([link]) => !financeSidebarLinks.includes(link))
+  .map(([, source]) => source)
+assert.deepEqual(
+  missingFinanceSources,
+  [],
+  `Finance sidebar is missing manifest sources: ${missingFinanceSources.join(', ')}`
+)
+
+const financeIndex = await readFile('docs/finance/index.md', 'utf8')
+const financeIndexHeadings = [...financeIndex.matchAll(/^## (实体|概念|对比分析)$/gm)]
+const financeIndexGroups = financeIndexHeadings.map((heading, index) => ({
+  text: heading[1],
+  items: [...financeIndex
+    .slice(heading.index + heading[0].length, financeIndexHeadings[index + 1]?.index)
+    .matchAll(/^- \[([^\]]+)\]\((\/finance\/[^)]+)\)$/gm)].map(
+    ([, itemText, link]) => ({ text: itemText, link })
+  )
+}))
+assert.deepEqual(
+  financeSidebar.map(({ text, items }) => ({ text, items })),
+  financeIndexGroups,
+  'Finance sidebar titles and order must match the Chinese Finance index'
 )
 
 console.log('theme config tests passed')

@@ -3,6 +3,8 @@ import { constants } from 'node:fs'
 import { lstat, open, readdir, realpath } from 'node:fs/promises'
 import path from 'node:path'
 
+import { collectionConfig } from './collections.mjs'
+
 export const ALLOWED_SECTIONS = Object.freeze(['comparisons', 'concepts', 'entities'])
 
 export function sha256(text) {
@@ -34,8 +36,8 @@ function normalizeSourcePath(sourcePath) {
   return normalized
 }
 
-export function publicPath(sourcePath) {
-  return `docs/wiki/${normalizeSourcePath(sourcePath)}`
+export function publicPath(sourcePath, collection = collectionConfig('wiki')) {
+  return `docs/${collection.docsDirectory}/${normalizeSourcePath(sourcePath)}`
 }
 
 function isContained(root, candidate) {
@@ -204,7 +206,7 @@ async function collectMarkdownFiles(
   return files
 }
 
-async function scanWikiInternal(root, includeContent) {
+async function scanWikiInternal(root, includeContent, collection) {
   const rootDirectory = await openVerifiedDirectory(root)
   const sectionDirectories = []
   try {
@@ -266,7 +268,7 @@ async function scanWikiInternal(root, includeContent) {
       )
       inventory[file.sourcePath] = {
         hash: sha256(content),
-        publicPath: publicPath(file.sourcePath),
+        publicPath: publicPath(file.sourcePath, collection),
       }
       if (includeContent) contents[file.sourcePath] = content
     }
@@ -277,12 +279,18 @@ async function scanWikiInternal(root, includeContent) {
   }
 }
 
-export async function scanWiki(root) {
-  return scanWikiInternal(root, false)
+export async function scanWiki(
+  root,
+  { collection = collectionConfig('wiki') } = {},
+) {
+  return scanWikiInternal(root, false, collection)
 }
 
-export async function scanWikiSnapshot(root) {
-  return scanWikiInternal(root, true)
+export async function scanWikiSnapshot(
+  root,
+  { collection = collectionConfig('wiki') } = {},
+) {
+  return scanWikiInternal(root, true, collection)
 }
 
 export function diffInventory(previous, current) {

@@ -6,6 +6,7 @@ import {
   convertWikilinks,
   parseFrontmatter,
   serializePublicFrontmatter,
+  stripProvenance,
 } from './markdown.mjs'
 
 test('parses scalar and inline-array frontmatter while preserving the body', () => {
@@ -97,6 +98,30 @@ test('converts an unlabelled published wikilink', () => {
   })
 })
 
+test('converts table-escaped Finance wikilink labels', () => {
+  const known = new Map([['strategy', '/finance/concepts/strategy']])
+  assert.deepEqual(convertWikilinks('[[strategy\\|策略]]', known), {
+    markdown: '[策略](/finance/concepts/strategy)',
+    warnings: [],
+  })
+  assert.equal(convertWikilinks('table cell a\\|b', known).markdown, 'table cell a\\|b')
+})
+
+test('strips inline and standalone Finance provenance markers', () => {
+  assert.equal(stripProvenance('正文。^[raw/articles/source.md]\n> ^[raw/papers/book.md]\n'), '正文。\n')
+  assert.equal(
+    stripProvenance('正文。\n\n## 来源\n\n> ^[raw/papers/book.md]\n\n## 结论\n\n保留内容。\n'),
+    '正文。\n\n## 结论\n\n保留内容。\n',
+  )
+})
+
+test('strips prose-only source filename clauses from Finance copy', () => {
+  assert.equal(
+    stripProvenance('该论文有更详细的实证（参见原始来源 `factor-investing-methods-and-practice.md` 第38861行起）。\n'),
+    '该论文有更详细的实证。\n',
+  )
+})
+
 test('detects private metadata, raw references, absolute paths, and remaining wikilinks', () => {
   for (const markdown of [
     'sources: [article]',
@@ -109,6 +134,9 @@ test('detects private metadata, raw references, absolute paths, and remaining wi
     'See /custom/path/file.md',
     '路径：/Users/alice/wiki/private.md',
     'path=/custom/path/file.md',
+    'See "/Users/alice/wiki/private.md"',
+    "See '/home/alice/wiki/private.md'",
+    'See `/workspace/secret/file.md`',
     String.raw`See C:\Users\alice\wiki\private.md`,
     String.raw`路径：C:\Users\alice\wiki\private.md`,
     String.raw`path=C:\Users\alice\wiki\private.md`,
@@ -122,4 +150,5 @@ test('detects private metadata, raw references, absolute paths, and remaining wi
   assert.equal(containsPrivateData('See http://example.com/Users/alice/wiki.'), false)
   assert.equal(containsPrivateData('See //example.com/Users/alice/wiki.'), false)
   assert.equal(containsPrivateData('See <https://example.com/Users/alice/wiki>. also.'), false)
+  assert.equal(containsPrivateData('价格从 +8%/+9% 向涨停价移动。', { urlPrefix: '/finance' }), false)
 })
