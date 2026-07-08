@@ -112,6 +112,7 @@ test('rejects macOS, Linux, and Windows absolute paths', async (t) => {
   assert.match(await errorsFor(t, `${CHINESE_BODY}\n/Users/alice/private.md`), /absolute path/i)
   assert.match(await errorsFor(t, `${CHINESE_BODY}\n/home/alice/private.md`), /absolute path/i)
   assert.match(await errorsFor(t, `${CHINESE_BODY}\n/etc/passwd\n/tmp/private.md\n/var/log/private.log`), /absolute path/i)
+  assert.match(await errorsFor(t, `${CHINESE_BODY}\n"/Users/alice/private.md"\n'/home/alice/private.md'\n\`/workspace/private.md\``), /absolute path/i)
   assert.match(await errorsFor(t, `${CHINESE_BODY}\nC:\\Users\\alice\\private.md`), /absolute path/i)
 })
 

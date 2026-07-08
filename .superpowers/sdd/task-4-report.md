@@ -30,3 +30,19 @@ Implemented and verified the Finance publication and independent navigation.
 ## Concerns
 
 - The source contains a legacy `ai-agent-system` link while the published page is `ai-quant-agent-workflow`; the Finance preparation step now maps that exact legacy name to the stable published route.
+
+## Review Fixes
+
+- Restored robust Unix absolute-path detection for quoted and backticked local paths while retaining the financial-ratio and technical-product false-positive protections.
+- Scoped escaped-pipe normalization to Finance wikilinks; unrelated Markdown such as `a\|b` remains byte-for-byte unchanged.
+- Added a general sanitizer rule for empty provenance headings (`来源`, `参考资料`, `参考文献`, `Source(s)`, and `Reference(s)`) and removed the orphaned generated `## 来源` heading.
+- Removed the generated trailing-whitespace failure.
+
+## Review Verification Evidence
+
+- `node --test scripts/wiki-publish/markdown.test.mjs scripts/wiki-publish/prepare.test.mjs scripts/wiki-publish/validate.test.mjs`: 39 passed, 0 failed.
+- `node scripts/theme-config.test.mjs`: `theme config tests passed`.
+- `npm run finance:validate`: `48 published pages`.
+- `git diff --check`: exit 0 with no output.
+- `rg -n 'sources:|raw/|\[\[|/Users/|/data/data/' docs/finance`: exit 1, no matches.
+- `rg -n '`[^`]+\.md`|原始来源|^## (来源|参考资料|参考文献|Sources?|References?)\s*$|[ \t]+$' docs/finance`: only the intentional public template example ``specs/<功能名>.md`` matched; no provenance heading, source filename, `原始来源`, or trailing whitespace remained.

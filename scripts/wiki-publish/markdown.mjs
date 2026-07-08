@@ -88,7 +88,7 @@ export function serializePublicFrontmatter(frontmatter) {
 export function convertWikilinks(markdown, known) {
   const warnings = []
   const warned = new Set()
-  const converted = markdown.replace(/\\\|/g, '|').replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_match, rawTarget, rawLabel) => {
+  const converted = markdown.replace(/\[\[([^\]|]+?)(?:\\?\|([^\]]+))?\]\]/g, (_match, rawTarget, rawLabel) => {
     const target = rawTarget.trim()
     const label = rawLabel?.trim() || target
     const publicPath = known.get(target)
@@ -107,6 +107,7 @@ export function stripProvenance(markdown) {
     .replace(/（参见原始来源[ 	]+`[^`\r\n]+\.md`[^\uff09\r\n]*）/g, '')
     .replace(/^[ \t]*>[ \t]*\^\[raw[\\/][^\]\r\n]+\][ \t]*(?:\r?\n|$)/gim, '')
     .replace(/[ \t]*\^\[raw[\\/][^\]\r\n]+\]/gim, '')
+    .replace(/^#{1,6}[ \t]+(?:来源|参考资料|参考文献|Sources?|References?)[ \t]*\r?\n(?:[ \t]*\r?\n)*(?=#{1,6}[ \t]|\s*$)/gim, '')
 }
 
 export function containsPrivateData(markdown, { urlPrefix = '/wiki' } = {}) {
@@ -115,7 +116,7 @@ export function containsPrivateData(markdown, { urlPrefix = '/wiki' } = {}) {
     (_url, protocolRelativePrefix) => protocolRelativePrefix || '',
   )
   const hasNonWebUrl = /\b(?!https?:)[a-z][a-z0-9+.-]*:(?:\/\/)?[\\/]+/i.test(markdown)
-  const hasUnixAbsolutePath = [...withoutUrls.matchAll(/(?:^|[\s(<\[=：])\/(?!\/)(?=[A-Za-z_.~])([^\s)\]}>]+)/gu)]
+  const hasUnixAbsolutePath = [...withoutUrls.matchAll(/(?:^|[^\p{L}\p{N}_/+*%])\/(?!\/)(?=[A-Za-z_.~])([^\s)\]}>]+)/gu)]
     .some((match) => {
       const path = `/${match[1]}`
       return path !== urlPrefix && !path.startsWith(`${urlPrefix}/`)

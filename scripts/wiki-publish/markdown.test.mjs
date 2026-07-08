@@ -104,10 +104,15 @@ test('converts table-escaped Finance wikilink labels', () => {
     markdown: '[策略](/finance/concepts/strategy)',
     warnings: [],
   })
+  assert.equal(convertWikilinks('table cell a\\|b', known).markdown, 'table cell a\\|b')
 })
 
 test('strips inline and standalone Finance provenance markers', () => {
   assert.equal(stripProvenance('正文。^[raw/articles/source.md]\n> ^[raw/papers/book.md]\n'), '正文。\n')
+  assert.equal(
+    stripProvenance('正文。\n\n## 来源\n\n> ^[raw/papers/book.md]\n\n## 结论\n\n保留内容。\n'),
+    '正文。\n\n## 结论\n\n保留内容。\n',
+  )
 })
 
 test('strips prose-only source filename clauses from Finance copy', () => {
@@ -129,6 +134,9 @@ test('detects private metadata, raw references, absolute paths, and remaining wi
     'See /custom/path/file.md',
     '路径：/Users/alice/wiki/private.md',
     'path=/custom/path/file.md',
+    'See "/Users/alice/wiki/private.md"',
+    "See '/home/alice/wiki/private.md'",
+    'See `/workspace/secret/file.md`',
     String.raw`See C:\Users\alice\wiki\private.md`,
     String.raw`路径：C:\Users\alice\wiki\private.md`,
     String.raw`path=C:\Users\alice\wiki\private.md`,

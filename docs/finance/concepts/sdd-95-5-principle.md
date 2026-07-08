@@ -39,6 +39,3 @@ Spec-Driven Development（SDD，规格驱动开发）的价值分布极不均衡
 
 - 构建 AI 量化智能体系统、自动化交易功能时，把需求写成结构化规格再交给 AI，能显著降低返工与幻觉。见 [ai-quant-agent-workflow](/finance/concepts/ai-quant-agent-workflow)。
 - "先定验收再验证"与回测中的偏误/摩擦控制同理：在信任结果前先定义何为可信。见 [backtesting-bias-and-frictions](/finance/concepts/backtesting-bias-and-frictions)。
-
-## 来源
-

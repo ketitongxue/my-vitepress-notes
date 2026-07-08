@@ -71,7 +71,7 @@ function containsAbsolutePath(markdown, collection) {
     /https?:\/\/[^\s<>)]+|(^|[\s(<])\/\/[^\s<>)]+/gim,
     (_url, protocolRelativePrefix) => protocolRelativePrefix || '',
   )
-  const hasUnixAbsolutePath = [...withoutUrls.matchAll(/(?:^|[\s(<\[=：])\/(?!\/)(?=[A-Za-z_.~])([^\s)\]}>]+)/gu)]
+  const hasUnixAbsolutePath = [...withoutUrls.matchAll(/(?:^|[^\p{L}\p{N}_/+*%])\/(?!\/)(?=[A-Za-z_.~])([^\s)\]}>]+)/gu)]
     .some((match) => {
       const candidate = `/${match[1]}`
       return candidate !== collection.urlPrefix && !candidate.startsWith(`${collection.urlPrefix}/`)
