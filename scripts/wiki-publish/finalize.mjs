@@ -127,7 +127,7 @@ async function stageVerifiedSnapshot(snapshot, destination, deleted) {
   }
 }
 
-async function replacePublication({ site, stagedWiki, stagedManifest, collection, renameFile = rename, initial = false }) {
+async function replacePublication({ site, stagedWiki, stagedManifest, collection, renameFile = rename }) {
   const token = randomUUID()
   const wiki = path.join(site, 'docs', collection.docsDirectory)
   const manifest = path.join(site, collection.manifestFile)
@@ -135,6 +135,8 @@ async function replacePublication({ site, stagedWiki, stagedManifest, collection
   const manifestBackup = path.join(site, `${collection.publishPrefix}.backup-manifest-${token}`)
   const hadWiki = await exists(wiki)
   const hadManifest = await exists(manifest)
+  if (hadWiki !== hadManifest) throw new Error(`docs/${collection.docsDirectory} and ${collection.manifestFile} must both exist or both be absent`)
+  await mkdir(path.dirname(wiki), { recursive: true })
   if (hadWiki) await renameFile(wiki, wikiBackup)
   try {
     if (hadManifest) await renameFile(manifest, manifestBackup)
@@ -144,13 +146,13 @@ async function replacePublication({ site, stagedWiki, stagedManifest, collection
     } catch (error) {
       await rm(wiki, { recursive: true, force: true })
       if (await exists(manifestBackup)) await renameFile(manifestBackup, manifest)
-      if (!initial && await exists(wikiBackup)) await renameFile(wikiBackup, wiki)
+      if (hadWiki && await exists(wikiBackup)) await renameFile(wikiBackup, wiki)
       else await rm(wikiBackup, { recursive: true, force: true })
       throw error
     }
     await Promise.all([rm(wikiBackup, { recursive: true, force: true }), rm(manifestBackup, { force: true })])
   } catch (error) {
-    if (!initial && !(await exists(wiki)) && await exists(wikiBackup)) await renameFile(wikiBackup, wiki)
+    if (hadWiki && !(await exists(wiki)) && await exists(wikiBackup)) await renameFile(wikiBackup, wiki)
     throw error
   }
 }
@@ -213,7 +215,9 @@ export async function finalize({ collectionName = 'wiki', argv = process.argv.sl
 
     const manifestPath = path.join(site, collection.manifestFile)
     const docsRoot = path.join(site, 'docs', collection.docsDirectory)
-    const initial = !(await exists(manifestPath))
+    const [hadDocs, hadManifest] = await Promise.all([exists(docsRoot), exists(manifestPath)])
+    if (hadDocs !== hadManifest) throw new Error(`docs/${collection.docsDirectory} and ${collection.manifestFile} must both exist or both be absent`)
+    const initial = !hadDocs
     const manifest = initial ? { version: 1, pages: [] } : JSON.parse(await readFile(manifestPath, 'utf8'))
     if (!report.added.length && !report.changed.length && !report.deleted.length) {
       const result = await validatePublishedWiki({ docsRoot, manifest, collection })
@@ -224,8 +228,22 @@ export async function finalize({ collectionName = 'wiki', argv = process.argv.sl
     staging = path.join(site, `${collection.publishPrefix}.tmp-${randomUUID()}`)
     const stagedWiki = path.join(staging, collection.docsDirectory)
     await mkdir(staging)
-    const publishedSnapshot = await scanWikiSnapshot(docsRoot, { collection })
+    const publishedSnapshot = initial ? { contents: {}, inventory: {} } : await scanWikiSnapshot(docsRoot, { collection })
     await stageVerifiedSnapshot(publishedSnapshot, stagedWiki, deleted)
+
+    let preparedSnapshot
+    if (collection.mode === 'mirror') {
+      const preparedRoot = path.join(site, collection.workDirectory, 'prepared')
+      preparedSnapshot = await scanWikiSnapshot(preparedRoot, { collection })
+      const expected = [...translationSources].sort(compareCodePoints)
+      const actual = Object.keys(preparedSnapshot.contents).sort(compareCodePoints)
+      if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error('Prepared mirror batch does not match added/changed report')
+      for (const source of expected) {
+        const target = path.join(stagedWiki, ...source.split('/'))
+        await mkdir(path.dirname(target), { recursive: true })
+        await writeFile(target, preparedSnapshot.contents[source])
+      }
+    }
 
     const bySource = new Map(manifest.pages.map((page) => [page.source, page]))
     for (const source of report.changed) {
@@ -235,7 +253,9 @@ export async function finalize({ collectionName = 'wiki', argv = process.argv.sl
       if (bySource.has(source)) throw new Error(`${source}: added source already exists in manifest`)
     }
     for (const source of translationSources) {
-      const currentHash = publishedSnapshot.inventory[source]?.hash
+      const currentHash = (collection.mode === 'mirror'
+        ? preparedSnapshot.inventory[source]?.hash
+        : publishedSnapshot.inventory[source]?.hash)
       if (!currentHash) throw new Error(`${source}: missing translation`)
       if (currentHash === report.translationBaselines[source]) {
         if (collection.mode === 'mirror' || !confirmed.translations.includes(source)) {
@@ -263,7 +283,7 @@ export async function finalize({ collectionName = 'wiki', argv = process.argv.sl
     const stagedManifest = path.join(staging, collection.manifestFile)
     await writeFile(stagedManifest, `${JSON.stringify(nextManifest, null, 2)}\n`)
     await lock.assertOwned()
-    await replacePublication({ site, stagedWiki, stagedManifest, collection, renameFile, initial })
+    await replacePublication({ site, stagedWiki, stagedManifest, collection, renameFile })
     return { pages: pages.length, unchanged: false }
   } finally {
     if (staging) await rm(staging, { recursive: true, force: true })

@@ -34,19 +34,19 @@ async function fixture(t, { body = SOURCE, changed = ['concepts/test.md'] } = {}
 test('prepares a deterministic sanitized Finance mirror from the complete inventory', async (t) => {
   const site = await fixture(t)
   await prepareMirror({ collectionName: 'finance', site })
-  const output = await readFile(path.join(site, 'docs', 'finance', 'concepts', 'test.md'), 'utf8')
+  const output = await readFile(path.join(site, '.finance-work', 'prepared', 'concepts', 'test.md'), 'utf8')
   assert.match(output, /\[其他页面\]\(\/finance\/concepts\/other\)/)
   assert.match(output, /中文正文/)
   for (const privateValue of ['sources:', 'raw/', '[[', '/Users/']) assert.ok(!output.includes(privateValue), privateValue)
   const first = output
   await prepareMirror({ collectionName: 'finance', site })
-  assert.equal(await readFile(path.join(site, 'docs', 'finance', 'concepts', 'test.md'), 'utf8'), first)
+  assert.equal(await readFile(path.join(site, '.finance-work', 'prepared', 'concepts', 'test.md'), 'utf8'), first)
 })
 
 test('rejects unresolved Finance wikilinks without writing the page', async (t) => {
   const site = await fixture(t, { body: SOURCE.replace('[[other|其他页面]]', '[[missing]]') })
   await assert.rejects(prepareMirror({ collectionName: 'finance', site }), /unresolved wikilink.*missing/i)
-  await assert.rejects(readFile(path.join(site, 'docs', 'finance', 'concepts', 'test.md')), /ENOENT/)
+  await assert.rejects(readFile(path.join(site, '.finance-work', 'prepared', 'concepts', 'test.md')), /ENOENT/)
 })
 
 test('resolves qualified Finance wikilinks when section basenames collide', async (t) => {
@@ -58,7 +58,7 @@ test('resolves qualified Finance wikilinks when section basenames collide', asyn
   await prepareMirror({ collectionName: 'finance', site })
 
   assert.match(
-    await readFile(path.join(site, 'docs', 'finance', 'concepts', 'test.md'), 'utf8'),
+    await readFile(path.join(site, '.finance-work', 'prepared', 'concepts', 'test.md'), 'utf8'),
     /\[概念风险\]\(\/finance\/concepts\/risk\)/,
   )
 })
@@ -79,7 +79,7 @@ test('resolves the legacy Finance Agent page name to its published route', async
   await prepareMirror({ collectionName: 'finance', site })
 
   assert.match(
-    await readFile(path.join(site, 'docs', 'finance', 'concepts', 'test.md'), 'utf8'),
+    await readFile(path.join(site, '.finance-work', 'prepared', 'concepts', 'test.md'), 'utf8'),
     /\[Agent\]\(\/finance\/concepts\/ai-quant-agent-workflow\)/,
   )
 })
@@ -87,4 +87,23 @@ test('resolves the legacy Finance Agent page name to its published route', async
 test('refuses mirror preparation for curated Wiki translation mode', async (t) => {
   const site = await fixture(t)
   await assert.rejects(prepareMirror({ collectionName: 'wiki', site }), /mirror/i)
+})
+
+test('mid-batch preparation failure preserves public and prior prepared bytes', async (t) => {
+  const site = await fixture(t, { changed: ['concepts/test.md', 'concepts/other.md'] })
+  await mkdir(path.join(site, 'docs', 'finance', 'concepts'), { recursive: true })
+  await writeFile(path.join(site, 'docs', 'finance', 'concepts', 'test.md'), 'public bytes\n')
+  await prepareMirror({ collectionName: 'finance', site })
+  const prepared = await readFile(path.join(site, '.finance-work', 'prepared', 'concepts', 'test.md'))
+  let writes = 0
+  await assert.rejects(prepareMirror({
+    collectionName: 'finance', site,
+    writePrepared: async (...args) => {
+      writes += 1
+      if (writes === 2) throw new Error('injected prepared write failure')
+      return writeFile(...args)
+    },
+  }), /injected prepared write failure/)
+  assert.equal(await readFile(path.join(site, 'docs', 'finance', 'concepts', 'test.md'), 'utf8'), 'public bytes\n')
+  assert.deepEqual(await readFile(path.join(site, '.finance-work', 'prepared', 'concepts', 'test.md')), prepared)
 })

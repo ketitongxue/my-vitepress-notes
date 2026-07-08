@@ -6,6 +6,7 @@ import test from 'node:test'
 
 import { sha256 } from './core.mjs'
 import { finalize } from './finalize.mjs'
+import { prepareMirror } from './prepare.mjs'
 
 const BODY = '这是一个完整的中文知识页面，用于验证安全发布流程、链接与内容质量都符合公开要求。'
 
@@ -277,9 +278,9 @@ test('initial Finance finalization installs collection outputs and rolls both ba
     const site = await mkdtemp(path.join(tmpdir(), 'finance-finalize-'))
     st.after(() => rm(site, { recursive: true, force: true }))
     await mkdir(path.join(site, '.finance-work'), { recursive: true })
-    await mkdir(path.join(site, 'docs', 'finance', 'concepts'), { recursive: true })
+    await mkdir(path.join(site, '.finance-work', 'prepared', 'concepts'), { recursive: true })
     const content = `---\ntitle: 金融概念\n---\n${BODY}\n`
-    await writeFile(path.join(site, 'docs', 'finance', source), content)
+    await writeFile(path.join(site, '.finance-work', 'prepared', source), content)
     await writeFile(path.join(site, '.finance-work', 'report.json'), JSON.stringify({
       generatedAt: '2026-07-08T00:00:00.000Z', added: [source], changed: [], unchanged: [], deleted: [],
       inventory: { [source]: { hash: sha256('source'), publicPath: `docs/finance/${source}` } },
@@ -306,9 +307,9 @@ test('Finance finalization rejects unchanged prepared bytes without Wiki transla
   const site = await mkdtemp(path.join(tmpdir(), 'finance-finalize-'))
   t.after(() => rm(site, { recursive: true, force: true }))
   await mkdir(path.join(site, '.finance-work'), { recursive: true })
-  await mkdir(path.join(site, 'docs', 'finance', 'concepts'), { recursive: true })
+  await mkdir(path.join(site, '.finance-work', 'prepared', 'concepts'), { recursive: true })
   const content = `---\ntitle: 金融概念\n---\n${BODY}\n`
-  await writeFile(path.join(site, 'docs', 'finance', source), content)
+  await writeFile(path.join(site, '.finance-work', 'prepared', source), content)
   await writeFile(path.join(site, '.finance-work', 'report.json'), JSON.stringify({
     generatedAt: '2026-07-08T00:00:00.000Z', added: [source], changed: [], unchanged: [], deleted: [],
     inventory: { [source]: { hash: sha256('source'), publicPath: `docs/finance/${source}` } },
@@ -324,13 +325,15 @@ test('incremental Finance finalization commits or rolls back collection outputs 
     st.after(() => rm(site, { recursive: true, force: true }))
     await mkdir(path.join(site, '.finance-work'), { recursive: true })
     await mkdir(path.join(site, 'docs', 'finance', 'concepts'), { recursive: true })
+    await mkdir(path.join(site, '.finance-work', 'prepared', 'concepts'), { recursive: true })
     const previous = `---\ntitle: 旧风险页面\n---\n${BODY}\n`
     const prepared = previous.replace('旧风险页面', '新风险页面')
     const oldManifest = { version: 1, pages: [{
       source, hash: sha256('old source'), publicPath: `docs/finance/${source}`,
       status: 'published', syncedAt: '2026-07-01T00:00:00.000Z',
     }] }
-    await writeFile(path.join(site, 'docs', 'finance', source), prepared)
+    await writeFile(path.join(site, 'docs', 'finance', source), previous)
+    await writeFile(path.join(site, '.finance-work', 'prepared', source), prepared)
     await writeFile(path.join(site, 'finance-manifest.json'), `${JSON.stringify(oldManifest, null, 2)}\n`)
     await writeFile(path.join(site, '.finance-work', 'report.json'), JSON.stringify({
       generatedAt: '2026-07-08T00:00:00.000Z', added: [], changed: [source], unchanged: [], deleted: [],
@@ -348,7 +351,7 @@ test('incremental Finance finalization commits or rolls back collection outputs 
     if (fail) {
       await assert.rejects(finalize({ collectionName: 'finance', site, renameFile }), /injected incremental/)
       assert.deepEqual(await readFile(path.join(site, 'finance-manifest.json')), beforeManifest)
-      assert.equal(await readFile(path.join(site, 'docs', 'finance', source), 'utf8'), prepared)
+      assert.equal(await readFile(path.join(site, 'docs', 'finance', source), 'utf8'), previous)
     } else {
       await finalize({ collectionName: 'finance', site })
       const manifest = JSON.parse(await readFile(path.join(site, 'finance-manifest.json'), 'utf8'))
@@ -356,4 +359,52 @@ test('incremental Finance finalization commits or rolls back collection outputs 
       assert.equal(await readFile(path.join(site, 'docs', 'finance', source), 'utf8'), prepared)
     }
   })
+})
+
+test('rejects mismatched publication pairs before mutation', async (t) => {
+  for (const present of ['docs', 'manifest']) await t.test(present, async (st) => {
+    const site = await mkdtemp(path.join(tmpdir(), 'finance-mismatch-'))
+    st.after(() => rm(site, { recursive: true, force: true }))
+    await mkdir(path.join(site, '.finance-work'), { recursive: true })
+    await writeFile(path.join(site, '.finance-work', 'report.json'), JSON.stringify({
+      generatedAt: '2026-07-08T00:00:00.000Z', added: [], changed: [], unchanged: [], deleted: [], inventory: {},
+    }))
+    if (present === 'docs') {
+      await mkdir(path.join(site, 'docs', 'finance'), { recursive: true })
+      await writeFile(path.join(site, 'docs', 'finance', 'sentinel.txt'), 'docs survive\n')
+    } else {
+      await writeFile(path.join(site, 'finance-manifest.json'), '{"version":1,"pages":[]}\n')
+    }
+    await assert.rejects(finalize({ collectionName: 'finance', site }), /both exist or both be absent/i)
+    if (present === 'docs') assert.equal(await readFile(path.join(site, 'docs', 'finance', 'sentinel.txt'), 'utf8'), 'docs survive\n')
+    else assert.equal(await readFile(path.join(site, 'finance-manifest.json'), 'utf8'), '{"version":1,"pages":[]}\n')
+  })
+})
+
+test('prepare and finalize serialize and publish only the complete prepared batch', async (t) => {
+  const source = 'concepts/test.md'
+  const site = await mkdtemp(path.join(tmpdir(), 'finance-prepare-finalize-'))
+  t.after(() => rm(site, { recursive: true, force: true }))
+  await mkdir(path.join(site, '.finance-work', 'source', 'concepts'), { recursive: true })
+  const raw = `---\ntitle: 金融概念\n---\n${BODY}\n`
+  await writeFile(path.join(site, '.finance-work', 'source', source), raw)
+  await writeFile(path.join(site, '.finance-work', 'report.json'), JSON.stringify({
+    generatedAt: '2026-07-08T00:00:00.000Z', added: [source], changed: [], unchanged: [], deleted: [],
+    inventory: { [source]: { hash: sha256(raw), publicPath: `docs/finance/${source}` } },
+    translationBaselines: { [source]: null },
+  }))
+  let releaseWrite
+  const paused = new Promise((resolve) => { releaseWrite = resolve })
+  let entered
+  const writing = new Promise((resolve) => { entered = resolve })
+  const preparing = prepareMirror({
+    collectionName: 'finance', site,
+    writePrepared: async (...args) => { entered(); await paused; return writeFile(...args) },
+  })
+  await writing
+  const finalizing = finalize({ collectionName: 'finance', site })
+  releaseWrite()
+  await Promise.all([preparing, finalizing])
+  assert.equal(JSON.parse(await readFile(path.join(site, 'finance-manifest.json'), 'utf8')).pages.length, 1)
+  assert.match(await readFile(path.join(site, 'docs', 'finance', source), 'utf8'), /金融概念/)
 })
