@@ -316,3 +316,44 @@ test('Finance finalization rejects unchanged prepared bytes without Wiki transla
   }))
   await assert.rejects(finalize({ collectionName: 'finance', site, argv: ['--confirm-translation', source] }), /unknown finalize argument|not updated/i)
 })
+
+test('incremental Finance finalization commits or rolls back collection outputs atomically', async (t) => {
+  const source = 'concepts/risk.md'
+  for (const fail of [false, true]) await t.test(fail ? 'rollback' : 'success', async (st) => {
+    const site = await mkdtemp(path.join(tmpdir(), 'finance-finalize-incremental-'))
+    st.after(() => rm(site, { recursive: true, force: true }))
+    await mkdir(path.join(site, '.finance-work'), { recursive: true })
+    await mkdir(path.join(site, 'docs', 'finance', 'concepts'), { recursive: true })
+    const previous = `---\ntitle: 旧风险页面\n---\n${BODY}\n`
+    const prepared = previous.replace('旧风险页面', '新风险页面')
+    const oldManifest = { version: 1, pages: [{
+      source, hash: sha256('old source'), publicPath: `docs/finance/${source}`,
+      status: 'published', syncedAt: '2026-07-01T00:00:00.000Z',
+    }] }
+    await writeFile(path.join(site, 'docs', 'finance', source), prepared)
+    await writeFile(path.join(site, 'finance-manifest.json'), `${JSON.stringify(oldManifest, null, 2)}\n`)
+    await writeFile(path.join(site, '.finance-work', 'report.json'), JSON.stringify({
+      generatedAt: '2026-07-08T00:00:00.000Z', added: [], changed: [source], unchanged: [], deleted: [],
+      inventory: { [source]: { hash: sha256('new source'), publicPath: `docs/finance/${source}` } },
+      translationBaselines: { [source]: sha256(previous) },
+    }))
+    const beforeManifest = await readFile(path.join(site, 'finance-manifest.json'))
+    const renameFile = async (from, to) => {
+      if (fail && to === path.join(site, 'finance-manifest.json') && from.includes('.finance-publish.tmp-')) {
+        throw new Error('injected incremental manifest failure')
+      }
+      return rename(from, to)
+    }
+
+    if (fail) {
+      await assert.rejects(finalize({ collectionName: 'finance', site, renameFile }), /injected incremental/)
+      assert.deepEqual(await readFile(path.join(site, 'finance-manifest.json')), beforeManifest)
+      assert.equal(await readFile(path.join(site, 'docs', 'finance', source), 'utf8'), prepared)
+    } else {
+      await finalize({ collectionName: 'finance', site })
+      const manifest = JSON.parse(await readFile(path.join(site, 'finance-manifest.json'), 'utf8'))
+      assert.equal(manifest.pages[0].hash, sha256('new source'))
+      assert.equal(await readFile(path.join(site, 'docs', 'finance', source), 'utf8'), prepared)
+    }
+  })
+})

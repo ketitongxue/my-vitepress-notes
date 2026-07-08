@@ -8,14 +8,15 @@ import { containsPrivateData, convertWikilinks, parseFrontmatter, serializePubli
 
 function knownTargets(inventory, collection) {
   const known = new Map()
+  const aliases = new Map()
   for (const source of Object.keys(inventory)) {
     const target = source.replace(/\.md$/, '')
     const slug = path.posix.basename(target)
     const url = `${collection.urlPrefix}/${target}`
     known.set(target, url)
-    if (known.has(slug) && known.get(slug) !== url) throw new Error(`Ambiguous Finance wikilink target: ${slug}`)
-    known.set(slug, url)
+    aliases.set(slug, aliases.has(slug) && aliases.get(slug) !== url ? null : url)
   }
+  for (const [slug, url] of aliases) if (url) known.set(slug, url)
   return known
 }
 

@@ -35,3 +35,11 @@ Result: clean.
 - Identical source input produces identical bytes; only added and changed pages are written.
 - Existing Wiki tests cover translation baselines, acknowledgements, recovery, deletion confirmation, and incremental replacement.
 - Finance index headings use the existing required section labels and collection URL prefix.
+
+## Review fixes
+
+- Added duplicate-basename coverage for `concepts/risk.md` and `entities/risk.md`.
+- Qualified `[[concepts/risk]]` links remain resolvable; ambiguous short `[[risk]]` links are rejected during transformation without invalidating the inventory.
+- Added Finance-specific incremental finalization success and injected-failure rollback coverage, asserting both `docs/finance` bytes and `finance-manifest.json` bytes.
+- Review RED: both duplicate-basename tests failed because inventory construction threw `Ambiguous Finance wikilink target: risk`.
+- Review GREEN: focused suite passed 51 tests with 0 failures after unique-only short alias registration.

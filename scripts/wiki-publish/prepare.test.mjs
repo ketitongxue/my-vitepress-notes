@@ -49,6 +49,29 @@ test('rejects unresolved Finance wikilinks without writing the page', async (t) 
   await assert.rejects(readFile(path.join(site, 'docs', 'finance', 'concepts', 'test.md')), /ENOENT/)
 })
 
+test('resolves qualified Finance wikilinks when section basenames collide', async (t) => {
+  const site = await fixture(t, { body: SOURCE.replace('[[other|其他页面]]', '[[concepts/risk|概念风险]]') })
+  await mkdir(path.join(site, '.finance-work', 'source', 'entities'), { recursive: true })
+  await writeFile(path.join(site, '.finance-work', 'source', 'concepts', 'risk.md'), `---\ntitle: 概念风险\n---\n${'中文内容'.repeat(10)}\n`)
+  await writeFile(path.join(site, '.finance-work', 'source', 'entities', 'risk.md'), `---\ntitle: 实体风险\n---\n${'中文内容'.repeat(10)}\n`)
+
+  await prepareMirror({ collectionName: 'finance', site })
+
+  assert.match(
+    await readFile(path.join(site, 'docs', 'finance', 'concepts', 'test.md'), 'utf8'),
+    /\[概念风险\]\(\/finance\/concepts\/risk\)/,
+  )
+})
+
+test('rejects ambiguous short Finance wikilinks when section basenames collide', async (t) => {
+  const site = await fixture(t, { body: SOURCE.replace('[[other|其他页面]]', '[[risk]]') })
+  await mkdir(path.join(site, '.finance-work', 'source', 'entities'), { recursive: true })
+  await writeFile(path.join(site, '.finance-work', 'source', 'concepts', 'risk.md'), `---\ntitle: 概念风险\n---\n${'中文内容'.repeat(10)}\n`)
+  await writeFile(path.join(site, '.finance-work', 'source', 'entities', 'risk.md'), `---\ntitle: 实体风险\n---\n${'中文内容'.repeat(10)}\n`)
+
+  await assert.rejects(prepareMirror({ collectionName: 'finance', site }), /unresolved wikilink.*risk/i)
+})
+
 test('refuses mirror preparation for curated Wiki translation mode', async (t) => {
   const site = await fixture(t)
   await assert.rejects(prepareMirror({ collectionName: 'wiki', site }), /mirror/i)
