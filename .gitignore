@@ -5,6 +5,13 @@
 .wiki-sync.lock/
 .wiki-sync.candidate-*/
 .wiki-sync.lock.claim-*/
+.finance-work/
+.finance-work.backup-*/
+.finance-work.tmp-*/
+.finance-sync.lock/
+.finance-sync.candidate-*/
+.finance-sync.lock.claim-*/
+.finance-publish.tmp-*/
 node_modules/
 docs/.vitepress/cache/
 docs/.vitepress/dist/

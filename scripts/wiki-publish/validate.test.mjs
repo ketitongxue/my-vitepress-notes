@@ -1,13 +1,27 @@
 import assert from 'node:assert/strict'
 import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises'
+import { spawn } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
+import { fileURLToPath } from 'node:url'
 
 import { sha256 } from './core.mjs'
 import { validatePublishedWiki } from './validate.mjs'
 
 const CHINESE_BODY = '这是一个完整的中文知识页面，用于说明发布校验机制如何保护内容质量以及站内链接的正确性。'
+const cli = fileURLToPath(new URL('./validate.mjs', import.meta.url))
+
+async function run(site, args = []) {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, [cli, ...args], { cwd: site })
+    let stdout = ''
+    let stderr = ''
+    child.stdout.on('data', (chunk) => { stdout += chunk })
+    child.stderr.on('data', (chunk) => { stderr += chunk })
+    child.on('close', (code) => resolve({ code, stderr, stdout }))
+  })
+}
 
 async function fixture(t, { source = 'concepts/good.md', content, page = {} } = {}) {
   const root = await mkdtemp(path.join(tmpdir(), 'wiki-validate-'))
@@ -42,6 +56,40 @@ test('accepts a complete Chinese published page', async (t) => {
     errors: [],
     warnings: [],
   })
+})
+
+test('validates finance public paths and URL prefix', async (t) => {
+  const input = await fixture(t, {
+    content: `${CHINESE_BODY}\n[本站页面](/finance/concepts/good)`,
+    page: { publicPath: 'docs/finance/concepts/good.md' },
+  })
+  const collection = {
+    docsDirectory: 'finance',
+    urlPrefix: '/finance',
+  }
+  assert.deepEqual(await validatePublishedWiki({ ...input, collection }), { errors: [], warnings: [] })
+})
+
+test('finance validation CLI pairs docs/finance with finance-manifest.json', async (t) => {
+  const site = await mkdtemp(path.join(tmpdir(), 'finance-validate-site-'))
+  t.after(() => rm(site, { recursive: true, force: true }))
+  await mkdir(path.join(site, 'docs', 'finance', 'concepts'), { recursive: true })
+  const markdown = `${CHINESE_BODY}\n`
+  await writeFile(path.join(site, 'docs', 'finance', 'concepts', 'good.md'), markdown)
+  await writeFile(path.join(site, 'finance-manifest.json'), JSON.stringify({
+    version: 1,
+    pages: [{
+      source: 'concepts/good.md',
+      hash: sha256(markdown),
+      publicPath: 'docs/finance/concepts/good.md',
+      status: 'published',
+      syncedAt: '2026-07-03T00:00:00.000Z',
+    }],
+  }))
+
+  const result = await run(site, ['--collection', 'finance'])
+  assert.equal(result.code, 0, result.stderr)
+  assert.match(result.stdout, /1 published page/)
 })
 
 test('rejects sources metadata and raw paths', async (t) => {
