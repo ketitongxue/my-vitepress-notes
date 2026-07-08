@@ -7,6 +7,8 @@
     "wiki:finalize": "node scripts/wiki-publish/finalize.mjs",
     "wiki:validate": "node scripts/wiki-publish/validate.mjs",
     "finance:sync": "node scripts/wiki-publish/sync.mjs --collection finance",
+    "finance:prepare": "node scripts/wiki-publish/prepare.mjs --collection finance",
+    "finance:finalize": "node scripts/wiki-publish/finalize.mjs --collection finance",
     "finance:validate": "node scripts/wiki-publish/validate.mjs --collection finance",
     "qa:index": "node scripts/wiki-qa/indexer.mjs",
     "qa:security": "node scripts/wiki-qa/security-scan.mjs",

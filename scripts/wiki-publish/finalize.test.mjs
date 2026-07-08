@@ -270,3 +270,49 @@ test('safely rejects a legacy report with added or changed sources but no transl
   await writeFile(reportPath, JSON.stringify(legacy))
   await assert.rejects(finalize({ site }), /require translationBaselines/i)
 })
+
+test('initial Finance finalization installs collection outputs and rolls both back on manifest-install failure', async (t) => {
+  const source = 'concepts/first.md'
+  for (const fail of [false, true]) await t.test(fail ? 'rollback' : 'success', async (st) => {
+    const site = await mkdtemp(path.join(tmpdir(), 'finance-finalize-'))
+    st.after(() => rm(site, { recursive: true, force: true }))
+    await mkdir(path.join(site, '.finance-work'), { recursive: true })
+    await mkdir(path.join(site, 'docs', 'finance', 'concepts'), { recursive: true })
+    const content = `---\ntitle: 金融概念\n---\n${BODY}\n`
+    await writeFile(path.join(site, 'docs', 'finance', source), content)
+    await writeFile(path.join(site, '.finance-work', 'report.json'), JSON.stringify({
+      generatedAt: '2026-07-08T00:00:00.000Z', added: [source], changed: [], unchanged: [], deleted: [],
+      inventory: { [source]: { hash: sha256('source'), publicPath: `docs/finance/${source}` } },
+      translationBaselines: { [source]: null },
+    }))
+    const renameFile = async (from, to) => {
+      if (fail && to === path.join(site, 'finance-manifest.json')) throw new Error('injected manifest failure')
+      return rename(from, to)
+    }
+    if (fail) {
+      await assert.rejects(finalize({ collectionName: 'finance', site, renameFile }), /injected/)
+      await assert.rejects(readFile(path.join(site, 'docs', 'finance', source)), /ENOENT/)
+      await assert.rejects(readFile(path.join(site, 'finance-manifest.json')), /ENOENT/)
+    } else {
+      await finalize({ collectionName: 'finance', site })
+      assert.equal(JSON.parse(await readFile(path.join(site, 'finance-manifest.json'), 'utf8')).pages.length, 1)
+      assert.match(await readFile(path.join(site, 'docs', 'finance', 'index.md'), 'utf8'), /\/finance\/concepts\/first/)
+    }
+  })
+})
+
+test('Finance finalization rejects unchanged prepared bytes without Wiki translation override', async (t) => {
+  const source = 'concepts/same.md'
+  const site = await mkdtemp(path.join(tmpdir(), 'finance-finalize-'))
+  t.after(() => rm(site, { recursive: true, force: true }))
+  await mkdir(path.join(site, '.finance-work'), { recursive: true })
+  await mkdir(path.join(site, 'docs', 'finance', 'concepts'), { recursive: true })
+  const content = `---\ntitle: 金融概念\n---\n${BODY}\n`
+  await writeFile(path.join(site, 'docs', 'finance', source), content)
+  await writeFile(path.join(site, '.finance-work', 'report.json'), JSON.stringify({
+    generatedAt: '2026-07-08T00:00:00.000Z', added: [source], changed: [], unchanged: [], deleted: [],
+    inventory: { [source]: { hash: sha256('source'), publicPath: `docs/finance/${source}` } },
+    translationBaselines: { [source]: sha256(content) },
+  }))
+  await assert.rejects(finalize({ collectionName: 'finance', site, argv: ['--confirm-translation', source] }), /unknown finalize argument|not updated/i)
+})

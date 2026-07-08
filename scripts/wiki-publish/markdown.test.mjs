@@ -6,6 +6,7 @@ import {
   convertWikilinks,
   parseFrontmatter,
   serializePublicFrontmatter,
+  stripProvenance,
 } from './markdown.mjs'
 
 test('parses scalar and inline-array frontmatter while preserving the body', () => {
@@ -95,6 +96,10 @@ test('converts an unlabelled published wikilink', () => {
     markdown: '[context-engineering](/wiki/concepts/context-engineering)',
     warnings: [],
   })
+})
+
+test('strips inline and standalone Finance provenance markers', () => {
+  assert.equal(stripProvenance('正文。^[raw/articles/source.md]\n> ^[raw/papers/book.md]\n'), '正文。\n')
 })
 
 test('detects private metadata, raw references, absolute paths, and remaining wikilinks', () => {

@@ -102,7 +102,13 @@ export function convertWikilinks(markdown, known) {
   return { markdown: converted, warnings }
 }
 
-export function containsPrivateData(markdown) {
+export function stripProvenance(markdown) {
+  return markdown
+    .replace(/^[ \t]*>[ \t]*\^\[raw[\\/][^\]\r\n]+\][ \t]*(?:\r?\n|$)/gim, '')
+    .replace(/[ \t]*\^\[raw[\\/][^\]\r\n]+\]/gim, '')
+}
+
+export function containsPrivateData(markdown, { urlPrefix = '/wiki' } = {}) {
   const withoutUrls = markdown.replace(
     /https?:\/\/[^\s<>)]+|(^|[\s(<])\/\/[^\s<>)]+/gim,
     (_url, protocolRelativePrefix) => protocolRelativePrefix || '',
@@ -111,7 +117,7 @@ export function containsPrivateData(markdown) {
   const hasUnixAbsolutePath = [...withoutUrls.matchAll(/(?:^|[^\p{L}\p{N}_/])\/(?!\/)([^\s)\]}>]+)/gu)]
     .some((match) => {
       const path = `/${match[1]}`
-      return path !== '/wiki' && !path.startsWith('/wiki/')
+      return path !== urlPrefix && !path.startsWith(`${urlPrefix}/`)
     })
 
   return /(^|\n)\s*sources\s*:/i.test(markdown)
