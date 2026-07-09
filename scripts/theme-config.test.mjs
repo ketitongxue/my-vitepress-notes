@@ -19,18 +19,20 @@ assert.deepEqual(
   'the site must render the configured garden footer'
 )
 
-assert.ok(
-  config.site.themeConfig.nav.some(
-    (item) => item.text === '知识库' && item.link === '/wiki/'
-  ),
-  'the main navigation must link to the wiki landing page'
+const knowledgeNav = config.site.themeConfig.nav.find((item) => item.text === '知识库')
+assert.deepEqual(
+  knowledgeNav?.items,
+  [
+    { text: 'AI Wiki', link: '/wiki/' },
+    { text: '金融知识库', link: '/finance/' }
+  ],
+  'the main navigation must fuse the two knowledge bases into one dropdown'
 )
 
-assert.ok(
-  config.site.themeConfig.nav.some(
-    (item) => item.text === '金融知识库' && item.link === '/finance/'
-  ),
-  'the main navigation must link to the Finance landing page'
+assert.equal(
+  config.site.themeConfig.nav.some((item) => item.text === '金融知识库'),
+  false,
+  'the Finance landing page must not remain a separate top-level navigation button'
 )
 
 const wikiSidebar = config.site.themeConfig.sidebar['/wiki/']
