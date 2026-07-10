@@ -64,6 +64,9 @@ test('publishes all staged additions and changes with source hashes and a genera
   const index = await readFile(path.join(site, 'docs', 'wiki', 'index.md'), 'utf8')
   assert.match(index, /页面总数：\*\*2\*\*/)
   assert.match(index, /\[新增实体\]\(\/wiki\/entities\/new\)/)
+  assert.match(index, /class="knowledge-hub"/)
+  assert.match(index, /<details class="knowledge-hub__all">/)
+  assert.match(index, /<summary>全部条目（2）<\/summary>/)
 })
 
 test('missing translation and validation failure preserve manifest bytes', async (t) => {
