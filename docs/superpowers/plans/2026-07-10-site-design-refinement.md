@@ -406,7 +406,7 @@ Expected: zero failures; Wiki validation reports 45 pages, Finance validation re
 
 - [ ] **Step 3: Start the preview and capture desktop states**
 
-Run: `npm run docs:dev -- --host 127.0.0.1`
+Run: `npm run docs:dev -- --host localhost`
 
 Use the in-app browser to inspect the homepage, open Knowledge menu, AI hub, Finance hub, representative article, and Q&A page. Verify the hero has no orphan character, hub lists are initially folded, and Q&A scope is explicit.
 
