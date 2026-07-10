@@ -36,5 +36,5 @@ test('theme styles balance the hero and compact the knowledge and QA surfaces', 
   assert.match(css, /\.VPHero \.text[\s\S]*text-wrap:\s*balance/)
   assert.match(css, /\.knowledge-hub__featured/)
   assert.match(css, /\.knowledge-hub__all/)
-  assert.match(css, /\.wiki-ask__conversation[\s\S]*min-height:\s*190px/)
+  assert.doesNotMatch(css, /\.wiki-ask__conversation[\s\S]{0,400}min-height:\s*190px/)
 })

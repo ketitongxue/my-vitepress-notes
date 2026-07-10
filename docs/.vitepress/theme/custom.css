@@ -285,7 +285,6 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
-  min-height: 190px;
   max-height: 58vh;
   overflow-y: auto;
   padding: 22px;

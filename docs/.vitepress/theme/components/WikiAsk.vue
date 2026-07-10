@@ -198,8 +198,7 @@ onMounted(loadHistory)
       </div>
     </header>
 
-    <div ref="conversation" class="wiki-ask__conversation" aria-label="问答对话">
-      <p v-if="messages.length === 0" class="wiki-ask__empty">输入一个关于 AI、产品或工程实践的问题。</p>
+    <div v-if="messages.length > 0 || busy" ref="conversation" class="wiki-ask__conversation" aria-label="问答对话">
       <article v-for="(message, index) in messages" :key="index" :class="['wiki-ask__message', `is-${message.role}`]">
         <p class="wiki-ask__role">{{ message.role === 'user' ? '你' : '知识库助手' }}</p>
         <p class="wiki-ask__answer">{{ message.content || '…' }}</p>
@@ -217,7 +216,7 @@ onMounted(loadHistory)
       </div>
     </div>
 
-    <p class="wiki-ask__status" aria-live="polite">{{ statusText }}</p>
+    <p v-if="messages.length > 0 || busy" class="wiki-ask__status" aria-live="polite">{{ statusText }}</p>
     <p v-if="errorText" class="wiki-ask__error" role="alert">{{ errorText }}</p>
 
     <form class="wiki-ask__composer" @submit.prevent="submitQuestion">
@@ -233,8 +232,8 @@ onMounted(loadHistory)
       />
       <div class="wiki-ask__actions">
         <p>Ctrl / ⌘ + Enter 发送</p>
-        <button type="button" class="secondary" :disabled="!busy" @click="stopGeneration">停止生成</button>
-        <button type="button" class="secondary" :disabled="messages.length === 0 && !busy" @click="clearConversation">清空对话</button>
+        <button v-if="busy" type="button" class="secondary" @click="stopGeneration">停止生成</button>
+        <button v-if="messages.length > 0" type="button" class="secondary" @click="clearConversation">清空对话</button>
         <button type="submit" :disabled="!canSend">发送</button>
       </div>
     </form>
