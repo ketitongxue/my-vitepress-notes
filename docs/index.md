@@ -7,11 +7,11 @@ hero:
   tagline: 持续记录 AI、产品、工程与个人实践之间的连接。
   actions:
     - theme: brand
-      text: 开始探索
-      link: /topics/
+      text: 浏览知识库
+      link: /wiki/
     - theme: alt
-      text: 关于本站
-      link: /about
+      text: 向知识库提问
+      link: /ask/
 
 features:
   - icon: '<span aria-hidden="true">◇</span>'
@@ -33,9 +33,9 @@ features:
     <p class="garden-eyebrow">RECENT GROWTH</p>
     <h2>最近生长</h2>
     <ul class="garden-list">
-      <li><a href="/notes/sustainable-ai-workflow">可持续的 AI 工作流</a><time datetime="2026-07-02">2026-07-02</time></li>
-      <li><a href="/notes/product-validation-loop">产品验证循环</a><time datetime="2026-07-01">2026-07-01</time></li>
-      <li><a href="/notes/static-site-delivery">静态网站交付</a><time datetime="2026-06-30">2026-06-30</time></li>
+      <li><a href="/finance/">金融知识库</a><time datetime="2026-07-08">2026-07-08</time></li>
+      <li><a href="/wiki/">AI 知识库</a><time datetime="2026-07-07">2026-07-07</time></li>
+      <li><a href="/ask/">知识库问答</a><time datetime="2026-07-07">2026-07-07</time></li>
     </ul>
   </div>
   <aside>
