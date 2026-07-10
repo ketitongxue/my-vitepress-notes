@@ -137,6 +137,21 @@ test('unchanged report validates but does not rewrite manifest or index', async 
   assert.deepEqual(await readFile(path.join(site, 'docs', 'wiki', 'index.md')), beforeIndex)
 })
 
+test('finalize preserves ordinary published article frontmatter', async (t) => {
+  const source = 'concepts/frontmatter.md'
+  const site = await fixture(t, { pages: [page(source)], report: {
+    unchanged: [source], inventory: { [source]: { hash: 'a'.repeat(64), publicPath: `docs/wiki/${source}` } },
+  } })
+  const article = `---\ntitle: 普通知识页面\nupdated: 2026-07-01\n---\n${BODY}\n`
+  await mkdir(path.join(site, 'docs', 'wiki', 'concepts'), { recursive: true })
+  await writeFile(path.join(site, 'docs', 'wiki', source), article)
+
+  const before = await readFile(path.join(site, 'docs', 'wiki', source), 'utf8')
+  assert.match(before, /^---\n[\s\S]*\nupdated: 2026-07-01\n---/)
+  await finalize({ site })
+  assert.equal(await readFile(path.join(site, 'docs', 'wiki', source), 'utf8'), before)
+})
+
 test('concurrent finalizers serialize through the shared publication lock', async (t) => {
   const source = 'concepts/new.md'
   const site = await fixture(t, { report: { added: [source], inventory: { [source]: { hash: 'c'.repeat(64), publicPath: `docs/wiki/${source}` } } } })
