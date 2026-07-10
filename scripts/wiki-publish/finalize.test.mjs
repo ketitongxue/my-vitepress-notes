@@ -62,7 +62,8 @@ test('publishes all staged additions and changes with source hashes and a genera
     { source: changed, hash: hashes[changed] }, { source: added, hash: hashes[added] },
   ])
   const index = await readFile(path.join(site, 'docs', 'wiki', 'index.md'), 'utf8')
-  assert.match(index, /页面总数：\*\*2\*\*/)
+  assert.match(index, /<span>页面总数：<strong>2<\/strong><\/span>/)
+  assert.doesNotMatch(index, /class="knowledge-hub__stats"[^>]*>\s*\n\s*-/)
   assert.match(index, /\[新增实体\]\(\/wiki\/entities\/new\)/)
   assert.match(index, /class="knowledge-hub"/)
   assert.match(index, /<details class="knowledge-hub__all">/)

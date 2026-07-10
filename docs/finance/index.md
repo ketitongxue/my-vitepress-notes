@@ -8,10 +8,8 @@ description: 量化交易、金融市场、投资与风险管理知识库。
 <div class="knowledge-hub">
   <p class="knowledge-hub__intro">量化交易、金融市场、投资与风险管理知识库。</p>
   <div class="knowledge-hub__stats" aria-label="知识库统计">
-
-- 页面总数：**48**
-- 最近同步日期：**2026-07-08**
-
+    <span>页面总数：<strong>48</strong></span>
+    <span>最近同步日期：<strong>2026-07-08</strong></span>
   </div>
   <div class="knowledge-hub__featured" aria-label="精选条目">
     <strong>精选条目</strong>
