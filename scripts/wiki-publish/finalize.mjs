@@ -123,7 +123,7 @@ export async function indexMarkdown(docsRoot, pages, date, collection) {
   const pageCount = escapeHtml(pages.length)
   const syncedDate = escapeHtml(date)
   const lines = [
-    '---', `title: ${collection.title}`, `description: ${collection.description}`, '---', '',
+    '---', `title: ${collection.title}`, `description: ${collection.description}`, 'lastUpdated: false', '---', '',
     `# ${collection.title}`, '',
     '<div class="knowledge-hub">',
     `  <p class="knowledge-hub__intro">${description}</p>`,

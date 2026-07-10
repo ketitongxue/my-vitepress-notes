@@ -62,6 +62,7 @@ test('publishes all staged additions and changes with source hashes and a genera
     { source: changed, hash: hashes[changed] }, { source: added, hash: hashes[added] },
   ])
   const index = await readFile(path.join(site, 'docs', 'wiki', 'index.md'), 'utf8')
+  assert.match(index, /^---\n[\s\S]*\nlastUpdated: false\n---/)
   assert.match(index, /<span>页面总数：<strong>2<\/strong><\/span>/)
   assert.doesNotMatch(index, /class="knowledge-hub__stats"[^>]*>\s*\n\s*-/)
   assert.match(index, /\[新增实体\]\(\/wiki\/entities\/new\)/)
@@ -357,7 +358,9 @@ test('initial Finance finalization installs collection outputs and rolls both ba
     } else {
       await finalize({ collectionName: 'finance', site })
       assert.equal(JSON.parse(await readFile(path.join(site, 'finance-manifest.json'), 'utf8')).pages.length, 1)
-      assert.match(await readFile(path.join(site, 'docs', 'finance', 'index.md'), 'utf8'), /\/finance\/concepts\/first/)
+      const index = await readFile(path.join(site, 'docs', 'finance', 'index.md'), 'utf8')
+      assert.match(index, /^---\n[\s\S]*\nlastUpdated: false\n---/)
+      assert.match(index, /\/finance\/concepts\/first/)
     }
   })
 })
