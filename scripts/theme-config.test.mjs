@@ -6,8 +6,14 @@ const config = await resolveConfig('docs', 'build')
 
 assert.equal(
   config.site.appearance,
-  'force-dark',
-  'the site must force its dark appearance to match the custom palette'
+  'dark',
+  'the site must default to dark while allowing a persisted visitor choice'
+)
+
+assert.equal(
+  config.site.themeConfig.darkModeSwitchLabel,
+  '主题颜色',
+  'the native appearance switch must have a Chinese label'
 )
 
 assert.deepEqual(

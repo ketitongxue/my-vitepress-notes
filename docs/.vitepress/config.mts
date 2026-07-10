@@ -4,7 +4,7 @@ export default defineConfig({
   lang: 'zh-CN',
   title: 'AI 纪元',
   description: '探索智能时代的知识、工具与创造',
-  appearance: 'force-dark',
+  appearance: 'dark',
   cleanUrls: true,
   lastUpdated: true,
   srcExclude: ['superpowers/**'],
@@ -176,6 +176,6 @@ export default defineConfig({
     lastUpdated: { text: '最后更新' },
     returnToTopLabel: '返回顶部',
     sidebarMenuLabel: '菜单',
-    darkModeSwitchLabel: '外观'
+    darkModeSwitchLabel: '主题颜色'
   }
 })
