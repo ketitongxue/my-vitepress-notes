@@ -23,6 +23,29 @@ function runChecker(css) {
   }
 }
 
+const switchableTheme = `
+:root {
+  --vp-c-bg: #f7f9fc;
+  --vp-c-brand-1: #137f6b;
+}
+.dark {
+  --vp-c-bg: #0b1020;
+  --vp-c-brand-1: #8be9d3;
+}
+.garden-section { display: grid; }
+.garden-list { margin: 0; }
+.garden-tags { color: teal; }
+@media (max-width: 720px) {
+  .garden-section { grid-template-columns: 1fr; }
+}
+`
+
+assert.equal(
+  runChecker(switchableTheme).status,
+  0,
+  'light root and dark override palettes must pass validation'
+)
+
 const commentedTheme = `
 /*
 :root {
