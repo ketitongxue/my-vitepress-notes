@@ -70,6 +70,21 @@ test('publishes all staged additions and changes with source hashes and a genera
   assert.match(index, /<summary>全部条目（2）<\/summary>/)
 })
 
+test('escapes hostile page titles in generated Markdown link labels', async (t) => {
+  const source = 'concepts/hostile.md'
+  const site = await fixture(t, { report: {
+    added: [source],
+    inventory: { [source]: { hash: sha256('hostile source'), publicPath: `docs/wiki/${source}` } },
+  } })
+  await put(site, source, '危险\\路径](https://example.com)[标签')
+
+  await finalize({ site })
+
+  const index = await readFile(path.join(site, 'docs', 'wiki', 'index.md'), 'utf8')
+  assert.ok(index.includes('- [危险\\\\路径\\](https://example.com)\\[标签](/wiki/concepts/hostile)'))
+  assert.ok(!index.includes('- [危险\\路径](https://example.com)[标签](/wiki/concepts/hostile)'))
+})
+
 test('missing translation and validation failure preserve manifest bytes', async (t) => {
   for (const kind of ['missing', 'invalid']) await t.test(kind, async (st) => {
     const source = 'concepts/new.md'

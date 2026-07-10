@@ -24,6 +24,13 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;')
 }
 
+function escapeMarkdownLinkLabel(value) {
+  return String(value)
+    .replaceAll('\\', '\\\\')
+    .replaceAll('[', '\\[')
+    .replaceAll(']', '\\]')
+}
+
 async function exists(candidate) {
   try { await access(candidate); return true } catch (error) {
     if (error?.code === 'ENOENT') return false
@@ -138,7 +145,7 @@ export async function indexMarkdown(docsRoot, pages, date, collection) {
   for (const [section, heading] of SECTIONS) {
     lines.push(`## ${heading}`, '')
     for (const item of grouped.get(section)) {
-      lines.push(`- [${item.title}](${collection.urlPrefix}/${item.source.replace(/\.md$/, '')})`)
+      lines.push(`- [${escapeMarkdownLinkLabel(item.title)}](${collection.urlPrefix}/${item.source.replace(/\.md$/, '')})`)
     }
     lines.push('')
   }
