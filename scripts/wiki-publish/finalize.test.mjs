@@ -139,12 +139,14 @@ test('unchanged report validates but does not rewrite manifest or index', async 
 
 test('finalize preserves ordinary published article frontmatter', async (t) => {
   const source = 'concepts/frontmatter.md'
+  const added = 'concepts/unrelated-added.md'
   const site = await fixture(t, { pages: [page(source)], report: {
-    unchanged: [source], inventory: { [source]: { hash: 'a'.repeat(64), publicPath: `docs/wiki/${source}` } },
+    added: [added], inventory: { [added]: { hash: sha256('unrelated added source'), publicPath: `docs/wiki/${added}` } },
   } })
   const article = `---\ntitle: 普通知识页面\nupdated: 2026-07-01\n---\n${BODY}\n`
   await mkdir(path.join(site, 'docs', 'wiki', 'concepts'), { recursive: true })
   await writeFile(path.join(site, 'docs', 'wiki', source), article)
+  await put(site, added, '无关新增页面')
 
   const before = await readFile(path.join(site, 'docs', 'wiki', source), 'utf8')
   assert.match(before, /^---\n[\s\S]*\nupdated: 2026-07-01\n---/)
