@@ -20,7 +20,7 @@ function resolvedPalette(source, inherited = {}) {
 }
 
 function srgbChannels(hex) {
-  return hex.slice(1).match(/../g).map((value) => Number.parseInt(value, 16) / 255)
+  return hex.match(/[0-9a-f]{2}/gi).map((value) => Number.parseInt(value, 16) / 255)
 }
 
 function mixSrgb(foreground, background, foregroundWeight) {
