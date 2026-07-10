@@ -19,8 +19,19 @@ function resolvedPalette(source, inherited = {}) {
   ])
 }
 
-function luminance(hex) {
-  const channels = hex.slice(1).match(/../g).map((value) => Number.parseInt(value, 16) / 255)
+function srgbChannels(hex) {
+  return hex.slice(1).match(/../g).map((value) => Number.parseInt(value, 16) / 255)
+}
+
+function mixSrgb(foreground, background, foregroundWeight) {
+  const foregroundChannels = srgbChannels(foreground)
+  const backgroundChannels = srgbChannels(background)
+  return foregroundChannels.map((channel, index) =>
+    channel * foregroundWeight + backgroundChannels[index] * (1 - foregroundWeight))
+}
+
+function luminance(color) {
+  const channels = (Array.isArray(color) ? color : srgbChannels(color))
     .map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
   return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
 }
@@ -59,7 +70,7 @@ test('light and dark palettes use the exact approved colors', () => {
     '--site-on-brand': '#ffffff',
     '--site-floating-shadow': '0 14px 40px rgb(23 32 51 / 14%)',
     '--site-muted-on-alt': '#4f5d73',
-    '--site-brand-on-soft': '#0f6f5d',
+    '--site-brand-on-soft': '#0b5f50',
     '--wiki-ask-error-border': '#b42342',
     '--wiki-ask-error-bg': '#fff0f3',
     '--wiki-ask-error-text': '#8b1e35',
@@ -111,13 +122,17 @@ test('actual light and dark component pairs meet WCAG AA contrast', () => {
       const ratio = contrastVariables(theme, foreground, background, themeName)
       assert.ok(ratio >= 4.5, `${themeName} ${foreground} on ${background}: ${ratio}`)
     }
+
+    const userMessageBackground = mixSrgb(theme['--vp-c-brand-3'], theme['--vp-c-bg-soft'], 0.12)
+    const userMessageRatio = contrast(theme['--site-brand-on-soft'], userMessageBackground)
+    assert.ok(userMessageRatio >= 4.5, `${index === 0 ? 'light' : 'dark'} role on user message: ${userMessageRatio}`)
   }
 })
 
 test('custom components consume semantic theme variables', () => {
-  assert.match(css, /linear-gradient\(145deg, var\(--site-card-start\), var\(--site-card-end\)\)/)
-  assert.match(css, /color:\s*var\(--site-on-brand\)/)
-  assert.match(css, /box-shadow:\s*var\(--site-floating-shadow\)/)
+  assert.match(block('.VPFeature'), /linear-gradient\(145deg, var\(--site-card-start\), var\(--site-card-end\)\)/)
+  assert.match(block('.wiki-ask button'), /color:\s*var\(--site-on-brand\)/)
+  assert.match(block('.wiki-ask__composer'), /box-shadow:\s*var\(--site-floating-shadow\)/)
   assert.match(block('.wiki-ask__empty'), /color:\s*var\(--site-muted-on-alt\)/)
   assert.match(block('.wiki-ask__citations small'), /color:\s*var\(--site-muted-on-alt\)/)
   assert.match(block('.wiki-ask__actions p'), /color:\s*var\(--site-muted-on-alt\)/)
