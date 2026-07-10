@@ -39,7 +39,7 @@ assert.match(index, /^---\n[\s\S]*\nlastUpdated: false\n---/)
 
 - [ ] **Step 2: Run RED**
 
-Run: `node --test scripts/wiki-publish/finalize.test.mjs`  
+Run: `node --test scripts/wiki-publish/finalize.test.mjs`
 Expected: FAIL，生成 frontmatter 缺少 `lastUpdated: false`。
 
 - [ ] **Step 3: Implement the minimum fix**
@@ -48,7 +48,7 @@ Expected: FAIL，生成 frontmatter 缺少 `lastUpdated: false`。
 
 - [ ] **Step 4: Run GREEN and commit**
 
-Run: `node --test scripts/wiki-publish/finalize.test.mjs`  
+Run: `node --test scripts/wiki-publish/finalize.test.mjs`
 Expected: PASS。
 
 ```bash
@@ -82,7 +82,7 @@ assert.doesNotMatch(css, /\.wiki-ask__conversation[\s\S]{0,400}min-height:\s*190
 
 - [ ] **Step 2: Run RED**
 
-Run: `node --test scripts/wiki-qa/ui-contract.test.mjs scripts/site-design.test.mjs`  
+Run: `node --test scripts/wiki-qa/ui-contract.test.mjs scripts/site-design.test.mjs`
 Expected: FAIL on unconditional nodes and 190px minimum height.
 
 - [ ] **Step 3: Implement the minimum fix**
@@ -91,7 +91,7 @@ Expected: FAIL on unconditional nodes and 190px minimum height.
 
 - [ ] **Step 4: Run GREEN and commit**
 
-Run: `node --test scripts/wiki-qa/ui-contract.test.mjs scripts/site-design.test.mjs`  
+Run: `node --test scripts/wiki-qa/ui-contract.test.mjs scripts/site-design.test.mjs`
 Expected: PASS。
 
 ```bash
@@ -125,7 +125,7 @@ assert.match(config, /search:[\s\S]*provider:\s*['"]local['"][\s\S]*translations
 
 - [ ] **Step 2: Run RED**
 
-Run: `node --test scripts/site-design.test.mjs`  
+Run: `node --test scripts/site-design.test.mjs`
 Expected: FAIL on English labels, missing link text/anchors and search translations.
 
 - [ ] **Step 3: Implement the minimum fix**
@@ -134,16 +134,16 @@ Expected: FAIL on English labels, missing link text/anchors and search translati
 
 - [ ] **Step 4: Run GREEN and full verification**
 
-Run: `node --test scripts/site-design.test.mjs`  
+Run: `node --test scripts/site-design.test.mjs`
 Expected: PASS。
 
-Run: `npm test`  
+Run: `npm test`
 Expected: PASS。
 
-Run: `npm run docs:build`  
+Run: `npm run docs:build`
 Expected: VitePress build complete。
 
-Run: `git diff --check`  
+Run: `git diff --check`
 Expected: no output。
 
 ```bash
