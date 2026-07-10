@@ -15,6 +15,15 @@ const SECTIONS = [
   ['comparisons', '对比分析'],
 ]
 
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
 async function exists(candidate) {
   try { await access(candidate); return true } catch (error) {
     if (error?.code === 'ENOENT') return false
@@ -88,20 +97,43 @@ function verifyReport(report, collection) {
   }
 }
 
-async function indexMarkdown(docsRoot, pages, date, collection) {
+export async function indexMarkdown(docsRoot, pages, date, collection) {
   const grouped = new Map(SECTIONS.map(([section]) => [section, []]))
+  const pageBySource = new Map()
   for (const page of pages) {
     const markdown = await readFile(path.join(docsRoot, ...page.source.split('/')), 'utf8')
     const title = parseFrontmatter(markdown).frontmatter.title
     if (typeof title !== 'string' || !title.trim()) throw new Error(`${page.source}: missing title`)
     const [section] = page.source.split('/')
-    grouped.get(section).push({ source: page.source, title: title.trim() })
+    const item = { source: page.source, title: title.trim() }
+    grouped.get(section).push(item)
+    pageBySource.set(page.source, item)
   }
+  const featured = collection.featuredSources
+    .map((source) => pageBySource.get(source))
+    .filter(Boolean)
+  const description = escapeHtml(collection.description)
+  const pageCount = escapeHtml(pages.length)
+  const syncedDate = escapeHtml(date)
   const lines = [
     '---', `title: ${collection.title}`, `description: ${collection.description}`, '---', '',
     `# ${collection.title}`, '',
-    `这里收录 ${pages.length} 篇经过整理的中文知识页面，涵盖实体、核心概念与对比分析。`, '',
-    `- 页面总数：**${pages.length}**`, `- 最近同步日期：**${date}**`, '',
+    '<div class="knowledge-hub">',
+    `  <p class="knowledge-hub__intro">${description}</p>`,
+    '  <div class="knowledge-hub__stats" aria-label="知识库统计">', '',
+    `- 页面总数：**${pageCount}**`,
+    `- 最近同步日期：**${syncedDate}**`, '',
+    '  </div>',
+    '  <div class="knowledge-hub__featured" aria-label="精选条目">',
+    '    <strong>精选条目</strong>',
+    ...featured.map((item) => `    <a href="${escapeHtml(`${collection.urlPrefix}/${item.source.replace(/\.md$/, '')}`)}">${escapeHtml(item.title)}</a>`),
+    '  </div>',
+    '  <div class="knowledge-hub__sections" aria-label="分类概览">',
+    ...SECTIONS.map(([section, heading]) => `    <div><a href="#${escapeHtml(heading)}">${escapeHtml(heading)}</a><strong>${escapeHtml(grouped.get(section).length)}</strong></div>`),
+    '  </div>',
+    '</div>', '',
+    '<details class="knowledge-hub__all">',
+    `<summary>全部条目（${pageCount}）</summary>`, '',
   ]
   for (const [section, heading] of SECTIONS) {
     lines.push(`## ${heading}`, '')
@@ -110,6 +142,7 @@ async function indexMarkdown(docsRoot, pages, date, collection) {
     }
     lines.push('')
   }
+  lines.push('</details>', '')
   return `${lines.join('\n').trimEnd()}\n`
 }
 
