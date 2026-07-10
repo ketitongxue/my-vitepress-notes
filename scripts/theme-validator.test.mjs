@@ -65,8 +65,29 @@ assert.notEqual(
   'commented-out declarations and selectors must fail validation'
 )
 
+const missingDarkTheme = `
+:root {
+  --vp-c-bg: #f7f9fc;
+  --vp-c-brand-1: #137f6b;
+}
+.garden-section { display: grid; }
+.garden-list { margin: 0; }
+.garden-tags { color: teal; }
+@media (max-width: 720px) {
+  .garden-section { grid-template-columns: 1fr; }
+}
+`
+
+const missingDarkResult = runChecker(missingDarkTheme)
+assert.notEqual(missingDarkResult.status, 0, 'missing dark palette anchors must fail validation')
+assert.match(missingDarkResult.stderr, /custom\.css \.dark must declare --vp-c-bg/)
+
 const misplacedMobileRule = `
 :root {
+  --vp-c-bg: #f7f9fc;
+  --vp-c-brand-1: #137f6b;
+}
+.dark {
   --vp-c-bg: #0b1020;
   --vp-c-brand-1: #8be9d3;
 }
@@ -79,10 +100,8 @@ const misplacedMobileRule = `
 }
 `
 
-assert.notEqual(
-  runChecker(misplacedMobileRule).status,
-  0,
-  'the mobile garden-section declaration must be inside its media query'
-)
+const misplacedMobileResult = runChecker(misplacedMobileRule)
+assert.notEqual(misplacedMobileResult.status, 0, 'the mobile garden-section declaration must be inside its media query')
+assert.match(misplacedMobileResult.stderr, /must set \.garden-section to one column/)
 
 console.log('theme validator tests passed')

@@ -16,6 +16,8 @@
   --site-card-end: #eef3f8;
   --site-on-brand: #ffffff;
   --site-floating-shadow: 0 14px 40px rgb(23 32 51 / 14%);
+  --site-muted-on-alt: #4f5d73;
+  --site-brand-on-soft: #0f6f5d;
   --wiki-ask-error-border: #b42342;
   --wiki-ask-error-bg: #fff0f3;
   --wiki-ask-error-text: #8b1e35;
@@ -38,6 +40,8 @@
   --site-card-end: #0f1627;
   --site-on-brand: #061512;
   --site-floating-shadow: 0 14px 40px rgb(0 0 0 / 28%);
+  --site-muted-on-alt: #8f9bb0;
+  --site-brand-on-soft: #8be9d3;
   --wiki-ask-error-border: #c75b70;
   --wiki-ask-error-bg: #3a1720;
   --wiki-ask-error-text: #ffd5dc;
@@ -286,7 +290,7 @@
 
 .wiki-ask__empty {
   margin: auto;
-  color: var(--vp-c-text-3);
+  color: var(--site-muted-on-alt);
   text-align: center;
 }
 
@@ -306,7 +310,7 @@
 
 .wiki-ask__role {
   margin: 0 0 7px;
-  color: var(--vp-c-brand-1);
+  color: var(--site-brand-on-soft);
   font-size: 12px;
   font-weight: 700;
 }
@@ -346,7 +350,7 @@
 
 .wiki-ask__citations small {
   margin-top: 5px;
-  color: var(--vp-c-text-3);
+  color: var(--site-muted-on-alt);
 }
 
 .wiki-ask__loading {
@@ -423,7 +427,7 @@
 
 .wiki-ask__actions p {
   margin: 0 auto 0 0;
-  color: var(--vp-c-text-3);
+  color: var(--site-muted-on-alt);
   font-size: 12px;
 }
 
