@@ -40,6 +40,9 @@ test('component meets interaction, persistence, stream, and safety contracts', a
   assert.match(component, /发送/)
   assert.match(component, /停止生成/)
   assert.match(component, /清空对话/)
+  assert.match(component, /回答仅基于 AI 知识库/)
+  assert.match(component, /href="\/wiki\/"/)
+  assert.doesNotMatch(component, /金融知识库/)
   assert.match(component, /aria-live=['"]polite['"]/)
   assert.match(component, /new AbortController\(\)/)
   assert.match(component, /(?:load|save|remove)SessionHistory\(getSessionStorage\(\)/)
@@ -59,6 +62,7 @@ test('component meets interaction, persistence, stream, and safety contracts', a
 test('ask styles include sticky composer, mobile layout, and reduced motion', async () => {
   const css = await read('docs/.vitepress/theme/custom.css')
   assert.match(css, /\.wiki-ask__composer[\s\S]*position:\s*sticky/)
+  assert.match(css, /\.wiki-ask__conversation[\s\S]*min-height:\s*190px/)
   assert.match(css, /@media\s*\(max-width:\s*720px\)/)
   assert.match(css, /prefers-reduced-motion:\s*reduce/)
 })

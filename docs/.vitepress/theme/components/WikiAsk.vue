@@ -190,7 +190,8 @@ onMounted(loadHistory)
     <header class="wiki-ask__intro">
       <p class="wiki-ask__eyebrow">WIKI Q&amp;A</p>
       <h1 id="wiki-ask-title">向知识库提问</h1>
-      <p>回答只基于本站已发布的中文 Wiki，并附上可继续阅读的站内引用。</p>
+      <p>回答仅基于 AI 知识库中已发布的中文页面，并附上可继续阅读的站内引用。</p>
+      <a class="wiki-ask__browse" href="/wiki/">浏览 AI 知识库</a>
       <div class="wiki-ask__examples" aria-label="示例问题">
         <button type="button" @click="question = 'Claude Code 的权限模型是什么？'">Claude Code 的权限模型是什么？</button>
         <button type="button" @click="question = '上下文工程有哪些关键原则？'">上下文工程有哪些关键原则？</button>
