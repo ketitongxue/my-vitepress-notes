@@ -68,6 +68,9 @@ test('light and dark palettes use the exact approved colors', () => {
     '--site-card-start': '#ffffff',
     '--site-card-end': '#eef3f8',
     '--site-on-brand': '#ffffff',
+    '--vp-button-brand-text': 'var(--site-on-brand)',
+    '--vp-button-brand-hover-text': 'var(--site-on-brand)',
+    '--vp-button-brand-active-text': 'var(--site-on-brand)',
     '--site-floating-shadow': '0 14px 40px rgb(23 32 51 / 14%)',
     '--site-muted-on-alt': '#4f5d73',
     '--site-brand-on-soft': '#0b5f50',
@@ -93,6 +96,9 @@ test('light and dark palettes use the exact approved colors', () => {
     '--site-card-start': '#121a2d',
     '--site-card-end': '#0f1627',
     '--site-on-brand': '#061512',
+    '--vp-button-brand-text': 'var(--site-on-brand)',
+    '--vp-button-brand-hover-text': 'var(--site-on-brand)',
+    '--vp-button-brand-active-text': 'var(--site-on-brand)',
     '--site-floating-shadow': '0 14px 40px rgb(0 0 0 / 28%)',
     '--site-muted-on-alt': '#8f9bb0',
     '--site-brand-on-soft': '#8be9d3',
@@ -113,6 +119,8 @@ test('actual light and dark component pairs meet WCAG AA contrast', () => {
       ['--vp-c-text-3', '--vp-c-bg'],
       ['--vp-c-brand-1', '--vp-c-bg'],
       ['--site-on-brand', '--vp-c-brand-3'],
+      ['--site-on-brand', '--vp-c-brand-2'],
+      ['--site-on-brand', '--vp-c-brand-1'],
       ['--site-muted-on-alt', '--vp-c-bg-alt'],
       ['--site-brand-on-soft', '--vp-c-bg-soft'],
       ['--vp-c-text-1', '--vp-c-bg-alt'],
@@ -129,6 +137,15 @@ test('actual light and dark component pairs meet WCAG AA contrast', () => {
   }
 })
 
+test('native brand buttons consume semantic on-brand text', () => {
+  const light = resolvedPalette(block(':root'))
+  for (const property of [
+    '--vp-button-brand-text',
+    '--vp-button-brand-hover-text',
+    '--vp-button-brand-active-text',
+  ]) assert.equal(light[property], 'var(--site-on-brand)')
+})
+
 test('custom components consume semantic theme variables', () => {
   assert.match(block('.VPFeature'), /linear-gradient\(145deg, var\(--site-card-start\), var\(--site-card-end\)\)/)
   assert.match(block('.wiki-ask button'), /color:\s*var\(--site-on-brand\)/)
@@ -137,4 +154,5 @@ test('custom components consume semantic theme variables', () => {
   assert.match(block('.wiki-ask__citations small'), /color:\s*var\(--site-muted-on-alt\)/)
   assert.match(block('.wiki-ask__actions p'), /color:\s*var\(--site-muted-on-alt\)/)
   assert.match(block('.wiki-ask__role'), /color:\s*var\(--site-brand-on-soft\)/)
+  assert.match(block('.knowledge-hub__sections a'), /color:\s*var\(--site-brand-on-soft\)/)
 })

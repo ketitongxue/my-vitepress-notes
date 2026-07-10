@@ -15,6 +15,9 @@
   --site-card-start: #ffffff;
   --site-card-end: #eef3f8;
   --site-on-brand: #ffffff;
+  --vp-button-brand-text: var(--site-on-brand);
+  --vp-button-brand-hover-text: var(--site-on-brand);
+  --vp-button-brand-active-text: var(--site-on-brand);
   --site-floating-shadow: 0 14px 40px rgb(23 32 51 / 14%);
   --site-muted-on-alt: #4f5d73;
   --site-brand-on-soft: #0b5f50;
@@ -165,6 +168,10 @@
   justify-content: space-between;
   gap: 16px;
   padding: 14px 16px;
+}
+
+.knowledge-hub__sections a {
+  color: var(--site-brand-on-soft);
 }
 
 .knowledge-hub__featured a:hover,
