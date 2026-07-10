@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+import { access, readFile } from 'node:fs/promises'
 import test from 'node:test'
 
 const root = new URL('../', import.meta.url)
@@ -36,8 +36,15 @@ test('homepage discovery labels and entries are actionable in Chinese', async ()
   assert.match(home, /garden-eyebrow">最新内容</)
   assert.match(home, /garden-eyebrow">站内导航</)
   assert.equal((home.match(/linkText:\s*查看专题/g) ?? []).length, 3)
-  for (const href of ['/wiki/', '/finance/', '/ask/', '/notes/sustainable-ai-workflow']) {
+  const entries = new Map([
+    ['/wiki/', 'docs/wiki/index.md'],
+    ['/finance/', 'docs/finance/index.md'],
+    ['/ask/', 'docs/ask/index.md'],
+    ['/notes/sustainable-ai-workflow', 'docs/notes/sustainable-ai-workflow.md'],
+  ])
+  for (const [href, path] of entries) {
     assert.match(home, new RegExp(`href=["']${href.replaceAll('/', '\\\/')}["']`))
+    await assert.doesNotReject(access(new URL(path, root)), `${href} must resolve to ${path}`)
   }
 })
 
@@ -59,5 +66,9 @@ test('theme styles balance the hero and compact the knowledge and QA surfaces', 
   assert.match(css, /\.VPHero \.text[\s\S]*text-wrap:\s*balance/)
   assert.match(css, /\.knowledge-hub__featured/)
   assert.match(css, /\.knowledge-hub__all/)
+  assert.match(css, /\.garden-links\s*\{[\s\S]*?display:\s*(?:flex|grid);[\s\S]*?gap:\s*[^;]+;[\s\S]*?flex-wrap:\s*wrap;/)
+  assert.match(css, /\.garden-links a:hover\s*\{[\s\S]*?\}/)
+  assert.match(css, /\.garden-links a:focus-visible\s*\{[\s\S]*?\}/)
+  assert.doesNotMatch(css, /\.garden-tags/)
   assert.doesNotMatch(css, /\.wiki-ask__conversation[\s\S]{0,400}min-height:\s*190px/)
 })

@@ -83,7 +83,25 @@ export function validateThemeCss(source) {
     }
   }
 
-  for (const selector of ['.garden-section', '.garden-list', '.garden-tags']) {
+  for (const selector of ['.garden-section', '.garden-list', '.garden-links']) {
+    const rule = findRule(rules, selector)
+    if (!rule || parseDeclarations(rule.body).size === 0) {
+      throw new Error(`custom.css must contain an active ${selector} rule`)
+    }
+  }
+
+  const gardenLinks = parseDeclarations(findRule(rules, '.garden-links').body)
+  if (!['flex', 'grid'].includes(gardenLinks.get('display'))) {
+    throw new Error('custom.css .garden-links must use flex or grid layout')
+  }
+  if (!gardenLinks.get('gap')) {
+    throw new Error('custom.css .garden-links must declare a gap')
+  }
+  if (gardenLinks.get('flex-wrap') !== 'wrap') {
+    throw new Error('custom.css .garden-links must wrap its entries')
+  }
+
+  for (const selector of ['.garden-links a:hover', '.garden-links a:focus-visible']) {
     const rule = findRule(rules, selector)
     if (!rule || parseDeclarations(rule.body).size === 0) {
       throw new Error(`custom.css must contain an active ${selector} rule`)
