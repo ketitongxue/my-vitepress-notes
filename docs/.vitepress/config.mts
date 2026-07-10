@@ -15,7 +15,7 @@ export default defineConfig({
       {
         text: '知识库',
         items: [
-          { text: 'AI Wiki', link: '/wiki/' },
+          { text: 'AI 知识库', link: '/wiki/' },
           { text: '金融知识库', link: '/finance/' }
         ]
       },
@@ -26,13 +26,14 @@ export default defineConfig({
       '/finance/': [
         {
           text: '实体',
+          collapsed: true,
           items: [
-            { text: '本杰明·格雷厄姆 (Benjamin Graham)', link: '/finance/entities/benjamin-graham' },
-            { text: '爱德华·索普 (Edward Thorp)', link: '/finance/entities/edward-thorp' },
-            { text: '乔治·索罗斯 (George Soros)', link: '/finance/entities/george-soros' },
-            { text: '詹姆斯·西蒙斯 (James Simons) 与大奖章基金', link: '/finance/entities/james-simons' },
-            { text: '长期资本管理公司 (LTCM) 崩塌', link: '/finance/entities/ltcm' },
-            { text: '沃伦·巴菲特 (Warren Buffett)', link: '/finance/entities/warren-buffett' }
+            { text: '本杰明·格雷厄姆', link: '/finance/entities/benjamin-graham' },
+            { text: '爱德华·索普', link: '/finance/entities/edward-thorp' },
+            { text: '乔治·索罗斯', link: '/finance/entities/george-soros' },
+            { text: '詹姆斯·西蒙斯与大奖章基金', link: '/finance/entities/james-simons' },
+            { text: 'LTCM 崩塌', link: '/finance/entities/ltcm' },
+            { text: '沃伦·巴菲特', link: '/finance/entities/warren-buffett' }
           ]
         },
         {
@@ -85,6 +86,7 @@ export default defineConfig({
         },
         {
           text: '对比分析',
+          collapsed: true,
           items: []
         }
       ],
@@ -101,6 +103,7 @@ export default defineConfig({
       '/wiki/': [
         {
           text: '实体',
+          collapsed: true,
           items: [
             { text: 'CC Switch', link: '/wiki/entities/cc-switch' },
             { text: 'Claude Code', link: '/wiki/entities/claude-code' },
@@ -155,6 +158,7 @@ export default defineConfig({
         },
         {
           text: '对比分析',
+          collapsed: true,
           items: [
             { text: '框架优先与 Harness 优先的智能体架构', link: '/wiki/comparisons/framework-vs-harness-agent-architecture' },
             { text: '多智能体架构模式', link: '/wiki/comparisons/multi-agent-architecture-patterns' }
