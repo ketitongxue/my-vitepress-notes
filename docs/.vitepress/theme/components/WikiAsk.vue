@@ -188,7 +188,7 @@ onMounted(loadHistory)
 <template>
   <section class="wiki-ask" aria-labelledby="wiki-ask-title">
     <header class="wiki-ask__intro">
-      <p class="wiki-ask__eyebrow">WIKI Q&amp;A</p>
+      <p class="wiki-ask__eyebrow">知识库问答</p>
       <h1 id="wiki-ask-title">向知识库提问</h1>
       <p>回答仅基于 AI 知识库中已发布的中文页面，并附上可继续阅读的站内引用。</p>
       <a class="wiki-ask__browse" href="/wiki/">浏览 AI 知识库</a>
