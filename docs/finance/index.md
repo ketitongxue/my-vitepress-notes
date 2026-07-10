@@ -5,10 +5,27 @@ description: 量化交易、金融市场、投资与风险管理知识库。
 
 # 金融知识库
 
-这里收录 48 篇经过整理的中文知识页面，涵盖实体、核心概念与对比分析。
+<div class="knowledge-hub">
+  <p class="knowledge-hub__intro">量化交易、金融市场、投资与风险管理知识库。</p>
+  <div class="knowledge-hub__stats" aria-label="知识库统计">
+    <span>页面总数：<strong>48</strong></span>
+    <span>最近同步日期：<strong>2026-07-08</strong></span>
+  </div>
+  <div class="knowledge-hub__featured" aria-label="精选条目">
+    <strong>精选条目</strong>
+    <a href="/finance/concepts/quantitative-investing-knowledge-map">量化投资知识体系地图</a>
+    <a href="/finance/concepts/backtesting-bias-and-frictions">回测偏差与交易摩擦</a>
+    <a href="/finance/entities/edward-thorp">爱德华·索普 (Edward Thorp)</a>
+  </div>
+  <div class="knowledge-hub__sections" aria-label="分类概览">
+    <div><a href="#实体">实体</a><strong>6</strong></div>
+    <div><a href="#概念">概念</a><strong>42</strong></div>
+    <div><a href="#对比分析">对比分析</a><strong>0</strong></div>
+  </div>
+</div>
 
-- 页面总数：**48**
-- 最近同步日期：**2026-07-08**
+<details class="knowledge-hub__all">
+<summary>全部条目（48）</summary>
 
 ## 实体
 
@@ -65,3 +82,6 @@ description: 量化交易、金融市场、投资与风险管理知识库。
 - [视觉与多模态 K 线分析](/finance/concepts/vision-multimodal-kline)
 
 ## 对比分析
+
+
+</details>

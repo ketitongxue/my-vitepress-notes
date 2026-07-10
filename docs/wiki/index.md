@@ -1,14 +1,31 @@
 ---
-title: LLM Wiki 中文知识库
+title: AI 知识库
 description: 面向 AI 编程、智能体工程与产品实践的中文知识库。
 ---
 
-# LLM Wiki 中文知识库
+# AI 知识库
 
-这里收录 45 篇经过整理的中文知识页面，涵盖实体、核心概念与对比分析。
+<div class="knowledge-hub">
+  <p class="knowledge-hub__intro">面向 AI 编程、智能体工程与产品实践的中文知识库。</p>
+  <div class="knowledge-hub__stats" aria-label="知识库统计">
+    <span>页面总数：<strong>45</strong></span>
+    <span>最近同步日期：<strong>2026-07-07</strong></span>
+  </div>
+  <div class="knowledge-hub__featured" aria-label="精选条目">
+    <strong>精选条目</strong>
+    <a href="/wiki/concepts/context-engineering">上下文工程</a>
+    <a href="/wiki/concepts/agent-harness-engineering">智能体 Harness 工程</a>
+    <a href="/wiki/concepts/rag-context-pruning">RAG 上下文剪枝</a>
+  </div>
+  <div class="knowledge-hub__sections" aria-label="分类概览">
+    <div><a href="#实体">实体</a><strong>3</strong></div>
+    <div><a href="#概念">概念</a><strong>40</strong></div>
+    <div><a href="#对比分析">对比分析</a><strong>2</strong></div>
+  </div>
+</div>
 
-- 页面总数：**45**
-- 最近同步日期：**2026-07-07**
+<details class="knowledge-hub__all">
+<summary>全部条目（45）</summary>
 
 ## 实体
 
@@ -63,3 +80,5 @@ description: 面向 AI 编程、智能体工程与产品实践的中文知识库
 
 - [框架优先与 Harness 优先的智能体架构](/wiki/comparisons/framework-vs-harness-agent-architecture)
 - [多智能体架构模式](/wiki/comparisons/multi-agent-architecture-patterns)
+
+</details>

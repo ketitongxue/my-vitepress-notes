@@ -62,13 +62,24 @@ export function validateThemeCss(source) {
   const rules = parseRules(stripComments(source))
   const root = findRule(rules, ':root')
   const rootDeclarations = root && parseDeclarations(root.body)
+  const dark = findRule(rules, '.dark')
+  const darkDeclarations = dark && parseDeclarations(dark.body)
+
+  for (const [property, value] of [
+    ['--vp-c-bg', '#f7f9fc'],
+    ['--vp-c-brand-1', '#137f6b']
+  ]) {
+    if (rootDeclarations?.get(property) !== value) {
+      throw new Error(`custom.css :root must declare ${property}: ${value}`)
+    }
+  }
 
   for (const [property, value] of [
     ['--vp-c-bg', '#0b1020'],
     ['--vp-c-brand-1', '#8be9d3']
   ]) {
-    if (rootDeclarations?.get(property) !== value) {
-      throw new Error(`custom.css :root must declare ${property}: ${value}`)
+    if (darkDeclarations?.get(property) !== value) {
+      throw new Error(`custom.css .dark must declare ${property}: ${value}`)
     }
   }
 

@@ -13,9 +13,14 @@ test('collectionConfig returns the existing wiki publication configuration', () 
     lockName: '.wiki-sync.lock',
     publishPrefix: '.wiki-publish',
     urlPrefix: '/wiki',
-    title: 'LLM Wiki 中文知识库',
+    title: 'AI 知识库',
     description: '面向 AI 编程、智能体工程与产品实践的中文知识库。',
     mode: 'curated',
+    featuredSources: [
+      'concepts/context-engineering.md',
+      'concepts/agent-harness-engineering.md',
+      'concepts/rag-context-pruning.md',
+    ],
   })
 })
 
@@ -32,6 +37,11 @@ test('collectionConfig returns the finance publication configuration', () => {
     title: '金融知识库',
     description: '量化交易、金融市场、投资与风险管理知识库。',
     mode: 'mirror',
+    featuredSources: [
+      'concepts/quantitative-investing-knowledge-map.md',
+      'concepts/backtesting-bias-and-frictions.md',
+      'entities/edward-thorp.md',
+    ],
   })
 })
 

@@ -6,8 +6,14 @@ const config = await resolveConfig('docs', 'build')
 
 assert.equal(
   config.site.appearance,
-  'force-dark',
-  'the site must force its dark appearance to match the custom palette'
+  'dark',
+  'the site must default to dark while allowing a persisted visitor choice'
+)
+
+assert.equal(
+  config.site.themeConfig.darkModeSwitchLabel,
+  '主题颜色',
+  'the native appearance switch must have a Chinese label'
 )
 
 assert.deepEqual(
@@ -23,7 +29,7 @@ const knowledgeNav = config.site.themeConfig.nav.find((item) => item.text === '�
 assert.deepEqual(
   knowledgeNav?.items,
   [
-    { text: 'AI Wiki', link: '/wiki/' },
+    { text: 'AI 知识库', link: '/wiki/' },
     { text: '金融知识库', link: '/finance/' }
   ],
   'the main navigation must fuse the two knowledge bases into one dropdown'
@@ -44,11 +50,11 @@ assert.deepEqual(
 assert.deepEqual(
   wikiSidebar.map(({ text, collapsed }) => ({ text, collapsed: collapsed ?? false })),
   [
-    { text: '实体', collapsed: false },
+    { text: '实体', collapsed: true },
     { text: '概念', collapsed: true },
-    { text: '对比分析', collapsed: false }
+    { text: '对比分析', collapsed: true }
   ],
-  'only the long concepts group should be collapsed by default'
+  'every wiki sidebar group should be collapsed by default'
 )
 
 const sidebarItems = wikiSidebar.flatMap((group) => group.items)
@@ -98,6 +104,24 @@ assert.deepEqual(
   ['实体', '概念', '对比分析'],
   'the Finance sidebar must use the three Chinese index sections'
 )
+assert.deepEqual(
+  financeSidebar.map(({ collapsed }) => collapsed ?? false),
+  [true, true, true],
+  'every Finance sidebar group should be collapsed by default'
+)
+
+assert.deepEqual(
+  financeSidebar[0].items.map((item) => item.text),
+  [
+    '本杰明·格雷厄姆',
+    '爱德华·索普',
+    '乔治·索罗斯',
+    '詹姆斯·西蒙斯与大奖章基金',
+    'LTCM 崩塌',
+    '沃伦·巴菲特'
+  ],
+  'Finance entity sidebar labels must use concise Chinese names'
+)
 
 const financeSidebarItems = financeSidebar.flatMap((group) => group.items)
 const financeManifest = JSON.parse(await readFile('finance-manifest.json', 'utf8'))
@@ -140,9 +164,9 @@ const financeIndexGroups = financeIndexHeadings.map((heading, index) => ({
   )
 }))
 assert.deepEqual(
-  financeSidebar.map(({ text, items }) => ({ text, items })),
-  financeIndexGroups,
-  'Finance sidebar titles and order must match the Chinese Finance index'
+  financeSidebar.flatMap((group) => group.items.map((item) => item.link)),
+  financeIndexGroups.flatMap((group) => group.items.map((item) => item.link)),
+  'Finance sidebar links and order must match the generated Finance index'
 )
 
 console.log('theme config tests passed')

@@ -62,8 +62,27 @@ test('publishes all staged additions and changes with source hashes and a genera
     { source: changed, hash: hashes[changed] }, { source: added, hash: hashes[added] },
   ])
   const index = await readFile(path.join(site, 'docs', 'wiki', 'index.md'), 'utf8')
-  assert.match(index, /页面总数：\*\*2\*\*/)
+  assert.match(index, /<span>页面总数：<strong>2<\/strong><\/span>/)
+  assert.doesNotMatch(index, /class="knowledge-hub__stats"[^>]*>\s*\n\s*-/)
   assert.match(index, /\[新增实体\]\(\/wiki\/entities\/new\)/)
+  assert.match(index, /class="knowledge-hub"/)
+  assert.match(index, /<details class="knowledge-hub__all">/)
+  assert.match(index, /<summary>全部条目（2）<\/summary>/)
+})
+
+test('escapes hostile page titles in generated Markdown link labels', async (t) => {
+  const source = 'concepts/hostile.md'
+  const site = await fixture(t, { report: {
+    added: [source],
+    inventory: { [source]: { hash: sha256('hostile source'), publicPath: `docs/wiki/${source}` } },
+  } })
+  await put(site, source, '危险\\路径](https://example.com)[标签')
+
+  await finalize({ site })
+
+  const index = await readFile(path.join(site, 'docs', 'wiki', 'index.md'), 'utf8')
+  assert.ok(index.includes('- [危险\\\\路径\\](https://example.com)\\[标签](/wiki/concepts/hostile)'))
+  assert.ok(!index.includes('- [危险\\路径](https://example.com)[标签](/wiki/concepts/hostile)'))
 })
 
 test('missing translation and validation failure preserve manifest bytes', async (t) => {
