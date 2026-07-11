@@ -1,45 +1,36 @@
 ---
 title: "Claude Code"
 type: "entity"
-tags: ["product", "ai-coding", "developer-tool", "agent", "tool-use"]
-created: "2026-06-13"
-updated: "2026-06-20"
+tags: [claude-code, ai-coding, agent]
+created: "2026-07-01"
+updated: "2026-07-11"
 ---
 
 # Claude Code
 
-Claude Code 是一个在命令行中使用的 AI 编程智能体。它与其说是聊天界面，不如说是一个工程环境：用户在其中设计任务、委派工作、编码项目记忆，并连接各种工具。
+Claude Code 是 Anthropic 面向软件工程场景的编码智能体。它的关键价值不只是生成代码，而是在真实代码库中读取上下文、调用工具、修改文件、运行验证，并围绕工程目标持续推进。
 
-## 核心使用界面
+## 常用能力
 
-它的基本操作模式以 CLI 为先：安装工具、运行 `claude`、登录，然后在操作系统终端内工作。常用控制界面包括提及文件、粘贴图片以调试 UI、使用 `clear` 和 `compact` 等上下文命令，以及规划模式和思考模式。
+Claude Code 的实践通常围绕几类能力展开：
 
-Claude Code 的交互方式受 [Claude Code 权限模型](/wiki/concepts/claude-code-permission-model)约束：用户可以保留常规确认提示、自动接受文件编辑、切换到只读规划模式，也可以在隔离环境中使用高信任度的绕过模式。
+- 项目理解：读取代码、配置、文档和历史约定。
+- 修改执行：编辑文件、运行命令、修复测试、整理提交。
+- 工程循环：从需求、规格、实现到验证和发布。
+- 扩展能力：通过 Skills、Hooks、MCP 和本地脚本复用工作流。
 
-## 智能体工程中的角色
+## 循环与自动化
 
-最值得长期保留的观点是：AI 编程工具会把用户的工作从“将自然语言翻译成代码”提升到三个更高层次的任务：
+近期围绕 Claude Code 的讨论，重点已经从“如何写提示词”扩展到“如何构建循环”。常见形态包括目标循环、时间循环、计划任务、无头执行和由事件触发的自动化流程。
 
-- 分解问题。
-- 分配工作。
-- 协调一个或多个智能体朝目标推进。
+这使 Claude Code 和以下主题紧密相关：
 
-这使 Claude Code 成为 [AI 编程工程循环](/wiki/concepts/ai-coding-engineering-loop)的实际范例：有效使用依赖明确设计、规划、测试、审查和可复用的项目指令，而不是临时拼凑提示词。
+- [Claude Code 技能](/wiki/concepts/claude-code-skills)
+- [Claude Code Hooks](/wiki/concepts/claude-code-hooks)
+- [Claude Code 扩展系统](/wiki/concepts/claude-code-extension-system)
+- [智能体循环工程](/wiki/concepts/agent-loop-engineering)
+- [智能体反馈循环](/wiki/concepts/agent-feedback-loop)
 
-## 扩展系统
+## 工程边界
 
-Claude Code 的扩展能力由一组相关机制构成：记忆文件、[Claude Code 子智能体](/wiki/concepts/claude-code-subagents)、[Claude Code 技能](/wiki/concepts/claude-code-skills)、hooks、无头执行、SDK、MCP 和插件。本 Wiki 将它们归入 [Claude Code 扩展系统](/wiki/concepts/claude-code-extension-system)与 [Claude Code 记忆文件](/wiki/concepts/claude-code-memory-files)。
-
-Anthropic 的 2026 年引导指南进一步明确了这组机制：可通过 `CLAUDE.md` 文件、规则、技能、子智能体、[Claude Code Hooks](/wiki/concepts/claude-code-hooks)、输出样式和附加系统提示来引导 Claude Code。关键的工程区别不只在于指令写在哪里，还包括它何时加载、是否能在压缩后保留、占用多少上下文，以及它是由模型遵循的指令还是由 harness 确定性执行的行为。
-
-[CC Switch](/wiki/entities/cc-switch) 是相邻的社区工具，用于切换模型或提供商，并管理 Claude Code 及其他终端智能体周边的 MCP 或技能配置。
-
-## 课程系列综合
-
-后续课程笔记把 Claude Code 的角色进一步明确为 AI 辅助工程的完整操作系统：
-
-- [Claude Code 记忆文件](/wiki/concepts/claude-code-memory-files)与[规格驱动开发](/wiki/concepts/spec-driven-development)定义持久的项目规则。
-- [Claude Code 子智能体](/wiki/concepts/claude-code-subagents)隔离高噪声或特定角色的工作。
-- [Claude Code 技能](/wiki/concepts/claude-code-skills)通过[渐进式披露](/wiki/concepts/progressive-disclosure)按需提供操作流程。
-- [智能体流水线编排](/wiki/concepts/agent-pipeline-orchestration)说明当工作进入并行或分阶段状态时，主对话如何继续承担监督者角色。
-- [Obsidian 与 Claude Code 工作流](/wiki/concepts/obsidian-claude-code-workflow)把本地笔记和附件接入这一 Wiki 工作流。
+Claude Code 越强，越需要明确边界：权限、文件范围、验证命令、成本预算、提交策略和发布流程。成熟用法不是让它自由行动，而是把它放进[智能体 Harness 工程](/wiki/concepts/agent-harness-engineering)和[AI 编程工程循环](/wiki/concepts/ai-coding-engineering-loop)中。

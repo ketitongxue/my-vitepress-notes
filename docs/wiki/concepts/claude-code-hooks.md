@@ -1,43 +1,42 @@
 ---
 title: "Claude Code Hooks"
 type: "concept"
-tags: ["developer-tool", "workflow", "automation", "ai-coding", "safety"]
-created: "2026-06-20"
-updated: "2026-06-20"
+tags: [claude-code, hooks, automation, verification]
+created: "2026-07-05"
+updated: "2026-07-11"
 ---
 
 # Claude Code Hooks
 
-Claude Code hooks 是由生命周期事件触发的自动化点。它们让运行框架能在会话发生特定事件时执行命令、HTTP 调用、MCP 工具、提示词或智能体处理器。
+Claude Code Hooks 是把外部命令、检查或自动化动作挂到 Claude Code 生命周期中的机制。它们适合处理确定性规则：记录、格式化、校验、拦截、通知和审计。
 
-## Hooks 解决什么问题
+## 事件位置
 
-Hooks 弥合了“Claude 应该记得做某事”和“环境必须执行某事”之间的差距。[Claude Code 记忆文件](/wiki/concepts/claude-code-memory-files)中的提醒仍需模型主动遵守；hook 注册在主上下文路径之外，并在配置的生命周期事件发生时触发。
+Hooks 通常围绕几个关键事件工作：
 
-因此 hooks 适合确定性工作：
+- 工具执行前：检查命令、路径、权限、预算和高风险操作。
+- 工具执行后：运行格式化、测试、链接检查、产物校验或日志记录。
+- 用户输入后：补充上下文、同步状态、检查提示词格式。
+- 停止前：确认验收标准是否满足，或者提醒还有未完成验证。
 
-- 编辑后运行 linter 或格式化器；
-- 执行前阻止高风险工具调用；
-- 发布完成通知；
-- 压缩前备份聊天或状态；
-- 与 [Claude Code 权限模型](/wiki/concepts/claude-code-permission-model)配合实施策略。
+它们让系统能在执行过程中插入反馈，而不是等到最后人工排查。
 
-## 上下文成本
+## 观察与阻断
 
-Hooks 的主上下文成本较低，因为配置和实现都在普通对话之外。部分输出会进入主上下文，例如解释工具调用为何被拒绝的阻断错误；但除非配置为返回结果，大多数 hook 工作不会成为对话状态。
+Hooks 可以分成两类：
 
-这与 [Claude Code 技能](/wiki/concepts/claude-code-skills)、规则和 [Claude Code 记忆文件](/wiki/concepts/claude-code-memory-files)不同：后三者通过加载指令引导 Claude，hooks 则通过给事件绑定可执行行为来控制系统。
+- 观察型：记录操作、统计成本、保存日志、生成报告，不改变主流程。
+- 阻断型：当检查失败、预算超限、路径危险或输出不合格时中止流程。
 
-## 设计边界
+阻断型 hook 需要谨慎设计错误信息。好的错误信息应该告诉智能体失败原因、允许的修复路径和下一步验证方式。
 
-当行为必须在已知生命周期点可靠发生时使用 hooks；当行为是需要在主对话中可见、可调整的复用流程时使用技能；当任务需要独立推理上下文且只应返回最终摘要时使用 [Claude Code 子智能体](/wiki/concepts/claude-code-subagents)。
+## 在反馈循环中的角色
 
-[Claude Code 扩展系统](/wiki/concepts/claude-code-extension-system)把 hooks 视为控制平面自动化。当一条规则是护栏而非偏好时，它尤其重要。
+Hooks 是[智能体反馈循环](/wiki/concepts/agent-feedback-loop)的低层实现之一。它们把“执行后看一眼”变成稳定的系统节点，适合和测试、CI、[智能体成本控制](/wiki/concepts/agent-cost-control)以及[智能体无头执行](/wiki/concepts/agent-headless-execution)配合使用。
 
-## 相关内容
+## 常见失败模式
 
-- [Claude Code 扩展系统](/wiki/concepts/claude-code-extension-system)
-- [Claude Code 权限模型](/wiki/concepts/claude-code-permission-model)
-- [Claude Code 技能](/wiki/concepts/claude-code-skills)
-- [Claude Code 子智能体](/wiki/concepts/claude-code-subagents)
-- [上下文工程](/wiki/concepts/context-engineering)
+- Hook 过于宽泛，导致正常操作频繁被误拦截。
+- 错误提示不清楚，智能体无法自动修复。
+- Hook 里做了太多复杂逻辑，变成隐藏工作流。
+- 只记录不阻断，关键风险仍然依赖人工发现。

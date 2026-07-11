@@ -64,9 +64,10 @@ test('published collection scan applies every Wiki content gate to Finance', asy
 })
 
 test('QA index remains Wiki-only when Finance is published', async () => {
+  const manifest = JSON.parse(await readFile(path.join(projectRoot, 'wiki-manifest.json'), 'utf8'))
   const index = await buildIndex(path.join(projectRoot, 'docs'))
-  assert.equal(index.pages.length, 45)
-  assert.equal(index.chunks.length, 68)
+  assert.equal(index.pages.length, manifest.pages.length)
+  assert.ok(index.chunks.length >= index.pages.length)
   assert.ok(index.pages.every(({ url }) => url.startsWith('/wiki/')))
   assert.ok(index.chunks.every(({ url }) => url.startsWith('/wiki/')))
   assert.ok(index.pages.every(({ url }) => !url.startsWith('/finance/')))
