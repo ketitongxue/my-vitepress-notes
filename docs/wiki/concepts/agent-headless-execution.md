@@ -1,31 +1,39 @@
 ---
 title: "智能体无头执行"
 type: "concept"
-tags: ["agent", "automation", "workflow", "ai-coding"]
-created: "2026-06-13"
-updated: "2026-06-13"
+tags: [agent, automation, ci, headless]
+created: "2026-07-06"
+updated: "2026-07-11"
 ---
 
 # 智能体无头执行
 
-智能体无头执行是指在没有交互式 IDE 或终端对话的情况下运行智能体，通常用于 CI 等自动化环境。
+智能体无头执行，是让智能体在没有人工持续盯着对话界面的情况下运行。它通常用于周期任务、批处理、检查任务、知识库更新、报告生成和发布前审计。
 
-## 机制
+## 适用边界
 
-无头模式解决了交互式工作流的一项限制：交互式智能体很有用，但工程系统也需要无人值守的运行，以执行 lint 修复、代码维护和周期性检查。
+无头执行适合处理有明确输入、明确输出、明确停止条件的任务。它不适合直接承接高风险、权限宽泛、结果难以验证的操作。
 
-在这种模式下，提示词成为自动化指令，外围系统负责提供代码仓库、凭据、权限和验证环境。
+更稳妥的分工是：
 
-## 设计影响
+- [确定性数据流水线](/wiki/concepts/deterministic-data-pipeline)负责采集、清洗、去重和写入。
+- 无头智能体负责需要判断的部分，例如摘要、聚合、异常解释、发布审查。
+- Hooks、测试和 CI 负责在关键节点做阻断式验证。
 
-无头执行会提高以下事项的重要性：
+## 常见运行位置
 
-- 清晰的 [Claude Code 记忆文件](/wiki/concepts/claude-code-memory-files)，使智能体继承项目规则。
-- 当环境未隔离时，选择保守的 [Claude Code 权限模型](/wiki/concepts/claude-code-permission-model)。
-- 使用 [Claude Code 扩展系统](/wiki/concepts/claude-code-extension-system)中的 hooks 或 CI 门禁验证输出。
-- 保存日志和产物，让人类可以在运行结束后复核发生了什么。
+- 本地定时任务：适合个人自动化和低风险批处理。
+- GitHub Actions：适合仓库内的定时抓取、构建、测试、生成文档和提交产物。
+- 云端调度：适合需要稳定运行、可观察日志和外部触发的服务。
+- 手动触发工作流：适合在自动化和人工控制之间保留一个确认点。
 
-## 相关内容
+## 成本与安全
 
-- [Claude Code](/wiki/entities/claude-code)
-- [AI 编程工程循环](/wiki/concepts/ai-coding-engineering-loop)
+无头执行必须显式处理成本和权限：
+
+- API key、模型提供商和预算上限应通过受控配置传入。
+- 高成本模型调用应有数量限制、缓存和降级策略。
+- 自动提交、部署、发消息等动作应有明确权限边界。
+- 失败、超时、重复失败和预算耗尽都应进入停止状态。
+
+这使它和[智能体成本控制](/wiki/concepts/agent-cost-control)、[智能体反馈循环](/wiki/concepts/agent-feedback-loop)自然连在一起。

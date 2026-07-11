@@ -9,8 +9,8 @@ lastUpdated: false
 <div class="knowledge-hub">
   <p class="knowledge-hub__intro">面向 AI 编程、智能体工程与产品实践的中文知识库。</p>
   <div class="knowledge-hub__stats" aria-label="知识库统计">
-    <span>页面总数：<strong>45</strong></span>
-    <span>最近同步日期：<strong>2026-07-07</strong></span>
+    <span>页面总数：<strong>49</strong></span>
+    <span>最近同步日期：<strong>2026-07-11</strong></span>
   </div>
   <div class="knowledge-hub__featured" aria-label="精选条目">
     <strong>精选条目</strong>
@@ -20,13 +20,13 @@ lastUpdated: false
   </div>
   <div class="knowledge-hub__sections" aria-label="分类概览">
     <div><a href="#实体">实体</a><strong>3</strong></div>
-    <div><a href="#概念">概念</a><strong>40</strong></div>
+    <div><a href="#概念">概念</a><strong>44</strong></div>
     <div><a href="#对比分析">对比分析</a><strong>2</strong></div>
   </div>
 </div>
 
 <details class="knowledge-hub__all">
-<summary>全部条目（45）</summary>
+<summary>全部条目（49）</summary>
 
 ## 实体
 
@@ -36,8 +36,11 @@ lastUpdated: false
 
 ## 概念
 
+- [智能体成本控制](/wiki/concepts/agent-cost-control)
+- [智能体反馈循环](/wiki/concepts/agent-feedback-loop)
 - [智能体 Harness 工程](/wiki/concepts/agent-harness-engineering)
 - [智能体无头执行](/wiki/concepts/agent-headless-execution)
+- [智能体循环工程](/wiki/concepts/agent-loop-engineering)
 - [智能体流水线编排](/wiki/concepts/agent-pipeline-orchestration)
 - [智能体任务简报](/wiki/concepts/agent-task-briefing)
 - [AI 编程工程循环](/wiki/concepts/ai-coding-engineering-loop)
@@ -53,6 +56,7 @@ lastUpdated: false
 - [Claude Code 子智能体](/wiki/concepts/claude-code-subagents)
 - [上下文工程](/wiki/concepts/context-engineering)
 - [声明式智能体配置](/wiki/concepts/declarative-agent-configuration)
+- [确定性数据流水线](/wiki/concepts/deterministic-data-pipeline)
 - [长上下文失效模式](/wiki/concepts/long-context-failure-modes)
 - [最小可复现问题报告](/wiki/concepts/minimal-reproducible-problem-report)
 - [模型能力公开信号](/wiki/concepts/model-capability-public-signals)

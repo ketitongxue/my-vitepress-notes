@@ -1,57 +1,34 @@
 ---
 title: "Claude Code 扩展系统"
 type: "concept"
-tags: ["ai-coding", "developer-tool", "agent", "tool-use", "workflow"]
-created: "2026-06-13"
-updated: "2026-07-06"
+tags: [claude-code, extension, hooks, skills, mcp]
+created: "2026-07-02"
+updated: "2026-07-11"
 ---
 
 # Claude Code 扩展系统
 
-Claude Code 扩展系统是一组机制，可把基础终端智能体变成了解项目和工作流的工程工具。
+Claude Code 的扩展系统，可以理解为围绕编码智能体的三类外接能力：技能、Hooks、MCP 以及它们背后的本地工具和流程。
 
-## 组件
+## 三类扩展
 
-| 机制 | 在系统中的角色 |
-| --- | --- |
-| 记忆文件 | 持久保存项目约定与用户偏好；参见 [Claude Code 记忆文件](/wiki/concepts/claude-code-memory-files)。 |
-| 规则 | 存储作用域约束，可以全局加载，也可以在文件路径匹配时加载。 |
-| 子智能体 | 隔离嘈杂或专业化工作；参见 [Claude Code 子智能体](/wiki/concepts/claude-code-subagents)。 |
-| 技能 | 通过 [Claude Code 技能](/wiki/concepts/claude-code-skills)封装可复用流程。 |
-| Hooks | 添加确定性的生命周期自动化和强制执行；参见 [Claude Code Hooks](/wiki/concepts/claude-code-hooks)。 |
-| 无头模式 | 在自动化或 CI 中运行智能体任务；参见[智能体无头执行](/wiki/concepts/agent-headless-execution)。 |
-| Agent SDK | 把智能体行为嵌入更大的程序或工作流。 |
-| MCP | 通过[模型上下文协议](/wiki/concepts/model-context-protocol)连接外部工具和服务。 |
-| 插件 | 打包命令、技能、智能体和 hooks，以便复用和分发。 |
-| 输出样式与附加系统提示 | 改变系统层行为，或增加本次调用专用指令。 |
+- Skills：把可复用的操作流程、判断标准和脚本封装成显式能力。
+- Hooks：把检查、记录、拦截和自动化动作挂到执行生命周期上。
+- MCP：把外部工具、数据源和上下文以协议方式暴露给模型。
 
-## 综合判断
+三者的职责不同：Skills 更像任务方法，Hooks 更像反馈节点，MCP 更像工具和上下文接口。
 
-这些机制解决不同的协调问题。记忆负责持久上下文；子智能体负责角色和上下文隔离；技能负责可复用专长；hooks 负责控制点；MCP 负责外部工具连接；插件负责打包和共享。
+## 反馈循环视角
 
-官方引导指南增加了第二条设计轴：每个控制面在加载时机、压缩行为、上下文成本和权威性方面各不相同。因此，扩展设计变成了一项放置工作。稳定事实应放入记忆；路径绑定约束放入规则；可重复流程放入技能；隔离的高噪声工作交给子智能体；确定性强制执行则交给 hooks 或权限。
+从反馈循环看，Hooks 的位置尤其关键。它们能把原本依赖人工注意力的检查变成自动门禁：
 
-插件示例仍然重要，因为它展示了扩展系统如何组成套件：团队可以把审查命令、代码质量技能、测试运行子智能体和编辑前 hook 组合成可共享的软件包。
+- 工具执行前检查权限、路径、预算和风险。
+- 工具执行后检查测试、格式、链接、构建或部署结果。
+- 停止前确认是否已经满足验收条件。
+- 失败时把原因记录下来，供下一轮修复使用。
 
-## 架构分工
+这使扩展系统不只是“增加功能”，而是在[智能体循环工程](/wiki/concepts/agent-loop-engineering)中补上可验证、可阻断、可审计的环节。
 
-后续材料进一步明确了边界：
+## 组合方式
 
-- 记忆是始终加载的项目上下文。
-- 技能是按需加载的知识和流程。
-- 子智能体提供执行与上下文隔离。
-- Hooks 是生命周期控制点和确定性护栏。
-- MCP 提供工具连接。
-- 插件是分发容器。
-
-这也可以概括为一套[声明式智能体配置](/wiki/concepts/declarative-agent-configuration)：项目记忆回答“项目是什么、哪些事实必须成立”，角色文件回答“谁行动、拥有什么权限”，技能回答“重复工作怎样执行”，工具负责实际动作，Hooks 和权限负责强制边界。
-
-这种分工有助于避免一种机制承担过多职责。例如，简单提示模板通常应成为技能，而不是子智能体；高噪声测试运行器通常应成为子智能体，而不是永久加载的记忆规则。同样，“总是运行格式化器”应成为 hook，而不是记忆中的提醒，因为需要的是执行，而不是回忆指令。
-
-## 相关内容
-
-- [Claude Code](/wiki/entities/claude-code)
-- [AI 编程工程循环](/wiki/concepts/ai-coding-engineering-loop)
-- [Claude Code 权限模型](/wiki/concepts/claude-code-permission-model)
-- [多智能体架构模式](/wiki/comparisons/multi-agent-architecture-patterns)
-- [声明式智能体配置](/wiki/concepts/declarative-agent-configuration)
+一个常见组合是：用 Skill 定义工作流，用 MCP 提供工具和数据，用 Hooks 做边界检查，再用[智能体 Harness 工程](/wiki/concepts/agent-harness-engineering)把它们组织成稳定运行时。

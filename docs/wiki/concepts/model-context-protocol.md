@@ -1,31 +1,31 @@
 ---
 title: "模型上下文协议"
 type: "concept"
-tags: ["tool-use", "developer-tool", "agent", "workflow"]
-created: "2026-06-13"
-updated: "2026-06-13"
+tags: [mcp, protocol, tools, context]
+created: "2026-07-03"
+updated: "2026-07-11"
 ---
 
 # 模型上下文协议
 
-模型上下文协议（MCP）是让智能体连接外部工具和服务的机制。
+模型上下文协议（MCP）是一种把外部工具、资源和提示能力暴露给模型客户端的协议。它让模型不只依赖当前对话上下文，还能按需访问受控的外部能力。
 
-## 角色
+## 协议对象
 
-在 [Claude Code 扩展系统](/wiki/concepts/claude-code-extension-system)中，MCP 是工具连接层：它把外部系统变成智能体可调用的能力；记忆保存上下文，技能封装流程，hooks 增加检查点，插件负责分发套件。
+MCP 通常围绕三类对象组织：
 
-## 运作模式
+- Tools：可执行动作，例如查询、写入、调用接口、启动检查。
+- Resources：可读取上下文，例如文件、数据库记录、文档、知识库条目。
+- Prompts：可复用的提示模板或任务入口。
 
-[CC Switch](/wiki/entities/cc-switch)可交互管理 MCP 服务器配置。这说明 MCP 在实践中高度依赖配置；真正有用的抽象不只是协议，还包括提供商、服务器和共享配置管理。
+这些对象通过客户端和服务器之间的协议交互，常见传输包括 stdio、SSE 和 HTTP。
 
-长上下文材料提出一项可靠性警告：一次暴露过多工具定义会造成[长上下文失效模式](/wiki/concepts/long-context-failure-modes)，尤其是上下文混淆和冲突。因此 MCP 系统需要路由、过滤或动态加载，让模型只看到当前任务相关工具，而非全部已连接能力。
+## MCP 适合什么
 
-从[智能体 Harness 工程](/wiki/concepts/agent-harness-engineering)看，仅有工具连接还不够；运行时还要决定哪些工具可见、如何拦截命令，以及何时在人与外部系统之间加入审批或中间件。
+MCP 适合让智能体在运行时动态访问工具和上下文，例如查知识库、读系统状态、操作外部服务或调用内部 API。它的价值在于统一接口和权限边界，让不同客户端可以复用同一组能力。
 
-## 相关内容
+## 与确定性流水线的边界
 
-- [Claude Code](/wiki/entities/claude-code)
-- [CC Switch](/wiki/entities/cc-switch)
-- [智能体无头执行](/wiki/concepts/agent-headless-execution)
-- [长上下文失效模式](/wiki/concepts/long-context-failure-modes)
-- [智能体 Harness 工程](/wiki/concepts/agent-harness-engineering)
+MCP 不应该替代所有数据处理。对于固定来源、固定结构、固定输出的流程，[确定性数据流水线](/wiki/concepts/deterministic-data-pipeline)通常更稳定、更便宜、更容易测试。
+
+更好的组合是：流水线负责定期采集和规整，MCP 把整理好的资源暴露给模型，模型只在需要上下文查询和语义判断时使用 MCP。

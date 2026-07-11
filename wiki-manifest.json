@@ -16,18 +16,39 @@
       "syncedAt": "2026-07-03T00:00:00.000Z"
     },
     {
+      "source": "concepts/agent-cost-control.md",
+      "hash": "db53f0068364643274210a7e40864307efeab6e64c7360f8db8452acd756c543",
+      "publicPath": "docs/wiki/concepts/agent-cost-control.md",
+      "status": "published",
+      "syncedAt": "2026-07-11T15:13:09.206Z"
+    },
+    {
+      "source": "concepts/agent-feedback-loop.md",
+      "hash": "78d9738ec02e07aaa071dbbd0a4ba9750e0a2a5373c0ee8eeca890360409d0e3",
+      "publicPath": "docs/wiki/concepts/agent-feedback-loop.md",
+      "status": "published",
+      "syncedAt": "2026-07-11T15:13:09.206Z"
+    },
+    {
       "source": "concepts/agent-harness-engineering.md",
-      "hash": "f9ab413d6aec14602aaba203a4b06708650b1a43a6391bcb7b07d1a9265a39a4",
+      "hash": "333e4bf01a2cf80e2c3426c38ee7fc6fec05eeeeb1a2e24be265843950835e59",
       "publicPath": "docs/wiki/concepts/agent-harness-engineering.md",
       "status": "published",
-      "syncedAt": "2026-07-07T14:03:23.055Z"
+      "syncedAt": "2026-07-11T15:13:09.206Z"
     },
     {
       "source": "concepts/agent-headless-execution.md",
-      "hash": "22d5ee1be7b880a4b7fc1d93ebdb8a802efea1006ddf3d3a8139197d2352660e",
+      "hash": "53fb6205130088c45c3d65a9b6dd3d9adc261b4ddbe8c5160eaf8026507faaf7",
       "publicPath": "docs/wiki/concepts/agent-headless-execution.md",
       "status": "published",
-      "syncedAt": "2026-07-03T00:00:00.000Z"
+      "syncedAt": "2026-07-11T15:13:09.206Z"
+    },
+    {
+      "source": "concepts/agent-loop-engineering.md",
+      "hash": "3ace3e78cc4fb191944756d1cc0101ba580604e81557406bd556a5964e8d37fd",
+      "publicPath": "docs/wiki/concepts/agent-loop-engineering.md",
+      "status": "published",
+      "syncedAt": "2026-07-11T15:13:09.206Z"
     },
     {
       "source": "concepts/agent-pipeline-orchestration.md",
@@ -45,10 +66,10 @@
     },
     {
       "source": "concepts/ai-coding-engineering-loop.md",
-      "hash": "ea32874cd927df209dc7039667d32afc5bc37b3078746e5725a4358eaad6ab04",
+      "hash": "8b413405fa3b624f2d7fe9fb01f8abed23ec096a54c7caa2ce3e6c1b64fa965b",
       "publicPath": "docs/wiki/concepts/ai-coding-engineering-loop.md",
       "status": "published",
-      "syncedAt": "2026-07-05T13:31:39.085Z"
+      "syncedAt": "2026-07-11T15:13:09.206Z"
     },
     {
       "source": "concepts/ai-debugging-error-triage.md",
@@ -59,10 +80,10 @@
     },
     {
       "source": "concepts/ai-knowledge-engineering-feedback-loop.md",
-      "hash": "1985486488a1cafe2d719a48d8c5fa18a1cef2dd005cb0154de558d3615ff6ec",
+      "hash": "aa87fb5c80f2d8645a8ee40de56668220b8ecbba5b8e5ae34db81af65f3ca73f",
       "publicPath": "docs/wiki/concepts/ai-knowledge-engineering-feedback-loop.md",
       "status": "published",
-      "syncedAt": "2026-07-07T14:03:23.055Z"
+      "syncedAt": "2026-07-11T15:13:09.206Z"
     },
     {
       "source": "concepts/ai-product-design-polish-workflow.md",
@@ -80,17 +101,17 @@
     },
     {
       "source": "concepts/claude-code-extension-system.md",
-      "hash": "ef86752467a21fd0083b9391b5896cf2f1a6cedec2ca002110fd703331d2c07d",
+      "hash": "1a53f95a4a6ff0b5a42cd71c69991b8d1f7190fa27b8da1e4afc531b530cd374",
       "publicPath": "docs/wiki/concepts/claude-code-extension-system.md",
       "status": "published",
-      "syncedAt": "2026-07-07T14:03:23.055Z"
+      "syncedAt": "2026-07-11T15:13:09.206Z"
     },
     {
       "source": "concepts/claude-code-hooks.md",
-      "hash": "9e17e1baf043440aab58d644e497a1ce6d07bbfee192248d4d4b8fe9baa0901b",
+      "hash": "1cb1f956a6a3243afbb1b7a085be9ae20536c09eba23929c71aa30110ac48b6d",
       "publicPath": "docs/wiki/concepts/claude-code-hooks.md",
       "status": "published",
-      "syncedAt": "2026-07-03T00:00:00.000Z"
+      "syncedAt": "2026-07-11T15:13:09.206Z"
     },
     {
       "source": "concepts/claude-code-memory-files.md",
@@ -108,10 +129,10 @@
     },
     {
       "source": "concepts/claude-code-skills.md",
-      "hash": "7c4f8acd2c1c9dfe31f1181c94fef298b97966122851d94cb325baf274742899",
+      "hash": "18565b214df7cf2d0664208330fb933e63b8b94f48f7e2b90d2ed98ccba5fa41",
       "publicPath": "docs/wiki/concepts/claude-code-skills.md",
       "status": "published",
-      "syncedAt": "2026-07-07T14:03:23.055Z"
+      "syncedAt": "2026-07-11T15:13:09.206Z"
     },
     {
       "source": "concepts/claude-code-subagents.md",
@@ -133,6 +154,13 @@
       "publicPath": "docs/wiki/concepts/declarative-agent-configuration.md",
       "status": "published",
       "syncedAt": "2026-07-07T14:03:23.055Z"
+    },
+    {
+      "source": "concepts/deterministic-data-pipeline.md",
+      "hash": "53a963748b11f3a47e543c6330e740b0ba5e194ebd9fa2d1e95b3737ec7e3c41",
+      "publicPath": "docs/wiki/concepts/deterministic-data-pipeline.md",
+      "status": "published",
+      "syncedAt": "2026-07-11T15:13:09.206Z"
     },
     {
       "source": "concepts/long-context-failure-modes.md",
@@ -157,10 +185,10 @@
     },
     {
       "source": "concepts/model-context-protocol.md",
-      "hash": "c172b76bcaa14fe1b77c085cc806b2147b19811d3d6241e7fd0c4674e1b34a5b",
+      "hash": "a3d76a61b1f6a808a8727c69c2be6a731368ef36f6c7c7a4fb2437dcedb3f70a",
       "publicPath": "docs/wiki/concepts/model-context-protocol.md",
       "status": "published",
-      "syncedAt": "2026-07-03T00:00:00.000Z"
+      "syncedAt": "2026-07-11T15:13:09.206Z"
     },
     {
       "source": "concepts/obsidian-claude-code-workflow.md",
@@ -255,10 +283,10 @@
     },
     {
       "source": "concepts/serverless-scheduled-jobs.md",
-      "hash": "b09e9438e4129cc3c356fa2fcc017a8c7bd6d24de7e4179044044e12780b2db3",
+      "hash": "18ee579dd377b560959994f54650a9fd26b20939e3794287750ada3c02dc3f26",
       "publicPath": "docs/wiki/concepts/serverless-scheduled-jobs.md",
       "status": "published",
-      "syncedAt": "2026-07-03T00:00:00.000Z"
+      "syncedAt": "2026-07-11T15:13:09.206Z"
     },
     {
       "source": "concepts/skill-design-patterns.md",
@@ -304,10 +332,10 @@
     },
     {
       "source": "entities/claude-code.md",
-      "hash": "d57ab80631785e8adb30a297952b4ed8fc62832275bc1acbf76e9c0b1d0fefa5",
+      "hash": "2ecf782a09257fb4502f751c4c803e16220a55b8239f4e677a9cd09e818825c1",
       "publicPath": "docs/wiki/entities/claude-code.md",
       "status": "published",
-      "syncedAt": "2026-07-03T00:00:00.000Z"
+      "syncedAt": "2026-07-11T15:13:09.206Z"
     },
     {
       "source": "entities/openclaw.md",

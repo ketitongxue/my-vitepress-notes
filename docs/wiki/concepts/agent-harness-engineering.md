@@ -1,52 +1,41 @@
 ---
 title: "智能体 Harness 工程"
 type: "concept"
-tags: ["agent", "agent-harness", "context-engineering", "tool-use", "safety", "evaluation", "cost"]
-created: "2026-06-17"
-updated: "2026-07-07"
+tags: [agent, harness, architecture, runtime]
+created: "2026-07-02"
+updated: "2026-07-11"
 ---
 
 # 智能体 Harness 工程
 
-智能体 harness 工程是构建运行时环境的实践，使 LLM 能够在现实世界中安全、可靠地行动。可以把它理解为为模型编写一个小型操作系统：模型是 CPU，上下文是 RAM，本地工具是外设，而 harness 管理调度、记忆、工具、安全中断和可观测性。
+智能体 Harness 工程，是把模型放进一个可控运行时：它定义状态、工具、权限、事件、校验、日志和恢复机制，让智能体不只是“会调用模型”，而是能在真实工程系统里可靠工作。
 
-## 核心主张
+## 为什么需要 Harness
 
-核心主张是，传统框架层正在收缩进 harness。早期智能体框架试图对规划、路由和状态进行微观管理，因为较弱的模型需要帮助。更强的模型已经具备规划和工具调用能力，因此高杠杆工作向下移动：为模型提供一个极简、可检查且受约束的执行环境。
+框架可以加快起步，但真正决定系统质量的是底层 Harness：
 
-这会使开发者从框架消费者变成智能体“物理定律”的设计者。
+- 状态如何保存和恢复。
+- 工具如何注册、隔离和审计。
+- 模型输出如何被校验，而不是直接信任。
+- 任务循环如何停止、重试或交给人处理。
+- 成本、权限和风险如何在运行时被约束。
 
-## 控制界面
+当这些问题没有被显式设计时，智能体系统会很快堆成不可调试的脚本集合。
 
-智能体 harness 通过多种机制控制智能体：
+## 运行时契约
 
-| 控制面 | 处理的失效 | Harness 的响应 |
-| --- | --- | --- |
-| 上下文 | 工具膨胀、提示稀释、幻觉和注意力丢失。 | 使用[上下文工程](/wiki/concepts/context-engineering)、压缩和最少量的活跃工具描述。 |
-| 状态 | 隐藏的框架状态、遗忘进度和无尽循环。 | 把计划、记忆和待办事项外置到可检查文件。 |
-| 工具 | API 太多且可供性不清。 | 偏好极简工具集和清晰的工具注册表。 |
-| 安全 | 危险的 shell 或文件操作。 | 在执行前加入中间件、审批和中断点。 |
-| 评估 | 不知道改动是否让智能体变得更好。 | 加入追踪、成本记录和基准测试。 |
-| 模型选择 | 被热度或供应商驱动的模型选择。 | 先结合[模型能力公开信号](/wiki/concepts/model-capability-public-signals)与本地任务测试，再选择运行时模型。 |
+一个可维护的 Harness 至少需要覆盖：
 
-## 与现有页面的关系
+- 工具契约：输入输出 schema、权限边界、错误语义。
+- 记忆契约：哪些状态可持久化，哪些只是会话上下文。
+- 执行契约：任务循环、停止条件、重试策略和人工接管点。
+- 验证契约：测试、lint、格式检查、发布检查和业务校验。
+- 成本契约：模型档位、预算上限、缓存策略和调用报告。
 
-[长上下文失效模式](/wiki/concepts/long-context-failure-modes)解释了为什么把工具和历史一股脑塞入上下文会失败。[模型上下文协议](/wiki/concepts/model-context-protocol)展示工具连接层，但 harness 视角认为工具暴露必须经过筛选和治理。[Claude Code 子智能体](/wiki/concepts/claude-code-subagents)是在 harness 层隔离嘈杂工作的方式之一。[Claude Code 权限模型](/wiki/concepts/claude-code-permission-model)则是围绕文件和命令执行建立安全边界的具体例子。
+新增的成本层很重要：智能体一旦进入自动化循环，费用就和可靠性一样成为系统边界。
 
-[OpenClaw](/wiki/entities/openclaw)是这一理念的典型实例：极简工具、外置状态、YOLO 本地执行，以及面向高风险部署环境的安全中间件。
+## 与 MCP、流水线和调度的关系
 
-模型选择相关内容把 harness 视角继续向上游扩展。Harness 不应把模型视为可以随意互换的品牌选项。在部署智能体之前，公开排名、置信区间、价格、延迟和供应商可用性都是运行时设计预算的一部分。
+[模型上下文协议](/wiki/concepts/model-context-protocol)可以作为 Harness 的工具和资源接入层；[确定性数据流水线](/wiki/concepts/deterministic-data-pipeline)适合承接固定的数据搬运和规整；[无服务器定时任务](/wiki/concepts/serverless-scheduled-jobs)与 CI 调度可以启动周期性工作；[智能体无头执行](/wiki/concepts/agent-headless-execution)让任务在无人值守环境里运行。
 
-[RAG 上下文剪枝](/wiki/concepts/rag-context-pruning)为 Harness 增加了一层上下文中间件：小型列表式模型可以先过滤工具返回的高召回检索结果，再把必要证据交给主智能体，以适度延迟和召回风险换取更低成本与更多工作容量。[声明式智能体配置](/wiki/concepts/declarative-agent-configuration)则把记忆、角色、技能、工具和强制规则组织为可审阅的运行契约。
-
-## 相关内容
-
-- [框架优先与 Harness 优先的智能体架构](/wiki/comparisons/framework-vs-harness-agent-architecture)
-- [OpenClaw](/wiki/entities/openclaw)
-- [上下文工程](/wiki/concepts/context-engineering)
-- [模型上下文协议](/wiki/concepts/model-context-protocol)
-- [长上下文失效模式](/wiki/concepts/long-context-failure-modes)
-- [Claude Code 子智能体](/wiki/concepts/claude-code-subagents)
-- [模型能力公开信号](/wiki/concepts/model-capability-public-signals)
-- [声明式智能体配置](/wiki/concepts/declarative-agent-configuration)
-- [RAG 上下文剪枝](/wiki/concepts/rag-context-pruning)
+Harness 的价值，是把这些能力组织成一个有边界、可观察、可恢复的系统，而不是让模型自由拼接工具。
