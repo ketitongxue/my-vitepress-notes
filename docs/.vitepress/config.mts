@@ -166,7 +166,32 @@ export default defineConfig({
         }
       ]
     },
-    search: { provider: 'local' },
+    search: {
+      provider: 'local',
+      options: {
+        translations: {
+          button: {
+            buttonText: '搜索',
+            buttonAriaLabel: '打开搜索'
+          },
+          modal: {
+            displayDetails: '显示详细列表',
+            resetButtonTitle: '清除搜索',
+            backButtonTitle: '关闭搜索',
+            noResultsText: '没有找到相关结果',
+            footer: {
+              selectText: '选择',
+              selectKeyAriaLabel: '回车键',
+              navigateText: '切换',
+              navigateUpKeyAriaLabel: '向上箭头',
+              navigateDownKeyAriaLabel: '向下箭头',
+              closeText: '关闭',
+              closeKeyAriaLabel: 'Esc 键'
+            }
+          }
+        }
+      }
+    },
     footer: {
       message: '持续记录 AI、产品、工程与个人实践之间的连接。',
       copyright: 'Copyright © 2026 柯提'

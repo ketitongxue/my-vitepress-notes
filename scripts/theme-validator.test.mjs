@@ -34,7 +34,9 @@ const switchableTheme = `
 }
 .garden-section { display: grid; }
 .garden-list { margin: 0; }
-.garden-tags { color: teal; }
+.garden-links { display: flex; gap: 10px; flex-wrap: wrap; }
+.garden-links a:hover { color: teal; }
+.garden-links a:focus-visible { outline: 2px solid teal; }
 @media (max-width: 720px) {
   .garden-section { grid-template-columns: 1fr; }
 }
@@ -54,7 +56,9 @@ const commentedTheme = `
 }
 .garden-section {}
 .garden-list {}
-.garden-tags {}
+.garden-links {}
+.garden-links a:hover {}
+.garden-links a:focus-visible {}
 @media (max-width: 720px) {}
 */
 `
@@ -72,7 +76,9 @@ const missingDarkTheme = `
 }
 .garden-section { display: grid; }
 .garden-list { margin: 0; }
-.garden-tags { color: teal; }
+.garden-links { display: flex; gap: 10px; flex-wrap: wrap; }
+.garden-links a:hover { color: teal; }
+.garden-links a:focus-visible { outline: 2px solid teal; }
 @media (max-width: 720px) {
   .garden-section { grid-template-columns: 1fr; }
 }
@@ -92,7 +98,9 @@ const misplacedMobileRule = `
   --vp-c-brand-1: #8be9d3;
 }
 .garden-list { margin: 0; }
-.garden-tags { color: teal; }
+.garden-links { display: flex; gap: 10px; flex-wrap: wrap; }
+.garden-links a:hover { color: teal; }
+.garden-links a:focus-visible { outline: 2px solid teal; }
 @media (max-width: 720px) {}
 .garden-section {
   display: grid;
@@ -103,5 +111,27 @@ const misplacedMobileRule = `
 const misplacedMobileResult = runChecker(misplacedMobileRule)
 assert.notEqual(misplacedMobileResult.status, 0, 'the mobile garden-section declaration must be inside its media query')
 assert.match(misplacedMobileResult.stderr, /must set \.garden-section to one column/)
+
+const missingGardenLinkFocus = `
+:root {
+  --vp-c-bg: #f7f9fc;
+  --vp-c-brand-1: #137f6b;
+}
+.dark {
+  --vp-c-bg: #0b1020;
+  --vp-c-brand-1: #8be9d3;
+}
+.garden-section { display: grid; }
+.garden-list { margin: 0; }
+.garden-links { display: flex; gap: 10px; flex-wrap: wrap; }
+.garden-links a:hover { color: teal; }
+@media (max-width: 720px) {
+  .garden-section { grid-template-columns: 1fr; }
+}
+`
+
+const missingGardenLinkFocusResult = runChecker(missingGardenLinkFocus)
+assert.notEqual(missingGardenLinkFocusResult.status, 0, 'quick links require a visible keyboard focus state')
+assert.match(missingGardenLinkFocusResult.stderr, /active \.garden-links a:focus-visible rule/)
 
 console.log('theme validator tests passed')

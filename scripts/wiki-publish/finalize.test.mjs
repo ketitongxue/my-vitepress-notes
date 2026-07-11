@@ -62,6 +62,7 @@ test('publishes all staged additions and changes with source hashes and a genera
     { source: changed, hash: hashes[changed] }, { source: added, hash: hashes[added] },
   ])
   const index = await readFile(path.join(site, 'docs', 'wiki', 'index.md'), 'utf8')
+  assert.match(index, /^---\n[\s\S]*\nlastUpdated: false\n---/)
   assert.match(index, /<span>页面总数：<strong>2<\/strong><\/span>/)
   assert.doesNotMatch(index, /class="knowledge-hub__stats"[^>]*>\s*\n\s*-/)
   assert.match(index, /\[新增实体\]\(\/wiki\/entities\/new\)/)
@@ -134,6 +135,23 @@ test('unchanged report validates but does not rewrite manifest or index', async 
   await finalize({ site })
   assert.deepEqual(await readFile(path.join(site, 'wiki-manifest.json')), beforeManifest)
   assert.deepEqual(await readFile(path.join(site, 'docs', 'wiki', 'index.md')), beforeIndex)
+})
+
+test('finalize preserves ordinary published article frontmatter', async (t) => {
+  const source = 'concepts/frontmatter.md'
+  const added = 'concepts/unrelated-added.md'
+  const site = await fixture(t, { pages: [page(source)], report: {
+    added: [added], inventory: { [added]: { hash: sha256('unrelated added source'), publicPath: `docs/wiki/${added}` } },
+  } })
+  const article = `---\ntitle: 普通知识页面\nupdated: 2026-07-01\n---\n${BODY}\n`
+  await mkdir(path.join(site, 'docs', 'wiki', 'concepts'), { recursive: true })
+  await writeFile(path.join(site, 'docs', 'wiki', source), article)
+  await put(site, added, '无关新增页面')
+
+  const before = await readFile(path.join(site, 'docs', 'wiki', source), 'utf8')
+  assert.match(before, /^---\n[\s\S]*\nupdated: 2026-07-01\n---/)
+  await finalize({ site })
+  assert.equal(await readFile(path.join(site, 'docs', 'wiki', source), 'utf8'), before)
 })
 
 test('concurrent finalizers serialize through the shared publication lock', async (t) => {
@@ -357,7 +375,9 @@ test('initial Finance finalization installs collection outputs and rolls both ba
     } else {
       await finalize({ collectionName: 'finance', site })
       assert.equal(JSON.parse(await readFile(path.join(site, 'finance-manifest.json'), 'utf8')).pages.length, 1)
-      assert.match(await readFile(path.join(site, 'docs', 'finance', 'index.md'), 'utf8'), /\/finance\/concepts\/first/)
+      const index = await readFile(path.join(site, 'docs', 'finance', 'index.md'), 'utf8')
+      assert.match(index, /^---\n[\s\S]*\nlastUpdated: false\n---/)
+      assert.match(index, /\/finance\/concepts\/first/)
     }
   })
 })

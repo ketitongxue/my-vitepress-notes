@@ -1,6 +1,7 @@
 ---
 title: 金融知识库
 description: 量化交易、金融市场、投资与风险管理知识库。
+lastUpdated: false
 ---
 
 # 金融知识库

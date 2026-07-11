@@ -1,6 +1,7 @@
 ---
 title: AI 知识库
 description: 面向 AI 编程、智能体工程与产品实践的中文知识库。
+lastUpdated: false
 ---
 
 # AI 知识库
