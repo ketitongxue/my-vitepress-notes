@@ -1,60 +1,56 @@
 ---
 title: "规格驱动开发"
 type: "concept"
-tags: ["workflow", "ai-coding", "planning", "evaluation", "context-engineering"]
+tags: [workflow, ai-coding, planning, evaluation, context-engineering]
 created: "2026-06-13"
-updated: "2026-07-05"
+updated: "2026-07-11"
 ---
 
 # 规格驱动开发
 
-规格驱动开发（SDD）是使 AI 辅助编程更加一致的闭环：定义项目规则，要求智能体遵循规则，对照规则审阅，然后在发现缺口时完善规则。
+规格驱动开发，简称 SDD，是让 AI 辅助编码从“写一段提示词”变成“按明确规则执行、按明确规则评审、再把经验回写规则”的闭环。
 
-## 循环
+## 基本循环
 
-1. 在编写业务代码前定义规格。
-2. 要求智能体按照规格实现。
-3. 对照意图、质量和边界审阅输出。
-4. 当审阅发现规则缺失或含糊时，更新规格。
+SDD 的最小循环是：
 
-原文把它视为持续系统，而非一次性文档。
+1. 写清楚要做什么、不要做什么、边界和验收标准。
+2. 让 AI 按这个规格实现。
+3. 按规格审查输出，而不是按主观感觉审查。
+4. 发现缺口后，把规则、测试、skill 或文档补上。
 
-设计文档材料进一步提供了规模阶梯。小型请求可以从一份[智能体任务简报](/wiki/concepts/agent-task-briefing)开始，其中包含问题陈述、方案描述、技术约束、红线和交付标准。大型变更则应扩展为完整设计文档，涵盖当前上下文、需求、设计决策、技术设计、实施计划、测试策略、可观测性、依赖、安全、发布和参考资料。
+这个循环的核心不是文档数量，而是把隐性项目知识显式化，让 AI 不再靠猜。
 
-规格细化材料在书面规格之前加入一个交互步骤：[苏格拉底式规格细化](/wiki/concepts/socratic-spec-refinement)通过每次只问一个问题的对话，在智能体编写实现代码前发现缺失需求、非目标、约束和成功标准。
+## 从轻到重
 
-四层方法论材料把这个简单循环扩展为 [SDD 规格生命周期](/wiki/concepts/sdd-spec-lifecycle)：规划、对齐、执行、测试和归档。其核心观点是，SDD 不只是更好的第一条提示词或静态系统设计文档，而是一个同时保留当前事实和决策历史的受管理变更生命周期。
+小任务可以从[智能体任务简报](/wiki/concepts/agent-task-briefing)开始：问题、方案、技术约束、红线、交付标准。需求还不清楚时，可以用[苏格拉底式规格细化](/wiki/concepts/socratic-spec-refinement)先把问题问完整。
 
-[SDD 分层采用模型](/wiki/concepts/sdd-layered-adoption-model)让采用程度与项目相称。小型项目可能只需要澄清和项目常量，长期或争议较大的系统则可加入变更跟踪、多角色审阅和强制 TDD 门禁。
+更复杂的项目会进入[SDD 规格生命周期](/wiki/concepts/sdd-spec-lifecycle)：plan、align、execute、test、archive。[SDD 分层采用模型](/wiki/concepts/sdd-layered-adoption-model)决定需要引入多少流程纪律，[SDD 95-5 原则](/wiki/concepts/sdd-95-5-principle)提醒先养成手写最小规格的习惯，再讨论工具。
 
-[SDD 95-5 原则](/wiki/concepts/sdd-95-5-principle)补充了采用顺序：先养成编写小型结构化规格的习惯，再比较或安装工作流工具。只有反复手工使用暴露出值得消除或强制执行的具体步骤后，才应引入自动化。
+## OpenSpec 的具体化
 
-## 规格中应包含什么
+[OpenSpec 变更工作流](/wiki/concepts/openspec-change-workflow)把 SDD 具体化为一次 change：先 explore，写 proposal，再生成 design、spec、tasks，经过拷问后 apply，最后 verify 和 archive。
 
-最有价值的规则，是 [Claude Code](/wiki/entities/claude-code) 原本需要猜测的地方：命名、API 响应形态、错误码、依赖边界、抽象风格和项目特定的设计原则。
+这让 SDD 不只是“写一个系统设计文档”，而是一个管理当前事实和历史决策的生命周期。Archive 决定一次变更的经验是只留在历史里，还是进入长期规则层。
 
-[Claude Code 记忆文件](/wiki/concepts/claude-code-memory-files)是这类规格的默认归宿，因为它们会在新会话开始时加载。
+## 两层 Spec
 
-较新的材料增加了一条重要边界：稳定项目规则属于记忆文件、技能和规范规格；单次变更的提案、设计、任务、增量和执行记录则属于独立的变更层。归档必须把变更层中反复出现的经验提升回规则层。
+SDD 需要分清两类规格：
 
-任务局部规格还应列出受影响文件、集成点、非功能性需求和测试。这些细节会把提示词从愿望转化为智能体可执行的契约。
+- 规则层：长期稳定的项目规则、工具、约定、能力说明、踩坑记录。
+- 变更层：某一次具体改动的背景、方案、需求 delta、任务、执行记录和复盘。
 
-对于需要持久化的产品，[产品数据层选型](/wiki/concepts/product-data-layer-selection)应成为规格的一部分。在智能体编辑存储相关代码之前，规格应写明数据库服务、ORM、模式文件、迁移命令、环境隔离和管理数据边界。
+两层混在一起会带来规则漂移：一次功能改动顺手改了全局规则，影响未来所有模块。只保留规则层会丢失历史决策，只保留变更层会让未来反复重新发现稳定知识。
 
-## 审阅方式的转变
+## 评审方式的变化
 
-SDD 把审阅从主观品味转化为清单验证。人类不再问“我喜欢这段代码吗？”，而是问“它符合明确规则吗？”这让 [AI 编程工程循环](/wiki/concepts/ai-coding-engineering-loop)更容易操作和改进。
+SDD 把评审从“我喜不喜欢这段代码”变成“它是否满足明确规格”。这让[AI 编程工程循环](/wiki/concepts/ai-coding-engineering-loop)更可操作，也让[AI 知识工程反馈循环](/wiki/concepts/ai-knowledge-engineering-feedback-loop)有材料可沉淀：评审发现的缺口可以变成记忆、skill、hook、测试或主 spec。
 
-审阅也会推动 [AI 知识工程反馈循环](/wiki/concepts/ai-knowledge-engineering-feedback-loop)。每个暴露项目知识缺失的审阅发现，都可能转化为记忆、技能、钩子、测试或规范规格的更新。正是这样，反复进行的 SDD 循环才会越来越快、越来越可靠，而不是一堆彼此孤立的文档。
-
-## 相关内容
+## 相关页面
 
 - [上下文工程](/wiki/concepts/context-engineering)
-- [Claude Code 记忆文件](/wiki/concepts/claude-code-memory-files)
 - [智能体任务简报](/wiki/concepts/agent-task-briefing)
-- [苏格拉底式规格细化](/wiki/concepts/socratic-spec-refinement)
-- [产品数据层选型](/wiki/concepts/product-data-layer-selection)
 - [SDD 分层采用模型](/wiki/concepts/sdd-layered-adoption-model)
 - [SDD 规格生命周期](/wiki/concepts/sdd-spec-lifecycle)
+- [OpenSpec 变更工作流](/wiki/concepts/openspec-change-workflow)
 - [AI 知识工程反馈循环](/wiki/concepts/ai-knowledge-engineering-feedback-loop)
-- [SDD 95-5 原则](/wiki/concepts/sdd-95-5-principle)

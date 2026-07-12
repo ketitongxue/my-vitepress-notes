@@ -9,7 +9,7 @@ lastUpdated: false
 <div class="knowledge-hub">
   <p class="knowledge-hub__intro">面向 AI 编程、智能体工程与产品实践的中文知识库。</p>
   <div class="knowledge-hub__stats" aria-label="知识库统计">
-    <span>页面总数：<strong>49</strong></span>
+    <span>页面总数：<strong>50</strong></span>
     <span>最近同步日期：<strong>2026-07-11</strong></span>
   </div>
   <div class="knowledge-hub__featured" aria-label="精选条目">
@@ -20,13 +20,13 @@ lastUpdated: false
   </div>
   <div class="knowledge-hub__sections" aria-label="分类概览">
     <div><a href="#实体">实体</a><strong>3</strong></div>
-    <div><a href="#概念">概念</a><strong>44</strong></div>
+    <div><a href="#概念">概念</a><strong>45</strong></div>
     <div><a href="#对比分析">对比分析</a><strong>2</strong></div>
   </div>
 </div>
 
 <details class="knowledge-hub__all">
-<summary>全部条目（49）</summary>
+<summary>全部条目（50）</summary>
 
 ## 实体
 
@@ -63,6 +63,7 @@ lastUpdated: false
 - [模型上下文协议](/wiki/concepts/model-context-protocol)
 - [Obsidian 与 Claude Code 工作流](/wiki/concepts/obsidian-claude-code-workflow)
 - [开源工具发现](/wiki/concepts/open-source-tool-discovery)
+- [OpenSpec 变更工作流](/wiki/concepts/openspec-change-workflow)
 - [产品滥用防护](/wiki/concepts/product-abuse-protection)
 - [产品分析迭代循环](/wiki/concepts/product-analytics-iteration-loop)
 - [产品数据层选型](/wiki/concepts/product-data-layer-selection)

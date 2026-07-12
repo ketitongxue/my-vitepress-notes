@@ -141,6 +141,7 @@ export default defineConfig({
             { text: '模型上下文协议', link: '/wiki/concepts/model-context-protocol' },
             { text: 'Obsidian 与 Claude Code 工作流', link: '/wiki/concepts/obsidian-claude-code-workflow' },
             { text: '开源工具发现', link: '/wiki/concepts/open-source-tool-discovery' },
+            { text: 'OpenSpec 变更工作流', link: '/wiki/concepts/openspec-change-workflow' },
             { text: '产品滥用防护', link: '/wiki/concepts/product-abuse-protection' },
             { text: '产品分析迭代循环', link: '/wiki/concepts/product-analytics-iteration-loop' },
             { text: '产品数据层选型', link: '/wiki/concepts/product-data-layer-selection' },
