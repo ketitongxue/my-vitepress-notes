@@ -10,9 +10,9 @@
 
 ## Global Constraints
 
-- 公开 Skill 仓库必须新建于 `/Users/keti/Documents/Do What You Want/llm-wiki-skill`，远端必须是公开仓库 `ketitongxue/llm-wiki-skill`，不得复制本机 Skill 或个人知识库的 Git 历史。
+- 公开 Skill 仓库必须新建于 `<SKILL_REPO>`，远端必须是公开仓库 `ketitongxue/llm-wiki-skill`，不得复制本机 Skill 或个人知识库的 Git 历史。
 - 首个版本固定为 `v1.0.0`，许可证固定为 MIT；公开仓库必须包含 `SKILL.md`、`README.md`、`LICENSE`、`CHANGELOG.md`、`VERSION`、`templates/`、`references/`、`scripts/` 和 `tests/`。
-- 公共版只覆盖初始化、采集、查询、检查和维护；VitePress 发布仅是通用参考，不得绑定 `/Users/keti/**`、个人知识库、`my-vitepress-notes`、个人域名、账号、Token、Secret、Hermes、Telegram 或 Cloudflare 配置。
+- 公共版只覆盖初始化、采集、查询、检查和维护；VitePress 发布仅是通用参考，不得绑定 `<WIKI_PATH>`、个人知识库、`<SITE_REPO>`、个人域名、账号、Token、Secret、Hermes、Telegram 或 Cloudflare 配置。
 - 公开仓库不得从私人目录直接复制文件；只能根据设计说明重新编写经过泛化的内容，并从空仓库开始提交历史。
 - 只使用 Python 3 标准库实现初始化、校验、敏感信息扫描和确定性打包，不增加 PyPI 或 npm 运行依赖。
 - Release 必须包含 `llm-wiki-skill-v1.0.0.zip` 和 `SHA256SUMS.txt`；ZIP 解压后只有单一顶层目录 `llm-wiki/`，且其顶层包含 `SKILL.md`。
@@ -31,20 +31,20 @@
 ### Task 1: Create the clean public Skill source
 
 **Files:**
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/SKILL.md`
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/README.md`
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/LICENSE`
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/CHANGELOG.md`
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/VERSION`
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/templates/SCHEMA.md`
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/templates/purpose.md`
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/templates/index.md`
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/templates/log.md`
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/references/agent-compatibility.md`
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/references/ingest-workflow.md`
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/references/lint-checklist.md`
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/references/publishing-example.md`
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/tests/test_repository.py`
+- Create: `$SKILL_REPO/SKILL.md`
+- Create: `$SKILL_REPO/README.md`
+- Create: `$SKILL_REPO/LICENSE`
+- Create: `$SKILL_REPO/CHANGELOG.md`
+- Create: `$SKILL_REPO/VERSION`
+- Create: `$SKILL_REPO/templates/SCHEMA.md`
+- Create: `$SKILL_REPO/templates/purpose.md`
+- Create: `$SKILL_REPO/templates/index.md`
+- Create: `$SKILL_REPO/templates/log.md`
+- Create: `$SKILL_REPO/references/agent-compatibility.md`
+- Create: `$SKILL_REPO/references/ingest-workflow.md`
+- Create: `$SKILL_REPO/references/lint-checklist.md`
+- Create: `$SKILL_REPO/references/publishing-example.md`
+- Create: `$SKILL_REPO/tests/test_repository.py`
 
 **Interfaces:**
 - Consumes: `docs/superpowers/specs/2026-07-12-public-llm-wiki-skill-design.md` as the behavior and privacy contract; it does not consume private Skill files as source artifacts.
@@ -55,8 +55,9 @@
 Run:
 
 ```bash
-mkdir -p "/Users/keti/Documents/Do What You Want/llm-wiki-skill/tests"
-cd "/Users/keti/Documents/Do What You Want/llm-wiki-skill"
+SKILL_REPO="<SKILL_REPO>"
+mkdir -p "$SKILL_REPO/tests"
+cd "$SKILL_REPO"
 git init -b main
 ```
 
@@ -81,7 +82,7 @@ Expected: FAIL listing missing `SKILL.md`, metadata, templates and references.
 
 - [ ] **Step 3: Write the minimum complete public content**
 
-Write `SKILL.md` around the five public operations `initialize`, `ingest`, `query`, `lint`, and `maintain`; require orientation through `purpose.md`, `SCHEMA.md`, `index.md`, and newest-first `log.md`; document Raw/Wiki/Schema, mechanism pages, hubs, bidirectional links, conflicts and explicit user-authorized filesystem scope. Do not include any private path or product-specific publishing command.
+Write `SKILL.md` around the five public operations `initialize`, `ingest`, `query`, `lint`, and `maintain`; require orientation through `purpose.md`, `SCHEMA.md`, `index.md`, and newest-first `log.md`; document Raw、Wiki、Schema, mechanism pages, hubs, bidirectional links, conflicts and explicit user-authorized filesystem scope. Do not include any private path or product-specific publishing command.
 
 Write `README.md` with repository purpose, feature list, audited installation choices, security boundary, `python3 -m unittest discover -s tests -v`, license and attribution to Andrej Karpathy's LLM Wiki pattern. Write `CHANGELOG.md` with a `## [1.0.0] - 2026-07-12` entry and write the full MIT text to `LICENSE`.
 
@@ -104,12 +105,12 @@ Expected: all tests PASS; `git diff --check` prints nothing; GitHub returns `htt
 ### Task 2: Add stdlib initialization, linting and privacy validation
 
 **Files:**
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/scripts/init_wiki.py`
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/scripts/validate.py`
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/tests/test_init_wiki.py`
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/tests/test_validate.py`
-- Modify: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/README.md`
-- Modify: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/references/lint-checklist.md`
+- Create: `$SKILL_REPO/scripts/init_wiki.py`
+- Create: `$SKILL_REPO/scripts/validate.py`
+- Create: `$SKILL_REPO/tests/test_init_wiki.py`
+- Create: `$SKILL_REPO/tests/test_validate.py`
+- Modify: `$SKILL_REPO/README.md`
+- Modify: `$SKILL_REPO/references/lint-checklist.md`
 
 **Interfaces:**
 - Consumes: Task 1 templates and repository root.
@@ -117,9 +118,9 @@ Expected: all tests PASS; `git diff --check` prints nothing; GitHub returns `htt
 
 - [ ] **Step 1: Write failing behavioral and security tests**
 
-In `tests/test_init_wiki.py`, use `tempfile.TemporaryDirectory()` and assert `initialize()` creates `SCHEMA.md`, `purpose.md`, `index.md`, `log.md`, `raw/articles`, `raw/papers`, `raw/transcripts`, `raw/assets`, `entities`, `concepts`, `comparisons`, and `queries`; assert the requested domain appears in both Purpose and Schema; assert a second call refuses to overwrite a non-empty directory.
+In `tests/test_init_wiki.py`, use `tempfile.TemporaryDirectory()` and assert `initialize()` creates `SCHEMA.md`, `purpose.md`, `index.md`, `log.md`, the four Raw source subdirectories (`articles`, `papers`, `transcripts`, `assets`), and the `entities`, `concepts`, `comparisons`, and `queries` directories; assert the requested domain appears in both Purpose and Schema; assert a second call refuses to overwrite a non-empty directory.
 
-In `tests/test_validate.py`, create fixtures that must be rejected for each category: `/Users/example`, `C:\\Users\\example`, `juzxailab.com`, `my-vitepress-notes`, `api_key = "sk-test-secret"`, `ghp_012345678901234567890123456789012345`, PEM private-key headers, absolute Markdown links, unresolved relative links, CRLF and undeclared template placeholders. Add a clean fixture that must return `[]`.
+In `tests/test_validate.py`, create fixtures that must be rejected for each category: `<WIKI_PATH>`, `<WIKI_PATH>`, `<PUBLIC_SITE>`, `<SITE_REPO>`, `<API_KEY_FIXTURE>`, `<GITHUB_TOKEN_FIXTURE>`, PEM private-key headers, absolute Markdown links, unresolved relative links, CRLF and undeclared template placeholders. Add a clean fixture that must return `[]`.
 
 - [ ] **Step 2: Run RED**
 
@@ -151,11 +152,11 @@ Expected: all tests PASS; validator prints `validation passed`; `git diff --chec
 ### Task 3: Build deterministic artifacts and publish `v1.0.0`
 
 **Files:**
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/scripts/package_release.py`
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/tests/test_package_release.py`
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/.github/workflows/test.yml`
-- Create: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/.github/workflows/release.yml`
-- Modify: `/Users/keti/Documents/Do What You Want/llm-wiki-skill/README.md`
+- Create: `$SKILL_REPO/scripts/package_release.py`
+- Create: `$SKILL_REPO/tests/test_package_release.py`
+- Create: `$SKILL_REPO/.github/workflows/test.yml`
+- Create: `$SKILL_REPO/.github/workflows/release.yml`
+- Modify: `$SKILL_REPO/README.md`
 
 **Interfaces:**
 - Consumes: `VERSION`, a fixed `PACKAGE_FILES: tuple[str, ...]`, and Task 2 validation.
@@ -193,8 +194,8 @@ Run:
 python3 -m unittest discover -s tests -v
 python3 scripts/validate.py .
 python3 scripts/package_release.py --output dist
-python3 scripts/package_release.py --output /tmp/llm-wiki-release-repro
-shasum -a 256 dist/llm-wiki-skill-v1.0.0.zip /tmp/llm-wiki-release-repro/llm-wiki-skill-v1.0.0.zip
+python3 scripts/package_release.py --output <TEMP_DIR>
+shasum -a 256 dist/llm-wiki-skill-v1.0.0.zip <TEMP_DIR>/llm-wiki-skill-v1.0.0.zip
 git diff --check
 git add scripts tests .github README.md
 git commit -m "build: add reproducible llm wiki release"
@@ -236,7 +237,7 @@ Expected: `isDraft` and `isPrerelease` are `false`; JSON lists exactly both name
 
 Before editing the website, run the three Task 3 gate commands again. Expected: public non-draft `v1.0.0`, both attachments reachable. Stop on failure.
 
-Create `scripts/llm-wiki-skill-pages.test.mjs` with Node's test runner. Assert all four files exist and have unique H1 titles; every page links back to `/llm-wiki/`; the hub contains exact `v1.0.0` text and the repository/fixed/latest URLs; install contains exact ZIP and checksum URLs plus `shasum -a 256` and `~/.codex/skills/llm-wiki`; principles contains Raw/Wiki/Schema, Karpathy attribution, temporary search, long context and RAG boundaries; build contains Purpose/Schema/Index/Log, one-source ingest, mechanism page, Hub, bidirectional links, lint, conflicts, orphan pages and sensitive-data checks.
+Create `scripts/llm-wiki-skill-pages.test.mjs` with Node's test runner. Assert all four files exist and have unique H1 titles; every page links back to `/llm-wiki/`; the hub contains exact `v1.0.0` text and the repository/fixed/latest URLs; install contains exact ZIP and checksum URLs plus `shasum -a 256` and `~/.codex/skills/llm-wiki`; principles contains Raw、Wiki、Schema, Karpathy attribution, temporary search, long context and RAG boundaries; build contains Purpose/Schema/Index/Log, one-source ingest, mechanism page, Hub, bidirectional links, lint, conflicts, orphan pages and sensitive-data checks.
 
 Assert `rg --files docs` has no `SKILL.md`, ZIP, `SHA256SUMS.txt`, `templates/` or `scripts/` below `docs/llm-wiki/`. Add `node --test scripts/llm-wiki-skill-pages.test.mjs` to the existing `npm test` chain.
 
@@ -248,7 +249,7 @@ Expected: FAIL because the four Markdown pages do not exist.
 
 - [ ] **Step 3: Write the four concise versioned documents**
 
-Write the hub with problem, audience, five core operations, compact Raw/Wiki/Schema tree, public/private boundary, version and the three actions “查看 GitHub 源码”“查看最新 Release”“开始安装”. Write principles around compiled knowledge, mechanism pages/Hubs, human-Agent division and explicit comparison boundaries. Write build as a complete empty-directory-to-maintenance walkthrough using only `<WIKI_PATH>` and fictional examples. Write install with clone and fixed-Release ZIP flows, SHA256 verification before extraction, Codex verified directory, manual loading for other Agents, natural-language examples and permission limitations.
+Write the hub with problem, audience, five core operations, compact Raw、Wiki、Schema tree, public/private boundary, version and the three actions “查看 GitHub 源码”“查看最新 Release”“开始安装”. Write principles around compiled knowledge, mechanism pages/Hubs, human-Agent division and explicit comparison boundaries. Write build as a complete empty-directory-to-maintenance walkthrough using only `<WIKI_PATH>` and fictional examples. Write install with clone and fixed-Release ZIP flows, SHA256 verification before extraction, Codex verified directory, manual loading for other Agents, natural-language examples and permission limitations.
 
 Do not reproduce full Skill instructions, templates or scripts. Every changing implementation detail must link to the public repository; every page must state that the public repository is the only source of truth where context requires it.
 
@@ -356,10 +357,10 @@ Expected before merge: `state` is `OPEN`, `isDraft` is `false`, `mergeable` is `
 Run:
 
 ```bash
-curl -fsSI https://juzxailab.com/llm-wiki/
-curl -fsSI https://juzxailab.com/llm-wiki/principles
-curl -fsSI https://juzxailab.com/llm-wiki/build
-curl -fsSI https://juzxailab.com/llm-wiki/install
+curl -fsSI https://<PUBLIC_SITE>/llm-wiki/
+curl -fsSI https://<PUBLIC_SITE>/llm-wiki/principles
+curl -fsSI https://<PUBLIC_SITE>/llm-wiki/build
+curl -fsSI https://<PUBLIC_SITE>/llm-wiki/install
 curl -fsSI https://github.com/ketitongxue/llm-wiki-skill
 curl -fsSI https://github.com/ketitongxue/llm-wiki-skill/releases/tag/v1.0.0
 curl -fsSI https://github.com/ketitongxue/llm-wiki-skill/releases/latest
