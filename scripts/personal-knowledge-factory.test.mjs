@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import {
-  BOOT_STORAGE_KEY, BOOT_STORAGE_VALUE, getSessionStorage, isInteractiveTarget,
+  BOOT_STORAGE_KEY, BOOT_STORAGE_VALUE, getReducedMotionPreference, getSessionStorage, isInteractiveTarget,
   readInitialBootState, shouldStartFromEnter, transitionBoot, writeBooted,
 } from '../docs/.vitepress/theme/components/factoryBootState.mjs'
 
@@ -48,6 +48,28 @@ test('session storage accessor tolerates a throwing property getter', () => {
   assert.equal(getSessionStorage({ sessionStorage: null }), null)
 })
 
+test('first interactive state resolves stored, reduced-motion, and denied clients without ready flicker', () => {
+  const stored = { getItem: () => BOOT_STORAGE_VALUE }
+  assert.equal(readInitialBootState(
+    getSessionStorage({ sessionStorage: stored }),
+    getReducedMotionPreference({ matchMedia: () => ({ matches: false }) }),
+  ), 'skipped')
+  assert.equal(readInitialBootState(
+    getSessionStorage({ sessionStorage: null }),
+    getReducedMotionPreference({ matchMedia: () => ({ matches: true }) }),
+  ), 'skipped')
+
+  const deniedWindow = Object.defineProperties({}, {
+    sessionStorage: { get() { throw new DOMException('denied', 'SecurityError') } },
+    matchMedia: { value: () => ({ matches: false }) },
+  })
+  assert.equal(readInitialBootState(
+    getSessionStorage(deniedWindow),
+    getReducedMotionPreference(deniedWindow),
+  ), 'ready')
+  assert.equal(getReducedMotionPreference({ matchMedia() { throw new Error('unavailable') } }), false)
+})
+
 test('boot transitions and Enter activation are explicit and safe', () => {
   assert.equal(transitionBoot('ready', 'START'), 'booting')
   assert.equal(transitionBoot('booting', 'COMPLETE'), 'complete')
@@ -85,8 +107,11 @@ test('factory boot stays inline, optional, and cleans up browser effects', async
   assert.doesNotMatch(`${boot}\n${state}`, /localStorage/)
   assert.match(boot, /onBeforeUnmount/)
   assert.equal([...boot.matchAll(/getSessionStorage\(window\)/g)].length, 3)
-  assert.match(boot, /readInitialBootState\(getSessionStorage\(window\), reduced\)[\s\S]*addEventListener\('keydown'/)
-  assert.match(boot, /matchMedia\('\(prefers-reduced-motion: reduce\)'\)/)
+  assert.match(boot, /const hydrated = ref\(false\)/)
+  assert.match(boot, /const state = ref\('complete'\)/)
+  assert.match(boot, /state\.value = readInitialBootState\(getSessionStorage\(window\), getReducedMotionPreference\(window\)\)[\s\S]*hydrated\.value = true/)
+  assert.match(boot, /v-if="hydrated && \(state === 'ready' \|\| state === 'booting'\)"/)
+  assert.match(state, /matchMedia\('\(prefers-reduced-motion: reduce\)'\)/)
   assert.match(boot, /启动知识系统/)
   assert.match(boot, /跳过启动/)
   assert.doesNotMatch(boot, /position:\s*fixed/)

@@ -1,11 +1,12 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
-  getSessionStorage, isInteractiveTarget, readInitialBootState, shouldStartFromEnter,
+  getReducedMotionPreference, getSessionStorage, isInteractiveTarget, readInitialBootState, shouldStartFromEnter,
   transitionBoot, writeBooted,
 } from './factoryBootState.mjs'
 
-const state = ref('ready')
+const hydrated = ref(false)
+const state = ref('complete')
 const visibleLines = ref([])
 const timers = new Set()
 const lines = ['Loading knowledge archives', 'Connecting Ask Console']
@@ -57,8 +58,8 @@ function handlePanelClick(event) {
 }
 
 onMounted(() => {
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  state.value = readInitialBootState(getSessionStorage(window), reduced)
+  state.value = readInitialBootState(getSessionStorage(window), getReducedMotionPreference(window))
+  hydrated.value = true
   window.addEventListener('keydown', handleKeydown)
 })
 
@@ -74,7 +75,7 @@ onBeforeUnmount(() => {
       <p v-for="line in visibleLines" :key="line">$ {{ line }}</p>
     </div>
     <p class="factory-boot__status" aria-live="polite">{{ statusText }}</p>
-    <div v-if="state === 'ready' || state === 'booting'" class="factory-boot__controls">
+    <div v-if="hydrated && (state === 'ready' || state === 'booting')" class="factory-boot__controls">
       <button type="button" :disabled="state === 'booting'" @click.stop="start">启动知识系统</button>
       <button type="button" class="quiet" @click.stop="skip">跳过启动</button>
     </div>

@@ -9,6 +9,15 @@ export function getSessionStorage(browser) {
   }
 }
 
+export function getReducedMotionPreference(browser) {
+  try {
+    if (typeof browser?.matchMedia !== 'function') return false
+    return Boolean(browser.matchMedia('(prefers-reduced-motion: reduce)').matches)
+  } catch {
+    return false
+  }
+}
+
 export function readInitialBootState(storage, reducedMotion = false) {
   if (reducedMotion) return 'skipped'
   try {
