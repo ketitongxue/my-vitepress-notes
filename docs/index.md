@@ -48,6 +48,7 @@ features:
       <a href="/wiki/">AI 知识库</a>
       <a href="/finance/">金融知识库</a>
       <a href="/ask/">知识库问答</a>
+      <a href="/llm-wiki/">LLM Wiki Skill</a>
       <a href="/notes/sustainable-ai-workflow">精选笔记</a>
     </nav>
   </aside>

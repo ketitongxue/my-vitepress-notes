@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import test from 'node:test'
+import { resolveConfig } from 'vitepress'
+import { scanText } from './wiki-qa/security-scan.mjs'
 
 const pages = {
   hub: 'docs/llm-wiki/index.md',
@@ -11,10 +13,11 @@ const pages = {
 }
 
 const repo = 'https://github.com/ketitongxue/llm-wiki-skill'
-const fixedRelease = `${repo}/releases/tag/v1.0.0`
-const latestRelease = `${repo}/releases/latest`
-const zip = `${repo}/releases/download/v1.0.0/llm-wiki-skill-v1.0.0.zip`
-const checksum = `${repo}/releases/download/v1.0.0/SHA256SUMS.txt`
+const repoUrl = (relative) => new URL(relative, repo + '/').href
+const fixedRelease = repoUrl('releases/tag/v1.0.0')
+const latestRelease = repoUrl('releases/latest')
+const zip = repoUrl('releases/download/v1.0.0/llm-wiki-skill-v1.0.0.zip')
+const checksum = repoUrl('releases/download/v1.0.0/SHA256SUMS.txt')
 
 async function page(name) {
   return readFile(pages[name], 'utf8')
@@ -59,6 +62,9 @@ test('install page pins clone installation to the v1.0.0 tag', async () => {
   ))
   assert.match(document, /临时目录/)
   assert.doesNotMatch(document, /git clone (?!.*--branch v1\.0\.0)/)
+  assert.match(document, /git clone --branch v1\.0\.0 --depth 1 [^\n]+ "\$temp_dir"/)
+  assert.match(document, /test -f "\$temp_dir\/SKILL\.md"/)
+  assert.doesNotMatch(document, /\$temp_dir\/llm-wiki/)
 })
 
 test('principles page explains the model, attribution, and retrieval boundaries', async () => {
@@ -100,4 +106,35 @@ test('examples do not expose a personal filesystem path', async () => {
     assert.doesNotMatch(document, /\/Users\/|[A-Za-z]:\\Users\\/)
   }
   assert.ok(documents.some((document) => document.includes('<WIKI_PATH>')))
+})
+
+test('navigation exposes the skill under Tools and defines its four-page sidebar', async () => {
+  const config = await resolveConfig('docs', 'build')
+  const tools = config.site.themeConfig.nav.find((item) => item.text === '工具')
+  assert.deepEqual(tools?.items, [
+    { text: 'LLM Wiki Skill', link: '/llm-wiki/' }
+  ])
+  assert.deepEqual(config.site.themeConfig.sidebar['/llm-wiki/'], [
+    {
+      text: 'LLM Wiki Skill',
+      items: [
+        { text: '概览', link: '/llm-wiki/' },
+        { text: '原理', link: '/llm-wiki/principles' },
+        { text: '构建知识库', link: '/llm-wiki/build' },
+        { text: '安装与使用', link: '/llm-wiki/install' }
+      ]
+    }
+  ])
+})
+
+test('homepage links visibly to the local guide without bypassing it for GitHub', async () => {
+  const home = await readFile('docs/index.md', 'utf8')
+  assert.match(home, /<a href="\/llm-wiki\/">LLM Wiki Skill<\/a>/)
+  assert.doesNotMatch(home, /github\.com\/ketitongxue\/llm-wiki-skill/)
+})
+
+test('security scanning recognizes the local guide routes as public site paths', () => {
+  for (const route of ['/llm-wiki/', '/llm-wiki/principles', '/llm-wiki/build', '/llm-wiki/install']) {
+    assert.deepEqual(scanText('docs/llm-wiki/index.md', `[guide](${route})`, { artifact: true }), [])
+  }
 })

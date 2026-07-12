@@ -50,11 +50,11 @@ ZIP + SHA256 是推荐安装方式。如果需要查看完整 Git 历史边界�
 
 ```bash
 temp_dir="$(mktemp -d)"
-git clone --branch v1.0.0 --depth 1 https://github.com/ketitongxue/llm-wiki-skill "$temp_dir/llm-wiki"
-test -f "$temp_dir/llm-wiki/SKILL.md"
+git clone --branch v1.0.0 --depth 1 https://github.com/ketitongxue/llm-wiki-skill "$temp_dir"
+test -f "$temp_dir/SKILL.md"
 mkdir -p ~/.codex/skills
 test ! -e ~/.codex/skills/llm-wiki
-mv "$temp_dir/llm-wiki" ~/.codex/skills/llm-wiki
+mv "$temp_dir" ~/.codex/skills/llm-wiki
 test -f ~/.codex/skills/llm-wiki/SKILL.md
 ```
 
