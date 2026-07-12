@@ -45,10 +45,10 @@
     },
     {
       "source": "concepts/agent-loop-engineering.md",
-      "hash": "3ace3e78cc4fb191944756d1cc0101ba580604e81557406bd556a5964e8d37fd",
+      "hash": "30222a01a59c32e208bb33e657e6f67f848c2e05d60c447230ceb8ad540b516c",
       "publicPath": "docs/wiki/concepts/agent-loop-engineering.md",
       "status": "published",
-      "syncedAt": "2026-07-11T15:13:09.206Z"
+      "syncedAt": "2026-07-12T02:34:06.978Z"
     },
     {
       "source": "concepts/agent-pipeline-orchestration.md",
@@ -101,10 +101,10 @@
     },
     {
       "source": "concepts/claude-code-extension-system.md",
-      "hash": "1a53f95a4a6ff0b5a42cd71c69991b8d1f7190fa27b8da1e4afc531b530cd374",
+      "hash": "45dc7bb2560f3e5aee62fb5888a9471424b5c1d83e56f30c4ca0dabf93766765",
       "publicPath": "docs/wiki/concepts/claude-code-extension-system.md",
       "status": "published",
-      "syncedAt": "2026-07-11T15:13:09.206Z"
+      "syncedAt": "2026-07-12T02:34:06.978Z"
     },
     {
       "source": "concepts/claude-code-hooks.md",
@@ -339,10 +339,10 @@
     },
     {
       "source": "entities/claude-code.md",
-      "hash": "2ecf782a09257fb4502f751c4c803e16220a55b8239f4e677a9cd09e818825c1",
+      "hash": "25a682ac8f98d7d3e69bc9eda743e02bfd8a68d7ac1b372453601dc40d5c03b6",
       "publicPath": "docs/wiki/entities/claude-code.md",
       "status": "published",
-      "syncedAt": "2026-07-11T15:13:09.206Z"
+      "syncedAt": "2026-07-12T02:34:06.978Z"
     },
     {
       "source": "entities/openclaw.md",

@@ -10,7 +10,7 @@ lastUpdated: false
   <p class="knowledge-hub__intro">面向 AI 编程、智能体工程与产品实践的中文知识库。</p>
   <div class="knowledge-hub__stats" aria-label="知识库统计">
     <span>页面总数：<strong>50</strong></span>
-    <span>最近同步日期：<strong>2026-07-11</strong></span>
+    <span>最近同步日期：<strong>2026-07-12</strong></span>
   </div>
   <div class="knowledge-hub__featured" aria-label="精选条目">
     <strong>精选条目</strong>
