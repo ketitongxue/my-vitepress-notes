@@ -44,6 +44,22 @@ test -f ~/.codex/skills/llm-wiki/SKILL.md
 
 最终入口是 `~/.codex/skills/llm-wiki/SKILL.md`。如果目标位置已经存在，先人工比较版本；安装流程不会自动覆盖个人修改。
 
+## 可选：按固定标签 clone
+
+ZIP + SHA256 是推荐安装方式。如果需要查看完整 Git 历史边界或参与开发，可以把 **v1.0.0 标签** clone 到临时目录，再确认目标不存在后移动；不要直接追踪会继续变化的 `main`：
+
+```bash
+temp_dir="$(mktemp -d)"
+git clone --branch v1.0.0 --depth 1 https://github.com/ketitongxue/llm-wiki-skill "$temp_dir/llm-wiki"
+test -f "$temp_dir/llm-wiki/SKILL.md"
+mkdir -p ~/.codex/skills
+test ! -e ~/.codex/skills/llm-wiki
+mv "$temp_dir/llm-wiki" ~/.codex/skills/llm-wiki
+test -f ~/.codex/skills/llm-wiki/SKILL.md
+```
+
+如果 `test ! -e` 失败，停止安装并人工比较现有目录，不要删除或覆盖它。后续升级也应选择新的固定标签并重新校验，而不是在安装目录执行 `git pull main`。
+
 ## 4. 初始化并试用
 
 向 Codex 明确知识库目录和任务，例如：

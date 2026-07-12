@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFile, readdir } from 'node:fs/promises'
+import path from 'node:path'
 import test from 'node:test'
 
 const pages = {
@@ -17,6 +18,16 @@ const checksum = `${repo}/releases/download/v1.0.0/SHA256SUMS.txt`
 
 async function page(name) {
   return readFile(pages[name], 'utf8')
+}
+
+async function listTree(root) {
+  const entries = []
+  for (const dirent of await readdir(root, { withFileTypes: true })) {
+    const relative = path.join(root, dirent.name)
+    entries.push(relative)
+    if (dirent.isDirectory()) entries.push(...await listTree(relative))
+  }
+  return entries
 }
 
 test('publishes four pages with unique H1 headings and a hub backlink', async () => {
@@ -41,6 +52,15 @@ test('install page uses fixed release assets and the verified Codex path', async
   }
 })
 
+test('install page pins clone installation to the v1.0.0 tag', async () => {
+  const document = await page('install')
+  assert.ok(document.includes(
+    'git clone --branch v1.0.0 --depth 1 https://github.com/ketitongxue/llm-wiki-skill'
+  ))
+  assert.match(document, /临时目录/)
+  assert.doesNotMatch(document, /git clone (?!.*--branch v1\.0\.0)/)
+})
+
 test('principles page explains the model, attribution, and retrieval boundaries', async () => {
   const document = await page('principles')
   for (const value of ['Raw', 'Wiki', 'Schema', 'Andrej Karpathy', '临时搜索', '长上下文', 'RAG']) {
@@ -58,11 +78,20 @@ test('build page covers orientation, ingestion, linking, and quality controls', 
   }
 })
 
+test('build page does not present the package validator as a knowledge-base linter', async () => {
+  const document = await page('build')
+  assert.doesNotMatch(document, /python3[^\n]*scripts\/validate\.py[^\n]*<WIKI_PATH>/)
+  assert.match(document, /验证器只验证安装的 Skill 包/)
+  assert.match(document, /lint checklist/)
+})
+
 test('website does not mirror public Skill implementation or release artifacts', async () => {
-  const entries = await readdir('docs/llm-wiki')
-  const forbidden = new Set(['SKILL.md', 'SHA256SUMS.txt', 'templates', 'scripts'])
-  assert.deepEqual(entries.filter((entry) => forbidden.has(entry)), [])
-  assert.equal(entries.some((entry) => entry.endsWith('.zip')), false)
+  const entries = await listTree('docs/llm-wiki')
+  const violations = entries.filter((entry) => {
+    const basename = path.basename(entry)
+    return ['SKILL.md', 'SHA256SUMS.txt', 'templates', 'scripts'].includes(basename) || basename.endsWith('.zip')
+  })
+  assert.deepEqual(violations, [])
 })
 
 test('examples do not expose a personal filesystem path', async () => {

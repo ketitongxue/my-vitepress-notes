@@ -60,11 +60,9 @@ python3 ~/.codex/skills/llm-wiki/scripts/init_wiki.py \
 - Raw、页面和附件是否包含密钥、个人路径或其他敏感数据。
 - 是否先增强已有机制页，再创建可能重复的新页面。
 
-可以运行公开验证器检查仓库结构；知识内容的正确性仍需要人判断：
+公开包中的 `scripts/validate.py` 是发布仓库验证器，**验证器只验证安装的 Skill 包**，不是面向任意知识库的 lint CLI；不要把 `<WIKI_PATH>` 传给它。
 
-```bash
-python3 ~/.codex/skills/llm-wiki/scripts/validate.py "<WIKI_PATH>"
-```
+知识库 lint 应按该知识库自己的 `SCHEMA.md` 和公开 Skill 的 lint checklist（`references/lint-checklist.md`）执行。让 Agent 先读取这两个文件，再逐项检查结构、链接、索引覆盖、日志顺序、孤立页、冲突和敏感数据；最后报告已修复项、需人工判断项与未执行检查。知识内容是否正确仍需要人判断。
 
 完成一次小而完整的循环后，再批量采集。这样 Schema、Hub 和质量标准会先经受真实材料检验。
 
