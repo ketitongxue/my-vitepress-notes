@@ -98,7 +98,24 @@ test('factory styles keep cards fluid, controls touchable, and motion optional',
   const card = css.match(/\.factory-module\s*\{([\s\S]*?)\}/)?.[1] ?? ''
   assert.ok(card, 'factory module card rule must exist')
   assert.doesNotMatch(card, /(?:^|\s)(?:height|min-height|max-height)\s*:/)
-  assert.match(css, /@media \(max-width:\s*639px\)[\s\S]*\.factory-actions a\s*\{[\s\S]*min-height:\s*44px/)
   assert.match(css, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.factory-home \*[\s\S]*animation:\s*none !important;[\s\S]*transition:\s*none !important;/)
   assert.doesNotMatch(css, /neon|glow|infinite[-_ ]?canvas|draggable[-_ ]?window/i)
+})
+
+test('every mobile factory link and boot control has a 44 by 44 hit area', async () => {
+  const css = await read('docs/.vitepress/theme/custom.css')
+  const mobileStart = css.indexOf('@media (max-width: 639px)')
+  const mobileEnd = css.indexOf('@media (prefers-reduced-motion: reduce)', mobileStart)
+  assert.ok(mobileStart >= 0 && mobileEnd > mobileStart, 'mobile factory media block must be present')
+  const mobile = css.slice(mobileStart, mobileEnd)
+  for (const selector of [
+    '.factory-status a',
+    '.factory-actions a',
+    '.factory-module a',
+    '.factory-log a',
+    '.factory-notes a',
+    '.factory-boot button',
+  ]) assert.match(mobile, new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+  assert.match(mobile, /min-width:\s*44px;/)
+  assert.match(mobile, /min-height:\s*44px;/)
 })

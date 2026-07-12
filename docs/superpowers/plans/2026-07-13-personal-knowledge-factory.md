@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Preserve the `AI 纪元` brand and the existing routes `/wiki/`, `/finance/`, `/ask/`, `/llm-wiki/`, `/topics/`, `/notes/...`, and `/about`.
+- Preserve the `AI 纪元` brand and the existing routes `/wiki/`, `/finance/`, `/ask/`, `/llm-wiki/`, `/topics/`, the published notes routes, and `/about`.
 - Keep the four primary modules exactly: AI 知识库, 金融知识库, 知识库问答 / ASK CONSOLE, and LLM Wiki Skill.
 - The startup is inline and optional: no full-screen overlay, focus trap, scroll lock, mandatory animation, network request, or JavaScript-only navigation.
 - Persist only `v1` under session key `ai-era:knowledge-factory:booted`; do not use cookies or `localStorage`.
@@ -449,9 +449,9 @@ Expected: the entire repository test suite and both knowledge validations PASS; 
 
 - [ ] **Step 3: Start the site and perform browser acceptance**
 
-Run: `npm run docs:dev -- --host 127.0.0.1`
+Run: `npm run docs:dev -- --host localhost`
 
-Expected: VitePress reports a local URL such as `http://127.0.0.1:5173/`.
+Expected: VitePress reports a local URL such as `http://localhost:5173/`.
 
 Use `browser:control-in-app-browser` to inspect `/` at 1440 px, 768 px, and 390 px in both light and dark modes. Verify first visit, `启动知识系统`, safe Enter activation, `跳过启动`, same-tab return, visible focus, and all four links before startup; emulate reduced motion and confirm static `SYSTEM READY`; deny session storage and confirm the page remains operable. Confirm no overflow, clipped Chinese text, fixed-height truncation, or duplicate mobile navigation.
 

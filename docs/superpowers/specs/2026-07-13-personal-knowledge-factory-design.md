@@ -1,8 +1,8 @@
 # Personal Knowledge Factory Design
 
-**Date:** 2026-07-13  
-**Status:** Approved direction, ready for implementation planning  
-**Brand:** AI 纪元  
+**Date:** 2026-07-13
+**Status:** Approved direction, ready for implementation planning
+**Brand:** AI 纪元
 **Homepage theme:** `PERSONAL KNOWLEDGE FACTORY / 个人知识工厂`
 
 ## 1. Context
@@ -50,7 +50,7 @@ The existing route structure remains authoritative:
 | Knowledge Q&A | `/ask/` | Ask Console |
 | LLM Wiki Skill | `/llm-wiki/` | Factory tooling and method |
 | Topics | `/topics/` | Cross-cutting topic navigation |
-| Notes | `/notes/...` | Editorial notes |
+| Notes | Published notes routes | Editorial notes |
 | About | `/about` | Site and author context |
 
 The global VitePress navigation continues to expose the established sections. The homepage status bar and module grid provide a second, contextual navigation layer; they do not replace the global navigation, local search, document sidebar, or mobile menu.

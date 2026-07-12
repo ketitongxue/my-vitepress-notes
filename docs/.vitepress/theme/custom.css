@@ -761,6 +761,19 @@
     display: none;
   }
 
+  .factory-status a,
+  .factory-actions a,
+  .factory-module a,
+  .factory-log a,
+  .factory-notes a,
+  .factory-boot button {
+    display: inline-flex;
+    align-items: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding-inline: 6px;
+  }
+
   .factory-modules__grid {
     grid-template-columns: 1fr;
   }
@@ -771,7 +784,6 @@
 
   .factory-actions a {
     width: 100%;
-    min-height: 44px;
   }
 
   .factory-module h3 + p {
