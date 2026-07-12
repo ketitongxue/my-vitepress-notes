@@ -189,6 +189,29 @@ test('scanner allows web routes, URLs, imports, and regex source', () => {
   )
 })
 
+test('scanner narrowly allows the public skill routes and documented Codex install path', () => {
+  for (const value of [
+    '/llm-wiki/',
+    '/llm-wiki/install',
+    '/.codex/skills',
+    '/.codex/skills/llm-wiki/SKILL.md',
+    '/.codex/skills/llm-wiki/scripts/init_wiki.py',
+  ]) {
+    assert.deepEqual(scanText('docs/llm-wiki/install.md', value, { artifact: true }), [])
+  }
+  for (const value of [
+    ['', 'llm-wiki-private', 'secret'].join('/'),
+    ['', '.codex', 'skills-other', 'private', 'file'].join('/'),
+    ['', '.codex', 'skills', 'another-skill', 'private', 'file'].join('/'),
+    ['', '.codex', 'skills', 'llm-wiki', '..', 'private', 'file'].join('/'),
+    ['', '.codex', 'skills', 'llm-wiki', 'private', 'secret.txt'].join('/'),
+    ['', '.codex', 'skills', 'llm-wiki', '.env'].join('/'),
+    ['', '.codex', 'skills', 'llm-wiki', 'user-notes', 'personal.md'].join('/'),
+  ]) {
+    assert.match(scanText('docs/llm-wiki/install.md', value, { artifact: true }).join('\n'), /local absolute path/)
+  }
+})
+
 test('integrated test command preserves the deployment verification order', async () => {
   const packageJson = JSON.parse(await readFile(path.join(projectRoot, 'package.json'), 'utf8'))
   const command = packageJson.scripts.test

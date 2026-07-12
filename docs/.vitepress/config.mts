@@ -19,10 +19,27 @@ export default defineConfig({
           { text: '金融知识库', link: '/finance/' }
         ]
       },
+      {
+        text: '工具',
+        items: [
+          { text: 'LLM Wiki Skill', link: '/llm-wiki/' }
+        ]
+      },
       { text: '问答', link: '/ask/' },
       { text: '关于', link: '/about' }
     ],
     sidebar: {
+      '/llm-wiki/': [
+        {
+          text: 'LLM Wiki Skill',
+          items: [
+            { text: '概览', link: '/llm-wiki/' },
+            { text: '原理', link: '/llm-wiki/principles' },
+            { text: '构建知识库', link: '/llm-wiki/build' },
+            { text: '安装与使用', link: '/llm-wiki/install' }
+          ]
+        }
+      ],
       '/finance/': [
         {
           text: '实体',
