@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
-  isInteractiveTarget, readInitialBootState, shouldStartFromEnter,
+  getSessionStorage, isInteractiveTarget, readInitialBootState, shouldStartFromEnter,
   transitionBoot, writeBooted,
 } from './factoryBootState.mjs'
 
@@ -31,7 +31,7 @@ function clearTimers() {
 
 function finish() {
   state.value = transitionBoot(state.value, 'COMPLETE')
-  writeBooted(window.sessionStorage)
+  writeBooted(getSessionStorage(window))
 }
 
 function start() {
@@ -45,7 +45,7 @@ function start() {
 function skip() {
   clearTimers()
   state.value = transitionBoot(state.value, 'SKIP')
-  writeBooted(window.sessionStorage)
+  writeBooted(getSessionStorage(window))
 }
 
 function handleKeydown(event) {
@@ -58,7 +58,7 @@ function handlePanelClick(event) {
 
 onMounted(() => {
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  state.value = readInitialBootState(window.sessionStorage, reduced)
+  state.value = readInitialBootState(getSessionStorage(window), reduced)
   window.addEventListener('keydown', handleKeydown)
 })
 

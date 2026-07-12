@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import {
-  BOOT_STORAGE_KEY, BOOT_STORAGE_VALUE, isInteractiveTarget,
+  BOOT_STORAGE_KEY, BOOT_STORAGE_VALUE, getSessionStorage, isInteractiveTarget,
   readInitialBootState, shouldStartFromEnter, transitionBoot, writeBooted,
 } from '../docs/.vitepress/theme/components/factoryBootState.mjs'
 
@@ -40,6 +40,14 @@ test('boot state persists only a versioned session value and fails open', () => 
   assert.equal(writeBooted({ setItem() { throw new Error('denied') } }), false)
 })
 
+test('session storage accessor tolerates a throwing property getter', () => {
+  const deniedWindow = Object.defineProperty({}, 'sessionStorage', {
+    get() { throw new DOMException('denied', 'SecurityError') },
+  })
+  assert.equal(getSessionStorage(deniedWindow), undefined)
+  assert.equal(getSessionStorage({ sessionStorage: null }), null)
+})
+
 test('boot transitions and Enter activation are explicit and safe', () => {
   assert.equal(transitionBoot('ready', 'START'), 'booting')
   assert.equal(transitionBoot('booting', 'COMPLETE'), 'complete')
@@ -50,6 +58,24 @@ test('boot transitions and Enter activation are explicit and safe', () => {
   assert.equal(shouldStartFromEnter({ key: 'Enter', target: { closest: () => null } }, 'complete'), false)
 })
 
+test('global Enter ignores editable, focusable, and media control targets', () => {
+  const expectedSelectors = [
+    '[contenteditable]:not([contenteditable="false"])',
+    '[tabindex]:not([tabindex="-1"])',
+    'audio[controls]',
+    'video[controls]',
+  ]
+  for (const expected of expectedSelectors) {
+    const target = {
+      closest(selector) {
+        return selector.includes(expected) ? {} : null
+      },
+    }
+    assert.equal(isInteractiveTarget(target), true, expected)
+    assert.equal(shouldStartFromEnter({ key: 'Enter', target }, 'ready'), false, expected)
+  }
+})
+
 test('factory boot stays inline, optional, and cleans up browser effects', async () => {
   const [boot, state] = await Promise.all([
     read('docs/.vitepress/theme/components/FactoryBoot.vue'),
@@ -58,6 +84,8 @@ test('factory boot stays inline, optional, and cleans up browser effects', async
   assert.match(state, /ai-era:knowledge-factory:booted/)
   assert.doesNotMatch(`${boot}\n${state}`, /localStorage/)
   assert.match(boot, /onBeforeUnmount/)
+  assert.equal([...boot.matchAll(/getSessionStorage\(window\)/g)].length, 3)
+  assert.match(boot, /readInitialBootState\(getSessionStorage\(window\), reduced\)[\s\S]*addEventListener\('keydown'/)
   assert.match(boot, /matchMedia\('\(prefers-reduced-motion: reduce\)'\)/)
   assert.match(boot, /启动知识系统/)
   assert.match(boot, /跳过启动/)

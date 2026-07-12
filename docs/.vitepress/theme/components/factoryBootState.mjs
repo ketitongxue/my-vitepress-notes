@@ -1,6 +1,14 @@
 export const BOOT_STORAGE_KEY = 'ai-era:knowledge-factory:booted'
 export const BOOT_STORAGE_VALUE = 'v1'
 
+export function getSessionStorage(browser) {
+  try {
+    return browser?.sessionStorage
+  } catch {
+    return undefined
+  }
+}
+
 export function readInitialBootState(storage, reducedMotion = false) {
   if (reducedMotion) return 'skipped'
   try {
@@ -27,7 +35,7 @@ export function transitionBoot(state, event) {
 }
 
 export function isInteractiveTarget(target) {
-  return Boolean(target?.closest?.('a,button,input,textarea,select,summary,[contenteditable="true"],[role="button"],[role="link"]'))
+  return Boolean(target?.closest?.('a,button,input,textarea,select,summary,[contenteditable]:not([contenteditable="false"]),[tabindex]:not([tabindex="-1"]),audio[controls],video[controls],[role="button"],[role="link"]'))
 }
 
 export function shouldStartFromEnter(event, state) {
