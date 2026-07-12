@@ -1,54 +1,49 @@
 ---
 title: "技能设计模式"
 type: "concept"
-tags: ["developer-tool", "workflow", "context-engineering", "tool-use", "ai-coding"]
+tags: [developer-tool, workflow, context-engineering, tool-use, ai-coding]
 created: "2026-06-13"
-updated: "2026-07-06"
+updated: "2026-07-11"
 ---
 
 # 技能设计模式
 
-技能设计模式描述了如何拆分过程知识、参考资料、脚本、模板、权限和动态上下文，使 Claude Code 技能保持小巧、精确且实用。
+技能设计模式描述如何把流程知识、参考资料、脚本、模板、权限和动态上下文拆开，让 Claude Code 技能保持小而准。
 
-## 四种实用模式
+## 四种常用模式
 
 | 模式 | 适用场景 | 设计动作 |
 | --- | --- | --- |
-| 模板驱动 | 输出格式很重要。 | 把呈现形式放进模板，把决策留在 `SKILL.md`。 |
-| 脚本增强 | 计算或转换是确定性的。 | 把可重复逻辑放进 `scripts/`，并告诉智能体何时运行。 |
-| 知识分层 | 领域规则很多。 | 内联常用检查；更深分支则路由到参考资料。 |
-| 工具隔离 | 不同任务的风险不同。 | 视情况使用允许工具、只读模式或分叉上下文。 |
+| 模板驱动 | 输出格式很重要。 | 把呈现形式放进模板，把判断留在技能说明。 |
+| 脚本增强 | 有确定性计算或转换。 | 用脚本处理重复逻辑，并说明何时运行。 |
+| 知识分层 | 领域规则很多。 | 入口只放常用判断，深层分支放参考文件。 |
+| 工具隔离 | 不同任务风险不同。 | 限定工具、读写权限或执行上下文。 |
 
-## 能力成熟路径
+## 能力成熟度
 
-能力封装通常沿三层路径演进：
+技能通常会经历三个阶段：
 
-1. **标准作业程序：** 一个 `SKILL.md` 用明确步骤处理稳定任务。
-2. **专家系统：** 引用、模板和脚本覆盖有意义的变体，同时保持入口文件可读。
-3. **组织工作流：** 多个角色通过受治理的流水线使用专门技能，并配置审阅和质量门禁。
+1. SOP：一个技能文件覆盖稳定任务步骤。
+2. 专家系统：参考资料、模板和脚本处理有意义的变体。
+3. 组织工作流：多个角色或技能通过评审和质量门禁协作。
 
-扩展应由真实的任务差异和复用需求驱动；简单任务不应从第三层开始。
+成熟度应该跟随真实复用和真实变化增长，而不是一开始就追求复杂结构。
 
-## 与工具的关系
+## 技能作为规则层
 
-原文最有用的抽象是：技能与工具相互补充。技能是操作知识，工具是行动表面。当脚本能直接完成确定性工作时，优秀的技能不会要求模型依靠记忆完成它。
+两层 Spec 视角下，技能很适合作为规则层：记录长期稳定的项目 know-how、工具约定、性能边界和踩坑记录。一次具体 change 则属于变更层。
 
-## 与记忆的关系
+在[OpenSpec 变更工作流](/wiki/concepts/openspec-change-workflow)中，proposal 可以显式声明复用某个 skill；运行时触发让 AI 真正使用规则，显式引用让人未来能审计依赖，archive 则把新踩坑回写到 skill。
 
-[Claude Code 记忆文件](/wiki/concepts/claude-code-memory-files)应包含始终生效的默认规则，技能则包含特定任务的流程。当某项技能永久适用于仓库中的所有工作时，其中一些原则可以提升为项目记忆；当记忆变得过大时，专门流程应移回技能。
+## 与记忆和工具的关系
 
-## 活的知识资产
+[Claude Code 记忆文件](/wiki/concepts/claude-code-memory-files)适合放总是需要的项目默认规则。Skills 适合放任务特定流程。工具是动作表面，skill 是操作知识；好的 skill 不会让模型凭记忆做确定性工作，而是调用脚本或工具完成。
 
-SDD 方法论材料把项目技能视为活的知识资产。第一版通常比较通用；它的持久价值来自反复使用、人工审阅，以及持续补充项目特定工具、业务规则、性能限制、重试行为和已知失效模式。
-
-[AI 知识工程反馈循环](/wiki/concepts/ai-knowledge-engineering-feedback-loop)提供了更新机制。当审阅暴露智能体不知道的事项时，应对经验分类，并把它加入记忆、技能、钩子、测试或规范规格。对于棕地系统，技能还应从现有代码自下而上提取，而不能只从通用最佳实践中凭空设计。
-
-## 相关内容
+## 相关页面
 
 - [Claude Code 技能](/wiki/concepts/claude-code-skills)
 - [渐进式披露](/wiki/concepts/progressive-disclosure)
 - [Claude Code 扩展系统](/wiki/concepts/claude-code-extension-system)
 - [AI 知识工程反馈循环](/wiki/concepts/ai-knowledge-engineering-feedback-loop)
 - [SDD 规格生命周期](/wiki/concepts/sdd-spec-lifecycle)
-- [声明式智能体配置](/wiki/concepts/declarative-agent-configuration)
-- [智能体流水线编排](/wiki/concepts/agent-pipeline-orchestration)
+- [OpenSpec 变更工作流](/wiki/concepts/openspec-change-workflow)

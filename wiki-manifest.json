@@ -59,17 +59,17 @@
     },
     {
       "source": "concepts/agent-task-briefing.md",
-      "hash": "71002aa8bd495f177aaacf1cf3cb8da052d3b418acd64eed22583e72c9126b20",
+      "hash": "a99ee913febea2fdc3601e614b4313dbe0e9f1a82eee894fa32ba87b8cc85265",
       "publicPath": "docs/wiki/concepts/agent-task-briefing.md",
       "status": "published",
-      "syncedAt": "2026-07-05T13:31:39.085Z"
+      "syncedAt": "2026-07-11T16:07:23.711Z"
     },
     {
       "source": "concepts/ai-coding-engineering-loop.md",
-      "hash": "8b413405fa3b624f2d7fe9fb01f8abed23ec096a54c7caa2ce3e6c1b64fa965b",
+      "hash": "794f0791b93c47d928b24f755bfee183dab106c57768b82b24a77b228118fe79",
       "publicPath": "docs/wiki/concepts/ai-coding-engineering-loop.md",
       "status": "published",
-      "syncedAt": "2026-07-11T15:13:09.206Z"
+      "syncedAt": "2026-07-11T16:07:23.711Z"
     },
     {
       "source": "concepts/ai-debugging-error-triage.md",
@@ -205,6 +205,13 @@
       "syncedAt": "2026-07-03T00:00:00.000Z"
     },
     {
+      "source": "concepts/openspec-change-workflow.md",
+      "hash": "ec05d382be21eb11fefd3b2cd26eca412330ed33dff294bf36ac4232c7b12d31",
+      "publicPath": "docs/wiki/concepts/openspec-change-workflow.md",
+      "status": "published",
+      "syncedAt": "2026-07-11T16:07:23.711Z"
+    },
+    {
       "source": "concepts/product-abuse-protection.md",
       "hash": "5ec6f917870485807f00fdd982d96e3051ef8b6646ab2596b3f02f3c3a1183db",
       "publicPath": "docs/wiki/concepts/product-abuse-protection.md",
@@ -269,17 +276,17 @@
     },
     {
       "source": "concepts/sdd-layered-adoption-model.md",
-      "hash": "70813728d1f943186742a9c5d71c8dfd47b13cc849c964530ac6e7f5a9d33019",
+      "hash": "19db8f2aa66170520b6e58ef343425de3f751d87573844eadddf969b6971ad31",
       "publicPath": "docs/wiki/concepts/sdd-layered-adoption-model.md",
       "status": "published",
-      "syncedAt": "2026-07-05T13:31:39.085Z"
+      "syncedAt": "2026-07-11T16:07:23.711Z"
     },
     {
       "source": "concepts/sdd-spec-lifecycle.md",
-      "hash": "d5f4fbf9efbb947145c702a5eb056bc45fb39521e62548a02f96923039b3dc5c",
+      "hash": "5c8b1df871f5dd4dcf6340280d172af0e7b0f07edb389cfbcf7e51134a1a520c",
       "publicPath": "docs/wiki/concepts/sdd-spec-lifecycle.md",
       "status": "published",
-      "syncedAt": "2026-07-03T00:00:00.000Z"
+      "syncedAt": "2026-07-11T16:07:23.711Z"
     },
     {
       "source": "concepts/serverless-scheduled-jobs.md",
@@ -290,10 +297,10 @@
     },
     {
       "source": "concepts/skill-design-patterns.md",
-      "hash": "3a2b52b00ec5fd9294bd1dbce559d677b2ce2df7b8fed6c9e4b8294f7415bd9e",
+      "hash": "3e0055763681cd3b8d05e9ad4cdffadae682d40fea0ae951875b54a4e56a070c",
       "publicPath": "docs/wiki/concepts/skill-design-patterns.md",
       "status": "published",
-      "syncedAt": "2026-07-07T14:03:23.055Z"
+      "syncedAt": "2026-07-11T16:07:23.711Z"
     },
     {
       "source": "concepts/smart-technical-questioning.md",
@@ -311,10 +318,10 @@
     },
     {
       "source": "concepts/spec-driven-development.md",
-      "hash": "37eae051be0a3c79dc4fa8404c73ee5925dae1bbdd25e67db68fc35ffcc57675",
+      "hash": "a4359d22f3c481670b93ba74c708e4585bd7528eef9afa79262f419a01e6a7fa",
       "publicPath": "docs/wiki/concepts/spec-driven-development.md",
       "status": "published",
-      "syncedAt": "2026-07-05T13:31:39.085Z"
+      "syncedAt": "2026-07-11T16:07:23.711Z"
     },
     {
       "source": "concepts/vibe-coding-commercial-validation.md",
