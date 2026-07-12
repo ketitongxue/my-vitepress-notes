@@ -5,12 +5,16 @@ import test from 'node:test'
 const root = new URL('../', import.meta.url)
 const read = (path) => readFile(new URL(path, root), 'utf8')
 
-test('homepage leads to the AI knowledge base and Q&A with current updates', async () => {
-  const home = await read('docs/index.md')
-  assert.match(home, /text:\s*浏览知识库[\s\S]*link:\s*\/wiki\//)
-  assert.match(home, /text:\s*向知识库提问[\s\S]*link:\s*\/ask\//)
-  assert.match(home, /\/finance\/[\s\S]*datetime="2026-07-08"/)
-  assert.match(home, /\/wiki\/[\s\S]*datetime="2026-07-07"/)
+test('homepage delegates current module and update discovery to the factory component', async () => {
+  const [page, home] = await Promise.all([
+    read('docs/index.md'),
+    read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue'),
+  ])
+  assert.match(page, /<KnowledgeFactoryHome\s*\/>/)
+  assert.match(home, /action:\s*'浏览 AI 知识'[\s\S]*href:\s*'\/wiki\/'/)
+  assert.match(home, /action:\s*'向知识库提问'[\s\S]*href:\s*'\/ask\/'/)
+  assert.match(home, /url:\s*'\/wiki\/'[\s\S]*date:\s*'2026-07-12'/)
+  assert.match(home, /url:\s*'\/finance\/'[\s\S]*date:\s*'2026-07-08'/)
 })
 
 test('knowledge pages are generated as compact accessible hubs', async () => {
@@ -30,20 +34,20 @@ test('Q&A clearly limits retrieval to the AI knowledge base', async () => {
   assert.doesNotMatch(component, /金融知识库/)
 })
 
-test('homepage discovery labels and entries are actionable in Chinese', async () => {
-  const home = await read('docs/index.md')
-  assert.doesNotMatch(home, /RECENT GROWTH|POPULAR TAGS|最近生长/)
-  assert.match(home, /garden-eyebrow">最新内容</)
-  assert.match(home, /garden-eyebrow">站内导航</)
-  assert.equal((home.match(/linkText:\s*查看专题/g) ?? []).length, 3)
+test('factory homepage discovery labels and entries are actionable in Chinese', async () => {
+  const home = await read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue')
+  assert.match(home, /KNOWLEDGE MODULES/)
+  assert.match(home, /知识模块/)
+  assert.match(home, /RECENT LOG/)
+  assert.match(home, /最近更新/)
   const entries = new Map([
     ['/wiki/', 'docs/wiki/index.md'],
     ['/finance/', 'docs/finance/index.md'],
     ['/ask/', 'docs/ask/index.md'],
-    ['/notes/sustainable-ai-workflow', 'docs/notes/sustainable-ai-workflow.md'],
+    ['/llm-wiki/', 'docs/llm-wiki/index.md'],
   ])
   for (const [href, path] of entries) {
-    assert.match(home, new RegExp(`href=["']${href.replaceAll('/', '\\\/')}["']`))
+    assert.match(home, new RegExp(`(?:href|url):\\s*["']${href.replaceAll('/', '\\\/')}["']`))
     await assert.doesNotReject(access(new URL(path, root)), `${href} must resolve to ${path}`)
   }
 })
@@ -60,15 +64,15 @@ test('Q&A and local search expose Chinese interface labels', async () => {
   }
 })
 
-test('theme styles balance the hero and compact the knowledge and QA surfaces', async () => {
+test('theme styles balance the factory, knowledge, and QA surfaces', async () => {
   const css = await read('docs/.vitepress/theme/custom.css')
   assert.match(css, /\.VPHero \.main[\s\S]*max-width:\s*900px/)
   assert.match(css, /\.VPHero \.text[\s\S]*text-wrap:\s*balance/)
   assert.match(css, /\.knowledge-hub__featured/)
   assert.match(css, /\.knowledge-hub__all/)
-  assert.match(css, /\.garden-links\s*\{[\s\S]*?display:\s*(?:flex|grid);[\s\S]*?gap:\s*[^;]+;[\s\S]*?flex-wrap:\s*wrap;/)
-  assert.match(css, /\.garden-links a:hover\s*\{[\s\S]*?\}/)
-  assert.match(css, /\.garden-links a:focus-visible\s*\{[\s\S]*?\}/)
-  assert.doesNotMatch(css, /\.garden-tags/)
+  assert.match(css, /\.factory-status\s*\{[\s\S]*?display:\s*flex;/)
+  assert.match(css, /\.factory-modules__grid\s*\{[\s\S]*?display:\s*grid;/)
+  assert.match(css, /\.factory-module a:focus-visible/)
+  assert.doesNotMatch(css, /\.garden-/)
   assert.doesNotMatch(css, /\.wiki-ask__conversation[\s\S]{0,400}min-height:\s*190px/)
 })

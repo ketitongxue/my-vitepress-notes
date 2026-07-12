@@ -6,132 +6,70 @@ import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const checker = fileURLToPath(new URL('./check-theme.mjs', import.meta.url))
+const tokens = [
+  '--factory-bg', '--factory-surface', '--factory-surface-muted', '--factory-ink',
+  '--factory-ink-muted', '--factory-border', '--factory-brand', '--factory-data',
+  '--factory-signal', '--factory-terminal', '--factory-terminal-ink', '--factory-focus',
+]
 
 function runChecker(css) {
   const directory = mkdtempSync(join(tmpdir(), 'theme-validator-'))
   const themeDirectory = join(directory, 'docs/.vitepress/theme')
   mkdirSync(themeDirectory, { recursive: true })
   writeFileSync(join(themeDirectory, 'custom.css'), css)
-
   try {
-    return spawnSync(process.execPath, [checker], {
-      cwd: directory,
-      encoding: 'utf8'
-    })
+    return spawnSync(process.execPath, [checker], { cwd: directory, encoding: 'utf8' })
   } finally {
     rmSync(directory, { recursive: true, force: true })
   }
 }
 
-const switchableTheme = `
-:root {
-  --vp-c-bg: #f7f9fc;
-  --vp-c-brand-1: #137f6b;
+function palette(background, brand) {
+  return [`--vp-c-bg: ${background};`, `--vp-c-brand-1: ${brand};`, ...tokens.map((token) => `${token}: #123456;`)].join('\n')
 }
-.dark {
-  --vp-c-bg: #0b1020;
-  --vp-c-brand-1: #8be9d3;
-}
-.garden-section { display: grid; }
-.garden-list { margin: 0; }
-.garden-links { display: flex; gap: 10px; flex-wrap: wrap; }
-.garden-links a:hover { color: teal; }
-.garden-links a:focus-visible { outline: 2px solid teal; }
-@media (max-width: 720px) {
-  .garden-section { grid-template-columns: 1fr; }
+
+function validTheme() {
+  return `
+:root { ${palette('#f6f3ea', '#275dad')} }
+.dark { ${palette('#0b1020', '#8aa8ff')} }
+.factory-status { display: flex; }
+.factory-hero { padding: 2rem; }
+.factory-modules__grid { display: grid; }
+.factory-module { padding: 1rem; }
+.factory-boot { padding: 1rem; }
+@media (max-width: 639px) { .factory-modules__grid { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) {
+  .factory-home *, .factory-home *::before, .factory-home *::after { animation: none !important; transition: none !important; }
 }
 `
-
-assert.equal(
-  runChecker(switchableTheme).status,
-  0,
-  'light root and dark override palettes must pass validation'
-)
-
-const commentedTheme = `
-/*
-:root {
-  --vp-c-bg: #0b1020;
-  --vp-c-brand-1: #8be9d3;
 }
-.garden-section {}
-.garden-list {}
-.garden-links {}
-.garden-links a:hover {}
-.garden-links a:focus-visible {}
-@media (max-width: 720px) {}
-*/
-`
 
-assert.notEqual(
-  runChecker(commentedTheme).status,
-  0,
-  'commented-out declarations and selectors must fail validation'
-)
+assert.equal(runChecker(validTheme()).status, 0, 'complete factory palettes and responsive rules must pass validation')
 
-const missingDarkTheme = `
-:root {
-  --vp-c-bg: #f7f9fc;
-  --vp-c-brand-1: #137f6b;
-}
-.garden-section { display: grid; }
-.garden-list { margin: 0; }
-.garden-links { display: flex; gap: 10px; flex-wrap: wrap; }
-.garden-links a:hover { color: teal; }
-.garden-links a:focus-visible { outline: 2px solid teal; }
-@media (max-width: 720px) {
-  .garden-section { grid-template-columns: 1fr; }
-}
-`
+const commented = runChecker(`/* ${validTheme()} */`)
+assert.notEqual(commented.status, 0, 'commented-out declarations and selectors must fail validation')
 
-const missingDarkResult = runChecker(missingDarkTheme)
-assert.notEqual(missingDarkResult.status, 0, 'missing dark palette anchors must fail validation')
-assert.match(missingDarkResult.stderr, /custom\.css \.dark must declare --vp-c-bg/)
+const missingDark = runChecker(validTheme().replace('.dark {', '.dark-missing {'))
+assert.notEqual(missingDark.status, 0, 'missing dark palette anchors must fail validation')
+assert.match(missingDark.stderr, /custom\.css \.dark must declare --vp-c-bg/)
 
-const misplacedMobileRule = `
-:root {
-  --vp-c-bg: #f7f9fc;
-  --vp-c-brand-1: #137f6b;
-}
-.dark {
-  --vp-c-bg: #0b1020;
-  --vp-c-brand-1: #8be9d3;
-}
-.garden-list { margin: 0; }
-.garden-links { display: flex; gap: 10px; flex-wrap: wrap; }
-.garden-links a:hover { color: teal; }
-.garden-links a:focus-visible { outline: 2px solid teal; }
-@media (max-width: 720px) {}
-.garden-section {
-  display: grid;
-  grid-template-columns: 1fr;
-}
-`
+const missingToken = runChecker(validTheme().replace('--factory-focus: #123456;', ''))
+assert.notEqual(missingToken.status, 0, 'both palettes require every factory token')
+assert.match(missingToken.stderr, /must declare --factory-focus/)
 
-const misplacedMobileResult = runChecker(misplacedMobileRule)
-assert.notEqual(misplacedMobileResult.status, 0, 'the mobile garden-section declaration must be inside its media query')
-assert.match(misplacedMobileResult.stderr, /must set \.garden-section to one column/)
+const missingActiveRule = runChecker(validTheme().replace('.factory-boot { padding: 1rem; }', '.factory-boot {}'))
+assert.notEqual(missingActiveRule.status, 0, 'required factory selectors must contain active declarations')
+assert.match(missingActiveRule.stderr, /active \.factory-boot rule/)
 
-const missingGardenLinkFocus = `
-:root {
-  --vp-c-bg: #f7f9fc;
-  --vp-c-brand-1: #137f6b;
-}
-.dark {
-  --vp-c-bg: #0b1020;
-  --vp-c-brand-1: #8be9d3;
-}
-.garden-section { display: grid; }
-.garden-list { margin: 0; }
-.garden-links { display: flex; gap: 10px; flex-wrap: wrap; }
-.garden-links a:hover { color: teal; }
-@media (max-width: 720px) {
-  .garden-section { grid-template-columns: 1fr; }
-}
-`
+const misplacedMobile = runChecker(validTheme().replace(
+  '@media (max-width: 639px) { .factory-modules__grid { grid-template-columns: 1fr; } }',
+  '.factory-modules__grid { grid-template-columns: 1fr; }',
+))
+assert.notEqual(misplacedMobile.status, 0, 'the mobile grid declaration must be inside its media query')
+assert.match(misplacedMobile.stderr, /must set \.factory-modules__grid to one column/)
 
-const missingGardenLinkFocusResult = runChecker(missingGardenLinkFocus)
-assert.notEqual(missingGardenLinkFocusResult.status, 0, 'quick links require a visible keyboard focus state')
-assert.match(missingGardenLinkFocusResult.stderr, /active \.garden-links a:focus-visible rule/)
+const missingReducedMotion = runChecker(validTheme().replace('transition: none !important;', 'transition: transform 200ms;'))
+assert.notEqual(missingReducedMotion.status, 0, 'factory motion must be suppressed for reduced-motion users')
+assert.match(missingReducedMotion.stderr, /must suppress factory animation and transition/)
 
 console.log('theme validator tests passed')

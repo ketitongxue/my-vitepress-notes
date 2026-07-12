@@ -91,3 +91,14 @@ test('factory boot stays inline, optional, and cleans up browser effects', async
   assert.match(boot, /跳过启动/)
   assert.doesNotMatch(boot, /position:\s*fixed/)
 })
+
+test('factory styles keep cards fluid, controls touchable, and motion optional', async () => {
+  const css = await read('docs/.vitepress/theme/custom.css')
+  assert.match(css, /\.factory-module a:focus-visible[\s\S]*outline:\s*2px solid var\(--factory-focus\)/)
+  const card = css.match(/\.factory-module\s*\{([\s\S]*?)\}/)?.[1] ?? ''
+  assert.ok(card, 'factory module card rule must exist')
+  assert.doesNotMatch(card, /(?:^|\s)(?:height|min-height|max-height)\s*:/)
+  assert.match(css, /@media \(max-width:\s*639px\)[\s\S]*\.factory-actions a\s*\{[\s\S]*min-height:\s*44px/)
+  assert.match(css, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.factory-home \*[\s\S]*animation:\s*none !important;[\s\S]*transition:\s*none !important;/)
+  assert.doesNotMatch(css, /neon|glow|infinite[-_ ]?canvas|draggable[-_ ]?window/i)
+})
