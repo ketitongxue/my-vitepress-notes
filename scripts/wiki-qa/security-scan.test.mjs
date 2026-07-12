@@ -204,6 +204,9 @@ test('scanner narrowly allows the public skill routes and documented Codex insta
     ['', '.codex', 'skills-other', 'private', 'file'].join('/'),
     ['', '.codex', 'skills', 'another-skill', 'private', 'file'].join('/'),
     ['', '.codex', 'skills', 'llm-wiki', '..', 'private', 'file'].join('/'),
+    ['', '.codex', 'skills', 'llm-wiki', 'private', 'secret.txt'].join('/'),
+    ['', '.codex', 'skills', 'llm-wiki', '.env'].join('/'),
+    ['', '.codex', 'skills', 'llm-wiki', 'user-notes', 'personal.md'].join('/'),
   ]) {
     assert.match(scanText('docs/llm-wiki/install.md', value, { artifact: true }).join('\n'), /local absolute path/)
   }

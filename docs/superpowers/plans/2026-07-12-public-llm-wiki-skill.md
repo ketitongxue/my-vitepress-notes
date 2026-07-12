@@ -10,9 +10,9 @@
 
 ## Global Constraints
 
-- 公开 Skill 仓库必须新建于 `<SKILL_REPO>`，远端必须是公开仓库 `ketitongxue/llm-wiki-skill`，不得复制本机 Skill 或个人知识库的 Git 历史。
+- 公开 Skill 仓库必须新建于运行时变量 `$SKILL_REPO` 指向的空目录，远端必须是公开仓库 `ketitongxue/llm-wiki-skill`，不得复制本机 Skill 或个人知识库的 Git 历史。
 - 首个版本固定为 `v1.0.0`，许可证固定为 MIT；公开仓库必须包含 `SKILL.md`、`README.md`、`LICENSE`、`CHANGELOG.md`、`VERSION`、`templates/`、`references/`、`scripts/` 和 `tests/`。
-- 公共版只覆盖初始化、采集、查询、检查和维护；VitePress 发布仅是通用参考，不得绑定 `<WIKI_PATH>`、个人知识库、`<SITE_REPO>`、个人域名、账号、Token、Secret、Hermes、Telegram 或 Cloudflare 配置。
+- 公共版只覆盖初始化、采集、查询、检查和维护；VitePress 发布仅是通用参考，不得绑定用户主目录、私人绝对路径、个人知识库、站点仓库、个人域名、账号、Token、Secret、Hermes、Telegram 或 Cloudflare 配置。
 - 公开仓库不得从私人目录直接复制文件；只能根据设计说明重新编写经过泛化的内容，并从空仓库开始提交历史。
 - 只使用 Python 3 标准库实现初始化、校验、敏感信息扫描和确定性打包，不增加 PyPI 或 npm 运行依赖。
 - Release 必须包含 `llm-wiki-skill-v1.0.0.zip` 和 `SHA256SUMS.txt`；ZIP 解压后只有单一顶层目录 `llm-wiki/`，且其顶层包含 `SKILL.md`。
@@ -55,7 +55,7 @@
 Run:
 
 ```bash
-SKILL_REPO="<SKILL_REPO>"
+SKILL_REPO="${SKILL_REPO:-$(dirname "$PWD")/llm-wiki-skill}"
 mkdir -p "$SKILL_REPO/tests"
 cd "$SKILL_REPO"
 git init -b main
@@ -120,7 +120,19 @@ Expected: all tests PASS; `git diff --check` prints nothing; GitHub returns `htt
 
 In `tests/test_init_wiki.py`, use `tempfile.TemporaryDirectory()` and assert `initialize()` creates `SCHEMA.md`, `purpose.md`, `index.md`, `log.md`, the four Raw source subdirectories (`articles`, `papers`, `transcripts`, `assets`), and the `entities`, `concepts`, `comparisons`, and `queries` directories; assert the requested domain appears in both Purpose and Schema; assert a second call refuses to overwrite a non-empty directory.
 
-In `tests/test_validate.py`, create fixtures that must be rejected for each category: `<WIKI_PATH>`, `<WIKI_PATH>`, `<PUBLIC_SITE>`, `<SITE_REPO>`, `<API_KEY_FIXTURE>`, `<GITHUB_TOKEN_FIXTURE>`, PEM private-key headers, absolute Markdown links, unresolved relative links, CRLF and undeclared template placeholders. Add a clean fixture that must return `[]`.
+In `tests/test_validate.py`, construct synthetic fixtures instead of embedding real private values. Use code equivalent to:
+
+```python
+posix_home = "/".join(["", "Users", "example", "private.md"])
+windows_home = "\\\\".join(["C:", "Users", "example", "private.md"])
+private_domain = "juzxai" + "lab.com"
+private_repository = "my-vitepress" + "-notes"
+provider_secret = "sk-" + "test-" + "x" * 24
+github_token = "ghp_" + "0" * 36
+api_assignment = f'api_key = "{provider_secret}"'
+```
+
+Assert rejection of both synthetic home paths, the private marker strings, the API assignment, GitHub token, RSA/EC/OPENSSH PEM headers, absolute Markdown links, unresolved relative links, CRLF and undeclared template placeholders. Add a clean fixture that must return `[]`, and assert diagnostics name only the category and file, never the generated secret value.
 
 - [ ] **Step 2: Run RED**
 
@@ -194,8 +206,9 @@ Run:
 python3 -m unittest discover -s tests -v
 python3 scripts/validate.py .
 python3 scripts/package_release.py --output dist
-python3 scripts/package_release.py --output <TEMP_DIR>
-shasum -a 256 dist/llm-wiki-skill-v1.0.0.zip <TEMP_DIR>/llm-wiki-skill-v1.0.0.zip
+TEMP_DIR="$(mktemp -d)"
+python3 scripts/package_release.py --output "$TEMP_DIR"
+shasum -a 256 dist/llm-wiki-skill-v1.0.0.zip "$TEMP_DIR/llm-wiki-skill-v1.0.0.zip"
 git diff --check
 git add scripts tests .github README.md
 git commit -m "build: add reproducible llm wiki release"
@@ -357,10 +370,11 @@ Expected before merge: `state` is `OPEN`, `isDraft` is `false`, `mergeable` is `
 Run:
 
 ```bash
-curl -fsSI https://<PUBLIC_SITE>/llm-wiki/
-curl -fsSI https://<PUBLIC_SITE>/llm-wiki/principles
-curl -fsSI https://<PUBLIC_SITE>/llm-wiki/build
-curl -fsSI https://<PUBLIC_SITE>/llm-wiki/install
+SITE_URL="https://juzxailab.com"
+curl -fsSI "$SITE_URL/llm-wiki/"
+curl -fsSI "$SITE_URL/llm-wiki/principles"
+curl -fsSI "$SITE_URL/llm-wiki/build"
+curl -fsSI "$SITE_URL/llm-wiki/install"
 curl -fsSI https://github.com/ketitongxue/llm-wiki-skill
 curl -fsSI https://github.com/ketitongxue/llm-wiki-skill/releases/tag/v1.0.0
 curl -fsSI https://github.com/ketitongxue/llm-wiki-skill/releases/latest

@@ -65,7 +65,7 @@ llm-wiki-skill/
 └── tests/
 ```
 
-### `ketitongxue/<SITE_REPO>`
+### `ketitongxue/my-vitepress-notes`
 
 网站仓库只负责：
 
@@ -92,10 +92,10 @@ llm-wiki-skill/
 
 公开版删除或泛化：
 
-- `<WIKI_PATH>` 等本机绝对路径。
+- 用户主目录或其他私人绝对路径。
 - 个人知识库目录、文章内容、原始资产和内部维护记录。
 - GitHub 用户、Cloudflare 账户、Worker、域名、API Token 和 Secret 名称。
-- `<SITE_REPO>` 专属的同步、策展、侧栏和部署约束。
+- `my-vitepress-notes` 专属的同步、策展、侧栏和部署约束。
 - Telegram、Hermes 或其他个人自动化集成。
 - 本机特殊权限、已批准命令和个人偏好。
 
