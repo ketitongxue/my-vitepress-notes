@@ -128,8 +128,8 @@ test('navigation exposes the skill under Tools and defines its four-page sidebar
 })
 
 test('homepage links visibly to the local guide without bypassing it for GitHub', async () => {
-  const home = await readFile('docs/index.md', 'utf8')
-  assert.match(home, /<a href="\/llm-wiki\/">LLM Wiki Skill<\/a>/)
+  const home = await readFile('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue', 'utf8')
+  assert.match(home, /title:\s*['"]LLM Wiki Skill['"][^}\n]*href:\s*['"]\/llm-wiki\/['"]/)
   assert.doesNotMatch(home, /github\.com\/ketitongxue\/llm-wiki-skill/)
 })
 

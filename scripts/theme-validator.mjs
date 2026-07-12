@@ -66,8 +66,8 @@ export function validateThemeCss(source) {
   const darkDeclarations = dark && parseDeclarations(dark.body)
 
   for (const [property, value] of [
-    ['--vp-c-bg', '#f7f9fc'],
-    ['--vp-c-brand-1', '#137f6b']
+    ['--vp-c-bg', '#f6f3ea'],
+    ['--vp-c-brand-1', '#275dad']
   ]) {
     if (rootDeclarations?.get(property) !== value) {
       throw new Error(`custom.css :root must declare ${property}: ${value}`)
@@ -76,41 +76,43 @@ export function validateThemeCss(source) {
 
   for (const [property, value] of [
     ['--vp-c-bg', '#0b1020'],
-    ['--vp-c-brand-1', '#8be9d3']
+    ['--vp-c-brand-1', '#8aa8ff']
   ]) {
     if (darkDeclarations?.get(property) !== value) {
       throw new Error(`custom.css .dark must declare ${property}: ${value}`)
     }
   }
 
-  for (const selector of ['.garden-section', '.garden-list', '.garden-links']) {
+  const factoryTokens = [
+    '--factory-bg', '--factory-surface', '--factory-surface-muted', '--factory-ink',
+    '--factory-ink-muted', '--factory-border', '--factory-brand', '--factory-data',
+    '--factory-signal', '--factory-terminal', '--factory-terminal-ink', '--factory-focus'
+  ]
+  for (const [palette, declarations] of [[':root', rootDeclarations], ['.dark', darkDeclarations]]) {
+    for (const token of factoryTokens) {
+      if (!declarations?.get(token)) {
+        throw new Error(`custom.css ${palette} must declare ${token}`)
+      }
+    }
+  }
+
+  for (const selector of ['.factory-status', '.factory-hero', '.factory-modules__grid', '.factory-module', '.factory-boot']) {
     const rule = findRule(rules, selector)
     if (!rule || parseDeclarations(rule.body).size === 0) {
       throw new Error(`custom.css must contain an active ${selector} rule`)
     }
   }
 
-  const gardenLinks = parseDeclarations(findRule(rules, '.garden-links').body)
-  if (!['flex', 'grid'].includes(gardenLinks.get('display'))) {
-    throw new Error('custom.css .garden-links must use flex or grid layout')
-  }
-  if (!gardenLinks.get('gap')) {
-    throw new Error('custom.css .garden-links must declare a gap')
-  }
-  if (gardenLinks.get('flex-wrap') !== 'wrap') {
-    throw new Error('custom.css .garden-links must wrap its entries')
+  const mobileMedia = '@media (max-width: 639px)'
+  const mobileModules = findRule(rules, '.factory-modules__grid', mobileMedia)
+  if (parseDeclarations(mobileModules?.body ?? '').get('grid-template-columns') !== '1fr') {
+    throw new Error(`custom.css ${mobileMedia} must set .factory-modules__grid to one column`)
   }
 
-  for (const selector of ['.garden-links a:hover', '.garden-links a:focus-visible']) {
-    const rule = findRule(rules, selector)
-    if (!rule || parseDeclarations(rule.body).size === 0) {
-      throw new Error(`custom.css must contain an active ${selector} rule`)
-    }
-  }
-
-  const media = '@media (max-width: 720px)'
-  const mobileGarden = findRule(rules, '.garden-section', media)
-  if (parseDeclarations(mobileGarden?.body ?? '').get('grid-template-columns') !== '1fr') {
-    throw new Error(`custom.css ${media} must set .garden-section to one column`)
+  const reducedMedia = '@media (prefers-reduced-motion: reduce)'
+  const reducedFactory = findRule(rules, '.factory-home *', reducedMedia)
+  const reducedDeclarations = parseDeclarations(reducedFactory?.body ?? '')
+  if (reducedDeclarations.get('animation') !== 'none !important' || reducedDeclarations.get('transition') !== 'none !important') {
+    throw new Error('custom.css reduced-motion media must suppress factory animation and transition')
   }
 }
