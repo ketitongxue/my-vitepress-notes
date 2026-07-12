@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
+import {
+  BOOT_STORAGE_KEY, BOOT_STORAGE_VALUE, isInteractiveTarget,
+  readInitialBootState, shouldStartFromEnter, transitionBoot, writeBooted,
+} from '../docs/.vitepress/theme/components/factoryBootState.mjs'
 
 const root = new URL('../', import.meta.url)
 const read = (path) => readFile(new URL(path, root), 'utf8')
@@ -22,4 +26,40 @@ test('factory homepage exposes the real brand, actions, and exactly four modules
   assert.deepEqual(routes.sort(), ['/ask/', '/finance/', '/llm-wiki/', '/wiki/'])
   assert.match(home, /href="#knowledge-modules"/)
   assert.doesNotMatch(home, /MES|项目档案|媒体库|实验室|infinite.canvas|draggable/i)
+})
+
+test('boot state persists only a versioned session value and fails open', () => {
+  const values = new Map()
+  const storage = { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) }
+  assert.equal(readInitialBootState(storage, false), 'ready')
+  assert.equal(writeBooted(storage), true)
+  assert.equal(values.get(BOOT_STORAGE_KEY), BOOT_STORAGE_VALUE)
+  assert.equal(readInitialBootState(storage, false), 'skipped')
+  assert.equal(readInitialBootState(storage, true), 'skipped')
+  assert.equal(readInitialBootState({ getItem() { throw new Error('denied') } }, false), 'ready')
+  assert.equal(writeBooted({ setItem() { throw new Error('denied') } }), false)
+})
+
+test('boot transitions and Enter activation are explicit and safe', () => {
+  assert.equal(transitionBoot('ready', 'START'), 'booting')
+  assert.equal(transitionBoot('booting', 'COMPLETE'), 'complete')
+  assert.equal(transitionBoot('ready', 'SKIP'), 'skipped')
+  assert.equal(isInteractiveTarget({ closest: () => ({ tagName: 'A' }) }), true)
+  assert.equal(shouldStartFromEnter({ key: 'Enter', target: { closest: () => null } }, 'ready'), true)
+  assert.equal(shouldStartFromEnter({ key: 'Enter', target: { closest: () => ({}) } }, 'ready'), false)
+  assert.equal(shouldStartFromEnter({ key: 'Enter', target: { closest: () => null } }, 'complete'), false)
+})
+
+test('factory boot stays inline, optional, and cleans up browser effects', async () => {
+  const [boot, state] = await Promise.all([
+    read('docs/.vitepress/theme/components/FactoryBoot.vue'),
+    read('docs/.vitepress/theme/components/factoryBootState.mjs'),
+  ])
+  assert.match(state, /ai-era:knowledge-factory:booted/)
+  assert.doesNotMatch(`${boot}\n${state}`, /localStorage/)
+  assert.match(boot, /onBeforeUnmount/)
+  assert.match(boot, /matchMedia\('\(prefers-reduced-motion: reduce\)'\)/)
+  assert.match(boot, /启动知识系统/)
+  assert.match(boot, /跳过启动/)
+  assert.doesNotMatch(boot, /position:\s*fixed/)
 })

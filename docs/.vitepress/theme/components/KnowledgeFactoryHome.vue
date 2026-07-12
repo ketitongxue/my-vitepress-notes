@@ -1,4 +1,6 @@
 <script setup>
+import FactoryBoot from './FactoryBoot.vue'
+
 const modules = [
   { id: 'KB-01', systemLabel: 'AI ARCHIVE', title: 'AI 知识库', description: 'AI 编程、智能体工程、产品实践与工具工作流。', action: '浏览 AI 知识', href: '/wiki/' },
   { id: 'KB-02', systemLabel: 'FINANCE ARCHIVE', title: '金融知识库', description: '投资者、量化研究、市场结构与风险概念。', action: '浏览金融知识', href: '/finance/' },
@@ -27,6 +29,7 @@ const logs = [
       <p class="factory-hero__hello">你好，这里是 AI 纪元。</p>
       <p>这里持续整理 AI、产品、工程与金融研究中值得长期保留的知识。</p>
       <div class="factory-actions"><a class="primary" href="/ask/">向知识库提问</a><a href="#knowledge-modules">浏览知识模块</a></div>
+      <FactoryBoot />
     </section>
 
     <section id="knowledge-modules" class="factory-modules" aria-labelledby="modules-title">
