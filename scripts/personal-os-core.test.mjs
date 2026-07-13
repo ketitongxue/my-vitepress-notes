@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { hashForOsView, normalizeOsHash, OS_VIEWS } from '../docs/.vitepress/theme/components/personalOsRouter.mjs'
 import { bootLines, canvasCards, canvasConnections, desktopEntries, knowledgeSections } from '../docs/.vitepress/theme/components/personalOsContent.mjs'
+import { computeCoverTransform, progressCells, transitionMacbookBoot } from '../docs/.vitepress/theme/components/macbookBootState.mjs'
 
 test('OS hashes normalize without browser globals', () => {
   assert.deepEqual(OS_VIEWS, ['home', 'knowledge', 'system'])
@@ -28,4 +29,18 @@ test('Personal OS content is complete and internally referential', () => {
     assert.ok(ids.has(edge.from), edge.from)
     assert.ok(ids.has(edge.to), edge.to)
   }
+})
+
+test('MacBook boot accepts one launch and computes viewport cover', () => {
+  assert.equal(transitionMacbookBoot('typing', 'TYPING_COMPLETE'), 'ready')
+  assert.equal(transitionMacbookBoot('ready', 'ACTIVATE'), 'launching')
+  assert.equal(transitionMacbookBoot('launching', 'ACTIVATE'), 'launching')
+  assert.equal(transitionMacbookBoot('launching', 'PROGRESS_COMPLETE'), 'zooming')
+  assert.equal(transitionMacbookBoot('zooming', 'ZOOM_COMPLETE'), 'desktop')
+  assert.equal(transitionMacbookBoot('typing', 'SKIP'), 'desktop')
+  assert.equal(progressCells(4), '[####--------]')
+  assert.deepEqual(computeCoverTransform(
+    { left: 300, top: 200, width: 600, height: 360 },
+    { width: 1440, height: 900 },
+  ), { scale: 2.5, translateX: 120, translateY: 70 })
 })

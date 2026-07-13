@@ -79,7 +79,7 @@ test('Personal OS visual contract is exact, scoped, static, and responsive', asy
   assert.doesNotMatch(os, /linear-gradient|backdrop-filter|cursor\s*:\s*(?:grab|grabbing|zoom-in|zoom-out)|touch-action\s*:\s*none/i)
 })
 
-test('factory homepage exposes the static Personal OS component and copy contract', async () => {
+test('factory homepage exposes the hash-selected Personal OS shell and copy contract', async () => {
   const home = await read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue')
   const components = [
     'SystemTopBar', 'DesktopCanvas', 'ProfileCard', 'CurrentStatusCard',
@@ -130,13 +130,52 @@ test('factory homepage exposes the static Personal OS component and copy contrac
       assert.match(componentSources.get(name), new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
     }
   }
-  assert.match(home, /<FactoryBoot @reveal="handleReveal"\s*\/>/)
+  assert.match(home, /import MacbookBoot from '.\/MacbookBoot\.vue'/)
+  assert.match(home, /import BottomOsNavigation from '.\/BottomOsNavigation\.vue'/)
+  assert.match(home, /window\.addEventListener\('hashchange'/)
+  assert.match(home, /normalizeOsHash\(window\.location\.hash\)/)
+  assert.match(home, /window\.location\.hash = hashForOsView\(view\)/)
+  assert.equal([...home.matchAll(/data-os-view="(home|knowledge|system)"/g)].length, 3)
+  for (const view of ['home', 'knowledge', 'system']) {
+    assert.match(home, new RegExp(`data-os-view="${view}"`))
+  }
+  assert.match(home, /<MacbookBoot v-if="activeView === 'home'" @entered="homeEntered = true"\s*\/>/)
   assert.match(home, /<SystemTopBar\s*\/>/)
   assert.match(home, /<DesktopCanvas\s*\/>/)
+  assert.match(home, /<BottomOsNavigation :active-view="activeView" @select="selectView"\s*\/>/)
   assert.doesNotMatch(
     allComponentSources,
     /(?:@|v-on:)(?:mouse[a-z]+|touch[a-z]+|pointer[a-z]+|wheel|drag[a-z]*|drop)\b|addEventListener\(\s*["'](?:mouse[a-z]+|touch[a-z]+|pointer[a-z]+|wheel|drag[a-z]*|drop)["']|\bon(?:mouse[a-z]+|touch[a-z]+|pointer[a-z]+|wheel|drag[a-z]*|drop)\b|\b(?:draggable|startDrag|handleDrag|isDragging|dragging|zoomIn|zoomOut|handleZoom|zoomLevel|startPan|isPanning|panning)\b/i,
   )
+})
+
+test('MacBook boot and bottom navigation expose the timed accessible shell contract', async () => {
+  const [boot, navigation] = await Promise.all([
+    read('docs/.vitepress/theme/components/MacbookBoot.vue'),
+    read('docs/.vitepress/theme/components/BottomOsNavigation.vue'),
+  ])
+
+  assert.match(boot, /defineEmits\(\['entered'\]\)/)
+  assert.match(boot, /import \{ bootLines \} from '.\/personalOsContent\.mjs'/)
+  assert.match(boot, /class="macbook-boot__computer"/)
+  assert.match(boot, /class="macbook-boot__screen"/)
+  assert.equal([...boot.matchAll(/aria-live="polite"/g)].length, 1)
+  assert.match(boot, /<button[\s\S]*?type="button"[\s\S]*?@click="activate"/)
+  assert.match(boot, /progressCells\(progress\)/)
+  for (const delay of ['220', '55', '500']) assert.match(boot, new RegExp(delay))
+  assert.match(boot, /getSessionStorage\(window\)/)
+  assert.match(boot, /getReducedMotionPreference\(window\)/)
+  assert.match(boot, /writeAccessed\(storage\)/)
+  assert.match(boot, /event\.key !== 'Enter'/)
+  assert.match(boot, /event\.target\?\.closest\(interactiveSelector\)/)
+  assert.match(boot, /document\.getElementById\('factory-title'\)\?\.focus/)
+  assert.match(boot, /onBeforeUnmount/)
+
+  assert.match(navigation, /defineProps\(\{ activeView:/)
+  assert.match(navigation, /defineEmits\(\['select'\]\)/)
+  assert.deepEqual([...navigation.matchAll(/@click="emit\('select', '(home|knowledge|system)'\)"/g)].map((match) => match[1]), [
+    'home', 'knowledge', 'system',
+  ])
 })
 
 test('Personal OS clock, navigation, semantics, and contact links are real', async () => {
@@ -296,26 +335,23 @@ test('head watchdog fails open and releases its pending timer id', async () => {
   assert.equal(Object.hasOwn(claimed.browser, '__personalSiteAccessFallback'), false)
 })
 
-test('factory boot is one exact accessible fullscreen replacement', async () => {
-  const [boot, home, css, state] = await Promise.all([
-    read('docs/.vitepress/theme/components/FactoryBoot.vue'),
+test('MacBook boot is one exact accessible fullscreen replacement', async () => {
+  const [boot, home, state] = await Promise.all([
+    read('docs/.vitepress/theme/components/MacbookBoot.vue'),
     read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue'),
-    read('docs/.vitepress/theme/custom.css'),
-    read('docs/.vitepress/theme/components/factoryBootState.mjs'),
+    read('docs/.vitepress/theme/components/macbookBootState.mjs'),
   ])
-  for (const copy of ['JuZX@digital-factory ~ zsh', '> Press Enter to Access System', 'aria-label="进入个人网站"']) {
-    assert.match(boot, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
-  }
-  assert.match(boot, /class="factory-boot__cursor" aria-hidden="true">_<\/span>/)
+  assert.match(boot, /bootLines\.slice\(0, visibleLineCount\.value\)/)
+  assert.match(boot, /aria-label="个人系统启动页"/)
+  assert.match(boot, />\s*启动 JuZX OS\s*<\/button>/)
   assert.doesNotMatch(`${boot}\n${state}`, /启动知识系统|跳过启动|Loading knowledge archives|Connecting Ask Console|ai-era:knowledge-factory:booted|localStorage/)
-  assert.match(home, /<FactoryBoot @reveal="handleReveal"\s*\/>\s*<main/)
-  assert.doesNotMatch(home.match(/<section class="factory-hero"[\s\S]*?<\/section>/)?.[0] ?? '', /FactoryBoot/)
+  assert.match(home, /<MacbookBoot v-if="activeView === 'home'" @entered="homeEntered = true"\s*\/>/)
   assert.match(boot, /v-if="visible"/)
-  assert.match(boot, /defineEmits\(\['reveal'\]\)/)
-  assert.match(boot, /window\.setTimeout\(finishExit, 400\)/)
+  assert.match(boot, /defineEmits\(\['entered'\]\)/)
+  assert.match(boot, /schedule\(\(\) => void enterDesktop\(\), 80\)/)
   assert.match(boot, /onBeforeUnmount/)
   assert.match(boot, /focus\(\{ preventScroll: true \}\)/)
-  assert.match(css, /\.factory-boot\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?inset:\s*0;[\s\S]*?min-height:\s*100vh;[\s\S]*?height:\s*100dvh;[\s\S]*?min-height:\s*100dvh;/)
+  assert.match(boot, /\.macbook-boot\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?inset:\s*0;[\s\S]*?min-height:\s*100dvh;/)
 })
 
 test('splash visual, motion, mobile, and fail-open rules are exact', async () => {
