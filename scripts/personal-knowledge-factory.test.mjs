@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
+import { runInNewContext } from 'node:vm'
 import {
-  BOOT_STORAGE_KEY, BOOT_STORAGE_VALUE, getReducedMotionPreference, getSessionStorage, isInteractiveTarget,
-  readInitialBootState, shouldStartFromEnter, transitionBoot, writeBooted,
+  beginAccess, BOOT_STORAGE_KEY, BOOT_STORAGE_VALUE, getReducedMotionPreference, getSessionStorage,
+  isInteractiveTarget, readInitialBootState, shouldActivateFromEnter, shouldContainTab, transitionBoot, writeAccessed,
 } from '../docs/.vitepress/theme/components/factoryBootState.mjs'
 
 const root = new URL('../', import.meta.url)
@@ -28,119 +29,167 @@ test('factory homepage exposes the real brand, actions, and exactly four modules
   assert.doesNotMatch(home, /MES|项目档案|媒体库|实验室|infinite.canvas|draggable/i)
 })
 
-test('boot state persists only a versioned session value and fails open', () => {
+test('splash state uses the exact session contract and fails open', () => {
   const values = new Map()
   const storage = { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) }
-  assert.equal(readInitialBootState(storage, false), 'ready')
-  assert.equal(writeBooted(storage), true)
-  assert.equal(values.get(BOOT_STORAGE_KEY), BOOT_STORAGE_VALUE)
-  assert.equal(readInitialBootState(storage, false), 'skipped')
-  assert.equal(readInitialBootState(storage, true), 'skipped')
-  assert.equal(readInitialBootState({ getItem() { throw new Error('denied') } }, false), 'ready')
-  assert.equal(writeBooted({ setItem() { throw new Error('denied') } }), false)
+  assert.equal(BOOT_STORAGE_KEY, 'personal-site-accessed')
+  assert.equal(BOOT_STORAGE_VALUE, 'true')
+  assert.equal(readInitialBootState(storage, false, 'pending'), 'ready')
+  assert.equal(writeAccessed(storage), true)
+  assert.equal(values.get('personal-site-accessed'), 'true')
+  assert.equal(readInitialBootState(storage, false, 'pending'), 'skipped')
+  assert.equal(readInitialBootState(storage, true, 'pending'), 'skipped')
+  assert.equal(readInitialBootState(storage, false, 'returning'), 'skipped')
+  assert.equal(readInitialBootState(storage, false, 'none'), 'skipped')
+  assert.equal(readInitialBootState(undefined, false, 'pending'), 'skipped')
+  assert.equal(readInitialBootState({ getItem() { throw new Error('denied') } }, false, 'pending'), 'skipped')
+  assert.equal(writeAccessed({ setItem() { throw new Error('denied') } }), false)
 })
 
-test('session storage accessor tolerates a throwing property getter', () => {
+test('browser capability accessors fail open without module-level globals', () => {
   const deniedWindow = Object.defineProperty({}, 'sessionStorage', {
     get() { throw new DOMException('denied', 'SecurityError') },
   })
   assert.equal(getSessionStorage(deniedWindow), undefined)
-  assert.equal(getSessionStorage({ sessionStorage: null }), null)
+  assert.equal(getReducedMotionPreference({ matchMedia: () => ({ matches: true }) }), true)
+  assert.equal(getReducedMotionPreference({ matchMedia() { throw new Error('unavailable') } }), true)
+  assert.equal(getReducedMotionPreference({}), true)
 })
 
-test('first interactive state resolves stored, reduced-motion, and denied clients without ready flicker', () => {
-  const stored = { getItem: () => BOOT_STORAGE_VALUE }
-  assert.equal(readInitialBootState(
-    getSessionStorage({ sessionStorage: stored }),
-    getReducedMotionPreference({ matchMedia: () => ({ matches: false }) }),
-  ), 'skipped')
-  assert.equal(readInitialBootState(
-    getSessionStorage({ sessionStorage: null }),
-    getReducedMotionPreference({ matchMedia: () => ({ matches: true }) }),
-  ), 'skipped')
-
-  const deniedWindow = Object.defineProperties({}, {
-    sessionStorage: { get() { throw new DOMException('denied', 'SecurityError') } },
-    matchMedia: { value: () => ({ matches: false }) },
-  })
-  assert.equal(readInitialBootState(
-    getSessionStorage(deniedWindow),
-    getReducedMotionPreference(deniedWindow),
-  ), 'ready')
-  assert.equal(getReducedMotionPreference({ matchMedia() { throw new Error('unavailable') } }), false)
+test('splash transitions accept one activation and no repeated input', () => {
+  assert.equal(transitionBoot('ready', 'ACTIVATE'), 'leaving')
+  assert.equal(transitionBoot('leaving', 'ACTIVATE'), 'leaving')
+  assert.equal(transitionBoot('leaving', 'EXIT_COMPLETE'), 'complete')
+  assert.equal(transitionBoot('complete', 'ACTIVATE'), 'complete')
+  assert.equal(transitionBoot('ready', 'BYPASS'), 'skipped')
+  assert.equal(isInteractiveTarget({ closest: () => ({ tagName: 'BUTTON' }) }), true)
+  assert.equal(shouldActivateFromEnter({ key: 'Enter', target: { closest: () => null } }, 'ready'), true)
+  assert.equal(shouldActivateFromEnter({ key: 'Enter', repeat: true, target: { closest: () => null } }, 'ready'), false)
+  assert.equal(shouldActivateFromEnter({ key: 'Enter', isComposing: true, target: { closest: () => null } }, 'ready'), false)
+  assert.equal(shouldActivateFromEnter({ key: 'Enter', target: { closest: () => ({}) } }, 'ready'), false)
+  assert.equal(shouldActivateFromEnter({ key: 'Enter', target: { closest: () => null } }, 'leaving'), false)
 })
 
-test('boot transitions and Enter activation are explicit and safe', () => {
-  assert.equal(transitionBoot('ready', 'START'), 'booting')
-  assert.equal(transitionBoot('booting', 'COMPLETE'), 'complete')
-  assert.equal(transitionBoot('ready', 'SKIP'), 'skipped')
-  assert.equal(isInteractiveTarget({ closest: () => ({ tagName: 'A' }) }), true)
-  assert.equal(shouldStartFromEnter({ key: 'Enter', target: { closest: () => null } }, 'ready'), true)
-  assert.equal(shouldStartFromEnter({ key: 'Enter', target: { closest: () => ({}) } }, 'ready'), false)
-  assert.equal(shouldStartFromEnter({ key: 'Enter', target: { closest: () => null } }, 'complete'), false)
+test('activation behavior contains exit input and fails open when persistence fails', () => {
+  let writes = 0
+  const storage = { setItem() { writes += 1 } }
+  assert.equal(beginAccess('ready', storage), 'leaving')
+  assert.equal(writes, 1)
+  assert.equal(beginAccess('leaving', storage), 'leaving')
+  assert.equal(writes, 1, 'repeated exit clicks must not write or restart activation')
+  assert.equal(beginAccess('ready', undefined), 'skipped')
+  assert.equal(beginAccess('ready', { setItem() { throw new Error('denied') } }), 'skipped')
+  assert.equal(shouldContainTab({ key: 'Tab' }, 'ready'), true)
+  assert.equal(shouldContainTab({ key: 'Tab', shiftKey: true }, 'leaving'), true)
+  assert.equal(shouldContainTab({ key: 'Tab' }, 'complete'), false)
+  assert.equal(shouldContainTab({ key: 'Enter' }, 'leaving'), false)
 })
 
-test('global Enter ignores editable, focusable, and media control targets', () => {
-  const expectedSelectors = [
-    '[contenteditable]:not([contenteditable="false"])',
-    '[tabindex]:not([tabindex="-1"])',
-    'audio[controls]',
-    'video[controls]',
-  ]
-  for (const expected of expectedSelectors) {
-    const target = {
-      closest(selector) {
-        return selector.includes(expected) ? {} : null
+test('VitePress head preflight is homepage-only, synchronous, exact, and bounded', async () => {
+  const config = await read('docs/.vitepress/config.mts')
+  for (const source of [
+    "location.pathname === '/'", "location.pathname === '/index.html'",
+    "sessionStorage.getItem('personal-site-accessed')", "stored === 'true'",
+    "matchMedia('(prefers-reduced-motion: reduce)')", "dataset.personalSiteAccess = 'pending'",
+    "dataset.personalSiteAccess = 'returning'", "dataset.personalSiteAccess = 'fallback'",
+    "window.setTimeout", '2500', "window['__personalSiteAccessFallback']",
+  ]) assert.match(config, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+  assert.match(config, /head:\s*\[\s*\['script',\s*\{\},\s*personalSiteAccessPreflight\]\s*\]/)
+  assert.match(config, /window\.setTimeout\(function \(\) \{[\s\S]*delete window\['__personalSiteAccessFallback'\][\s\S]*\}, 2500\)/)
+  assert.doesNotMatch(config, /type:\s*['"]module['"]/)
+})
+
+test('head watchdog fails open and releases its pending timer id', async () => {
+  const config = await read('docs/.vitepress/config.mts')
+  const preflight = config.match(/const personalSiteAccessPreflight = String\.raw`([\s\S]*?)`\n\nexport default/)?.[1]
+  assert.ok(preflight, 'preflight source must be extractable')
+
+  function runPreflight() {
+    let watchdog
+    const root = { dataset: {} }
+    const browser = {
+      matchMedia: () => ({ matches: false }),
+      sessionStorage: { getItem: () => null },
+      setTimeout(callback, delay) {
+        assert.equal(delay, 2500)
+        watchdog = callback
+        return 42
       },
     }
-    assert.equal(isInteractiveTarget(target), true, expected)
-    assert.equal(shouldStartFromEnter({ key: 'Enter', target }, 'ready'), false, expected)
+    runInNewContext(preflight, {
+      document: { documentElement: root },
+      location: { pathname: '/' },
+      window: browser,
+    })
+    return { browser, root, watchdog }
   }
+
+  const { browser, root, watchdog } = runPreflight()
+  assert.equal(root.dataset.personalSiteAccess, 'pending')
+  assert.equal(browser['__personalSiteAccessFallback'], 42)
+  watchdog()
+  assert.equal(root.dataset.personalSiteAccess, 'fallback')
+  assert.equal(Object.hasOwn(browser, '__personalSiteAccessFallback'), false)
+
+  const claimed = runPreflight()
+  claimed.root.dataset.personalSiteAccess = 'returning'
+  claimed.watchdog()
+  assert.equal(claimed.root.dataset.personalSiteAccess, 'returning')
+  assert.equal(Object.hasOwn(claimed.browser, '__personalSiteAccessFallback'), false)
 })
 
-test('factory boot stays inline, optional, and cleans up browser effects', async () => {
-  const [boot, state] = await Promise.all([
+test('factory boot is one exact accessible fullscreen replacement', async () => {
+  const [boot, home, css, state] = await Promise.all([
     read('docs/.vitepress/theme/components/FactoryBoot.vue'),
+    read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue'),
+    read('docs/.vitepress/theme/custom.css'),
     read('docs/.vitepress/theme/components/factoryBootState.mjs'),
   ])
-  assert.match(state, /ai-era:knowledge-factory:booted/)
-  assert.doesNotMatch(`${boot}\n${state}`, /localStorage/)
+  for (const copy of ['JuZX@digital-factory ~ zsh', '> Press Enter to Access System', 'aria-label="进入个人网站"']) {
+    assert.match(boot, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+  }
+  assert.match(boot, /class="factory-boot__cursor" aria-hidden="true">_<\/span>/)
+  assert.doesNotMatch(`${boot}\n${state}`, /启动知识系统|跳过启动|Loading knowledge archives|Connecting Ask Console|ai-era:knowledge-factory:booted|localStorage/)
+  assert.match(home, /<FactoryBoot @reveal="handleReveal"\s*\/>\s*<main/)
+  assert.doesNotMatch(home.match(/<section class="factory-hero"[\s\S]*?<\/section>/)?.[0] ?? '', /FactoryBoot/)
+  assert.match(boot, /v-if="visible"/)
+  assert.match(boot, /defineEmits\(\['reveal'\]\)/)
+  assert.match(boot, /window\.setTimeout\(finishExit, 400\)/)
   assert.match(boot, /onBeforeUnmount/)
-  assert.equal([...boot.matchAll(/getSessionStorage\(window\)/g)].length, 3)
-  assert.match(boot, /const hydrated = ref\(false\)/)
-  assert.match(boot, /const state = ref\('complete'\)/)
-  assert.match(boot, /state\.value = readInitialBootState\(getSessionStorage\(window\), getReducedMotionPreference\(window\)\)[\s\S]*hydrated\.value = true/)
-  assert.match(boot, /v-if="hydrated && \(state === 'ready' \|\| state === 'booting'\)"/)
-  assert.match(state, /matchMedia\('\(prefers-reduced-motion: reduce\)'\)/)
-  assert.match(boot, /启动知识系统/)
-  assert.match(boot, /跳过启动/)
-  assert.doesNotMatch(boot, /position:\s*fixed/)
+  assert.match(boot, /focus\(\{ preventScroll: true \}\)/)
+  assert.match(css, /\.factory-boot\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?inset:\s*0;[\s\S]*?min-height:\s*100vh;[\s\S]*?height:\s*100dvh;[\s\S]*?min-height:\s*100dvh;/)
 })
 
-test('factory styles keep cards fluid, controls touchable, and motion optional', async () => {
+test('splash visual, motion, mobile, and fail-open rules are exact', async () => {
   const css = await read('docs/.vitepress/theme/custom.css')
-  assert.match(css, /\.factory-module a:focus-visible[\s\S]*outline:\s*2px solid var\(--factory-focus\)/)
-  const card = css.match(/\.factory-module\s*\{([\s\S]*?)\}/)?.[1] ?? ''
-  assert.ok(card, 'factory module card rule must exist')
-  assert.doesNotMatch(card, /(?:^|\s)(?:height|min-height|max-height)\s*:/)
-  assert.match(css, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.factory-home \*[\s\S]*animation:\s*none !important;[\s\S]*transition:\s*none !important;/)
-  assert.doesNotMatch(css, /neon|glow|infinite[-_ ]?canvas|draggable[-_ ]?window/i)
+  for (const source of [
+    '#F7F4EC', '#1E2430', '"JetBrains Mono", "Fira Code", Consolas, monospace',
+    '400ms cubic-bezier(0.16, 1, 0.3, 1)', '600ms cubic-bezier(0.16, 1, 0.3, 1)',
+    '800ms', 'touch-action: manipulation', 'min-width: 44px', 'min-height: 44px',
+  ]) assert.match(css, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+  assert.match(css, /html\[data-personal-site-access="pending"\] \.factory-boot/)
+  assert.match(css, /html:not\(\[data-personal-site-access="pending"\]\):not\(\[data-personal-site-access="leaving"\]\) \.factory-home/)
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.factory-boot__cursor[\s\S]*animation:\s*none !important;/)
+  assert.doesNotMatch(css, /\.dark[\s\S]{0,240}\.factory-boot/)
 })
 
-test('every mobile factory link and boot control has a 44 by 44 hit area', async () => {
-  const css = await read('docs/.vitepress/theme/custom.css')
-  const mobileStart = css.indexOf('@media (max-width: 639px)')
-  const mobileEnd = css.indexOf('@media (prefers-reduced-motion: reduce)', mobileStart)
-  assert.ok(mobileStart >= 0 && mobileEnd > mobileStart, 'mobile factory media block must be present')
-  const mobile = css.slice(mobileStart, mobileEnd)
-  for (const selector of [
-    '.factory-status a',
-    '.factory-actions a',
-    '.factory-module a',
-    '.factory-log a',
-    '.factory-notes a',
-    '.factory-boot button',
-  ]) assert.match(mobile, new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
-  assert.match(mobile, /min-width:\s*44px;/)
-  assert.match(mobile, /min-height:\s*44px;/)
+test('input lock, preflight claim, cleanup, and focus handoff are explicit', async () => {
+  const [boot, css] = await Promise.all([
+    read('docs/.vitepress/theme/components/FactoryBoot.vue'),
+    read('docs/.vitepress/theme/custom.css'),
+  ])
+  for (const source of [
+    "state.value !== 'ready'", 'beginAccess(state.value, getSessionStorage(window))', "nextState === 'skipped'",
+    "document.documentElement.dataset.personalSiteAccess = 'leaving'", "delete window['__personalSiteAccessFallback']",
+    "window.removeEventListener('keydown', handleKeydown)", "document.getElementById('factory-title')",
+    'shouldContainTab(event, state.value)', 'event.preventDefault()', '@click.stop="activate"', '@click="handleOverlayClick"',
+  ]) assert.match(boot, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+  const activate = boot.match(/function activate\(\)[\s\S]*?\n\}\n\nfunction handleOverlayClick/)?.[0] ?? ''
+  assert.doesNotMatch(activate, /removeKeydown/)
+  assert.match(activate, /nextState === 'skipped'[\s\S]*failOpen\(\)[\s\S]*return[\s\S]*window\.setTimeout\(finishExit, 400\)/)
+  assert.match(boot, /async function finishExit[\s\S]*await nextTick\(\)[\s\S]*removeKeydown\(\)[\s\S]*getElementById\('factory-title'\)/)
+  assert.match(boot, /async function failOpen[\s\S]*dataset\.personalSiteAccess = 'fallback'[\s\S]*visible\.value = false[\s\S]*await nextTick\(\)[\s\S]*removeKeydown\(\)[\s\S]*getElementById\('factory-title'\)/)
+  const leavingRule = css.match(/\.factory-boot\[data-state="leaving"\]\s*\{([\s\S]*?)\}/)?.[1] ?? ''
+  assert.ok(leavingRule, 'leaving splash rule must exist')
+  assert.doesNotMatch(leavingRule, /pointer-events:\s*none/)
 })

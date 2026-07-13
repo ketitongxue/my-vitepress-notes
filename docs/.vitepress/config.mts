@@ -1,5 +1,26 @@
 import { defineConfig } from 'vitepress'
 
+const personalSiteAccessPreflight = String.raw`(function () {
+  var root = document.documentElement
+  var isHomepage = location.pathname === '/' || location.pathname === '/index.html'
+  if (!isHomepage) return
+  try {
+    if (typeof window.matchMedia !== 'function') throw new Error('motion query unavailable')
+    var stored = window.sessionStorage.getItem('personal-site-accessed')
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (stored === 'true' || reduced) root.dataset.personalSiteAccess = 'returning'
+    else root.dataset.personalSiteAccess = 'pending'
+    if (root.dataset.personalSiteAccess === 'pending') {
+      window['__personalSiteAccessFallback'] = window.setTimeout(function () {
+        if (root.dataset.personalSiteAccess === 'pending') root.dataset.personalSiteAccess = 'fallback'
+        delete window['__personalSiteAccessFallback']
+      }, 2500)
+    }
+  } catch (error) {
+    root.dataset.personalSiteAccess = 'fallback'
+  }
+})()`
+
 export default defineConfig({
   lang: 'zh-CN',
   title: 'AI 纪元',
@@ -8,6 +29,7 @@ export default defineConfig({
   cleanUrls: true,
   lastUpdated: true,
   srcExclude: ['superpowers/**'],
+  head: [['script', {}, personalSiteAccessPreflight]],
   themeConfig: {
     nav: [
       { text: '主题', link: '/topics/' },

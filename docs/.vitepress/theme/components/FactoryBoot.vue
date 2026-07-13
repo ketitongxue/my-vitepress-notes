@@ -1,83 +1,122 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
-  getReducedMotionPreference, getSessionStorage, isInteractiveTarget, readInitialBootState, shouldStartFromEnter,
-  transitionBoot, writeBooted,
+  beginAccess, getReducedMotionPreference, getSessionStorage, isInteractiveTarget, readInitialBootState,
+  shouldActivateFromEnter, shouldContainTab, transitionBoot,
 } from './factoryBootState.mjs'
 
-const hydrated = ref(false)
+const emit = defineEmits(['reveal'])
+const accessButton = ref(null)
+const visible = ref(true)
 const state = ref('complete')
-const visibleLines = ref([])
-const timers = new Set()
-const lines = ['Loading knowledge archives', 'Connecting Ask Console']
-const statusText = computed(() => ({
-  ready: '知识系统可以启动，页面内容已可访问。',
-  booting: '正在准备知识系统。',
-  complete: 'SYSTEM READY',
-  skipped: 'SYSTEM READY',
-})[state.value])
+let exitTimer
 
-function schedule(callback, delay) {
-  const timer = window.setTimeout(() => {
-    timers.delete(timer)
-    callback()
-  }, delay)
-  timers.add(timer)
+function clearPreflightFallback() {
+  const timer = window['__personalSiteAccessFallback']
+  if (timer !== undefined) window.clearTimeout(timer)
+  delete window['__personalSiteAccessFallback']
 }
 
-function clearTimers() {
-  for (const timer of timers) window.clearTimeout(timer)
-  timers.clear()
+function removeKeydown() {
+  window.removeEventListener('keydown', handleKeydown)
 }
 
-function finish() {
-  state.value = transitionBoot(state.value, 'COMPLETE')
-  writeBooted(getSessionStorage(window))
+async function finishExit() {
+  if (state.value !== 'leaving') return
+  state.value = transitionBoot(state.value, 'EXIT_COMPLETE')
+  visible.value = false
+  document.documentElement.dataset.personalSiteAccess = 'entered'
+  emit('reveal')
+  await nextTick()
+  removeKeydown()
+  document.getElementById('factory-title')?.focus({ preventScroll: true })
 }
 
-function start() {
+async function failOpen() {
+  clearPreflightFallback()
+  document.documentElement.dataset.personalSiteAccess = 'fallback'
+  visible.value = false
+  await nextTick()
+  removeKeydown()
+  document.getElementById('factory-title')?.focus({ preventScroll: true })
+}
+
+function activate() {
   if (state.value !== 'ready') return
-  state.value = transitionBoot(state.value, 'START')
-  schedule(() => visibleLines.value.push(lines[0]), 320)
-  schedule(() => visibleLines.value.push(lines[1]), 720)
-  schedule(finish, 900)
+  const nextState = beginAccess(state.value, getSessionStorage(window))
+  state.value = nextState
+  if (nextState === 'skipped') {
+    void failOpen()
+    return
+  }
+  document.documentElement.dataset.personalSiteAccess = 'leaving'
+  exitTimer = window.setTimeout(finishExit, 400)
 }
 
-function skip() {
-  clearTimers()
-  state.value = transitionBoot(state.value, 'SKIP')
-  writeBooted(getSessionStorage(window))
+function handleOverlayClick(event) {
+  if (!isInteractiveTarget(event.target)) activate()
 }
 
 function handleKeydown(event) {
-  if (shouldStartFromEnter(event, state.value)) start()
+  if (shouldContainTab(event, state.value)) {
+    event.preventDefault()
+    accessButton.value?.focus({ preventScroll: true })
+    return
+  }
+  if (state.value !== 'ready') return
+  if (shouldActivateFromEnter(event, state.value)) activate()
 }
 
-function handlePanelClick(event) {
-  if (state.value === 'ready' && !isInteractiveTarget(event.target)) start()
-}
-
-onMounted(() => {
-  state.value = readInitialBootState(getSessionStorage(window), getReducedMotionPreference(window))
-  hydrated.value = true
+onMounted(async () => {
+  const root = document.documentElement
+  const initial = readInitialBootState(
+    getSessionStorage(window),
+    getReducedMotionPreference(window),
+    root.dataset.personalSiteAccess ?? 'none',
+  )
+  clearPreflightFallback()
+  if (initial !== 'ready') {
+    state.value = transitionBoot('ready', 'BYPASS')
+    visible.value = false
+    root.dataset.personalSiteAccess = 'returning'
+    return
+  }
+  state.value = 'ready'
   window.addEventListener('keydown', handleKeydown)
+  await nextTick()
+  accessButton.value?.focus({ preventScroll: true })
 })
 
 onBeforeUnmount(() => {
-  clearTimers()
-  window.removeEventListener('keydown', handleKeydown)
+  if (exitTimer !== undefined) window.clearTimeout(exitTimer)
+  removeKeydown()
+  clearPreflightFallback()
+  const root = document.documentElement
+  if (root.dataset.personalSiteAccess === 'pending' || root.dataset.personalSiteAccess === 'leaving') {
+    root.dataset.personalSiteAccess = 'fallback'
+  }
 })
 </script>
 
 <template>
-  <div class="factory-boot" :data-state="state" @click="handlePanelClick">
-    <div class="factory-boot__lines" aria-hidden="true">
-      <p v-for="line in visibleLines" :key="line">$ {{ line }}</p>
-    </div>
-    <p class="factory-boot__status" aria-live="polite">{{ statusText }}</p>
-    <div v-if="hydrated && (state === 'ready' || state === 'booting')" class="factory-boot__controls">
-      <button type="button" :disabled="state === 'booting'" @click.stop="start">启动知识系统</button>
-      <button type="button" class="quiet" @click.stop="skip">跳过启动</button>
-    </div>
-  </div>
+  <section
+    v-if="visible"
+    class="factory-boot"
+    :data-state="state"
+    aria-label="个人网站启动页"
+    @click="handleOverlayClick"
+  >
+    <p class="factory-boot__shell" aria-hidden="true">JuZX@digital-factory ~ zsh</p>
+    <button
+      ref="accessButton"
+      class="factory-boot__access"
+      type="button"
+      aria-label="进入个人网站"
+      :aria-disabled="state === 'leaving'"
+      @click.stop="activate"
+    >
+      <span class="factory-boot__command" aria-hidden="true">> Press Enter to Access System</span>
+      <span class="factory-boot__cursor" aria-hidden="true">_</span>
+    </button>
+  </section>
 </template>

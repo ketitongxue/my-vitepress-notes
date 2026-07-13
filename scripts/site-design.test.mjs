@@ -76,3 +76,11 @@ test('theme styles balance the factory, knowledge, and QA surfaces', async () =>
   assert.doesNotMatch(css, /\.garden-/)
   assert.doesNotMatch(css, /\.wiki-ask__conversation[\s\S]{0,400}min-height:\s*190px/)
 })
+
+test('fullscreen splash replaces the inline boot without changing homepage discovery', async () => {
+  const home = await read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue')
+  const hero = home.match(/<section class="factory-hero"[\s\S]*?<\/section>/)?.[0] ?? ''
+  assert.doesNotMatch(hero, /FactoryBoot/)
+  assert.match(home, /<FactoryBoot @reveal="handleReveal"\s*\/>\s*<main/)
+  for (const route of ['/wiki/', '/finance/', '/ask/', '/llm-wiki/']) assert.match(home, new RegExp(route.replaceAll('/', '\\/')))
+})

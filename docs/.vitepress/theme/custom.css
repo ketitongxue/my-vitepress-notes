@@ -142,8 +142,7 @@
 .factory-status__state,
 .factory-label,
 .factory-module > p:first-child,
-.factory-log time,
-.factory-boot {
+.factory-log time {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
@@ -213,8 +212,7 @@
   margin-top: 24px;
 }
 
-.factory-actions a,
-.factory-boot button {
+.factory-actions a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -233,45 +231,119 @@
 }
 
 .factory-boot {
-  margin-top: 24px;
-  padding: 16px;
-  border: 1px solid color-mix(in srgb, var(--factory-terminal-ink) 34%, transparent);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--factory-terminal) 84%, black);
-  font-size: 13px;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 100vh;
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+  padding: clamp(20px, 6vw, 24px);
+  background: #F7F4EC;
+  color: #1E2430;
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+  opacity: 1;
+  touch-action: manipulation;
+  transition: opacity 400ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.factory-boot__lines {
-  min-height: 48px;
-  color: var(--factory-terminal-ink);
+html[data-personal-site-access="pending"],
+html[data-personal-site-access="leaving"] {
+  overflow: hidden;
 }
 
-.factory-boot__lines p,
-.factory-boot__status {
-  margin: 4px 0;
-}
-
-.factory-boot__controls {
+html[data-personal-site-access="pending"] .factory-boot,
+html[data-personal-site-access="leaving"] .factory-boot {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 12px;
 }
 
-.factory-boot button {
+html[data-personal-site-access="pending"] .factory-home,
+html[data-personal-site-access="leaving"] .factory-home {
+  visibility: hidden;
+  opacity: 0;
+}
+
+html:not([data-personal-site-access="pending"]):not([data-personal-site-access="leaving"]) .factory-home {
+  visibility: visible;
+}
+
+.factory-boot[data-state="leaving"] {
+  opacity: 0;
+}
+
+.factory-boot__shell {
+  position: absolute;
+  inset-block-start: clamp(20px, 6vw, 24px);
+  inset-inline-start: clamp(20px, 6vw, 24px);
+  margin: 0;
+  font-size: clamp(12px, 3.5vw, 14px);
+  line-height: 1.5;
+}
+
+.factory-boot__access {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 10px 8px;
+  border: 0;
   background: transparent;
-  color: var(--factory-terminal-ink);
+  color: inherit;
+  font: inherit;
+  font-size: clamp(14px, 4.5vw, 16px);
+  line-height: 1.5;
+  text-align: center;
   cursor: pointer;
 }
 
-.factory-boot button.quiet {
-  border-color: transparent;
-  color: color-mix(in srgb, var(--factory-terminal-ink) 72%, transparent);
+.factory-boot__access:focus-visible {
+  outline: 2px solid #1E2430;
+  outline-offset: 6px;
 }
 
-.factory-boot button:disabled {
-  cursor: default;
-  opacity: 0.6;
+.factory-boot__command {
+  overflow-wrap: anywhere;
+}
+
+.factory-boot__cursor {
+  display: inline-block;
+  width: 1ch;
+  animation: factory-cursor-blink 800ms step-end infinite;
+}
+
+.factory-home.is-entering {
+  animation: factory-home-enter 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes factory-cursor-blink {
+  50% { opacity: 0; }
+}
+
+@keyframes factory-home-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (min-width: 640px) {
+  .factory-boot {
+    padding: clamp(32px, 4vw, 48px);
+  }
+
+  .factory-boot__shell {
+    inset-block-start: clamp(32px, 4vw, 48px);
+    inset-inline-start: clamp(32px, 4vw, 48px);
+    font-size: clamp(14px, 1.2vw, 16px);
+  }
+
+  .factory-boot__access {
+    font-size: clamp(16px, 1.5vw, 20px);
+  }
 }
 
 .factory-modules {
@@ -340,7 +412,6 @@
 .factory-module a:focus-visible,
 .factory-actions a:focus-visible,
 .factory-status a:focus-visible,
-.factory-boot button:focus-visible,
 .factory-notes a:focus-visible,
 .factory-log a:focus-visible {
   outline: 2px solid var(--factory-focus);
@@ -765,8 +836,7 @@
   .factory-actions a,
   .factory-module a,
   .factory-log a,
-  .factory-notes a,
-  .factory-boot button {
+  .factory-notes a {
     display: inline-flex;
     align-items: center;
     min-width: 44px;
@@ -808,6 +878,16 @@
 
   .factory-module:hover {
     transform: none;
+  }
+
+  .factory-boot,
+  .factory-home.is-entering {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .factory-boot__cursor {
+    animation: none !important;
   }
 
   .wiki-ask__conversation {

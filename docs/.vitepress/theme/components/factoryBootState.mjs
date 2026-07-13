@@ -1,5 +1,5 @@
-export const BOOT_STORAGE_KEY = 'ai-era:knowledge-factory:booted'
-export const BOOT_STORAGE_VALUE = 'v1'
+export const BOOT_STORAGE_KEY = 'personal-site-accessed'
+export const BOOT_STORAGE_VALUE = 'true'
 
 export function getSessionStorage(browser) {
   try {
@@ -11,23 +11,23 @@ export function getSessionStorage(browser) {
 
 export function getReducedMotionPreference(browser) {
   try {
-    if (typeof browser?.matchMedia !== 'function') return false
+    if (typeof browser?.matchMedia !== 'function') return true
     return Boolean(browser.matchMedia('(prefers-reduced-motion: reduce)').matches)
   } catch {
-    return false
+    return true
   }
 }
 
-export function readInitialBootState(storage, reducedMotion = false) {
-  if (reducedMotion) return 'skipped'
+export function readInitialBootState(storage, reducedMotion = false, preflightState = 'none') {
+  if (reducedMotion || preflightState !== 'pending' || !storage) return 'skipped'
   try {
-    return storage?.getItem(BOOT_STORAGE_KEY) === BOOT_STORAGE_VALUE ? 'skipped' : 'ready'
+    return storage.getItem(BOOT_STORAGE_KEY) === BOOT_STORAGE_VALUE ? 'skipped' : 'ready'
   } catch {
-    return 'ready'
+    return 'skipped'
   }
 }
 
-export function writeBooted(storage) {
+export function writeAccessed(storage) {
   try {
     storage?.setItem(BOOT_STORAGE_KEY, BOOT_STORAGE_VALUE)
     return Boolean(storage)
@@ -37,17 +37,28 @@ export function writeBooted(storage) {
 }
 
 export function transitionBoot(state, event) {
-  if (event === 'SKIP') return 'skipped'
-  if (state === 'ready' && event === 'START') return 'booting'
-  if (state === 'booting' && event === 'COMPLETE') return 'complete'
+  if (state === 'ready' && event === 'ACTIVATE') return 'leaving'
+  if (state === 'leaving' && event === 'EXIT_COMPLETE') return 'complete'
+  if (state === 'ready' && event === 'BYPASS') return 'skipped'
   return state
+}
+
+export function beginAccess(state, storage) {
+  if (state !== 'ready') return state
+  return writeAccessed(storage)
+    ? transitionBoot(state, 'ACTIVATE')
+    : transitionBoot(state, 'BYPASS')
 }
 
 export function isInteractiveTarget(target) {
   return Boolean(target?.closest?.('a,button,input,textarea,select,summary,[contenteditable]:not([contenteditable="false"]),[tabindex]:not([tabindex="-1"]),audio[controls],video[controls],[role="button"],[role="link"]'))
 }
 
-export function shouldStartFromEnter(event, state) {
+export function shouldActivateFromEnter(event, state) {
   return state === 'ready' && event?.key === 'Enter' && !event.repeat && !event.isComposing
     && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey && !isInteractiveTarget(event.target)
+}
+
+export function shouldContainTab(event, state) {
+  return (state === 'ready' || state === 'leaving') && event?.key === 'Tab'
 }

@@ -103,6 +103,29 @@ export function validateThemeCss(source) {
     }
   }
 
+  const splash = findRule(rules, '.factory-boot')
+  const splashDeclarations = parseDeclarations(splash?.body ?? '')
+  if (splashDeclarations.get('position') !== 'fixed' || splashDeclarations.get('inset') !== '0') {
+    throw new Error('factory splash must use fixed positioning and inset: 0')
+  }
+  if (splashDeclarations.get('background') !== '#F7F4EC' || splashDeclarations.get('color') !== '#1E2430') {
+    throw new Error('factory splash must use the approved fixed palette')
+  }
+  if (splashDeclarations.get('transition') !== 'opacity 400ms cubic-bezier(0.16, 1, 0.3, 1)') {
+    throw new Error('factory splash must use the approved 400ms exit')
+  }
+
+  const homepageEntrance = findRule(rules, '.factory-home.is-entering')
+  if (parseDeclarations(homepageEntrance?.body ?? '').get('animation') !== 'factory-home-enter 600ms cubic-bezier(0.16, 1, 0.3, 1) both') {
+    throw new Error('factory homepage must use the approved 600ms entrance')
+  }
+
+  const accessButton = findRule(rules, '.factory-boot__access')
+  const accessDeclarations = parseDeclarations(accessButton?.body ?? '')
+  if (accessDeclarations.get('min-width') !== '44px' || accessDeclarations.get('min-height') !== '44px') {
+    throw new Error('factory splash access button must keep a 44px hit area')
+  }
+
   const mobileMedia = '@media (max-width: 639px)'
   const mobileModules = findRule(rules, '.factory-modules__grid', mobileMedia)
   if (parseDeclarations(mobileModules?.body ?? '').get('grid-template-columns') !== '1fr') {
@@ -114,5 +137,15 @@ export function validateThemeCss(source) {
   const reducedDeclarations = parseDeclarations(reducedFactory?.body ?? '')
   if (reducedDeclarations.get('animation') !== 'none !important' || reducedDeclarations.get('transition') !== 'none !important') {
     throw new Error('custom.css reduced-motion media must suppress factory animation and transition')
+  }
+  const reducedSplash = findRule(rules, '.factory-boot', reducedMedia)
+  const reducedSplashDeclarations = parseDeclarations(reducedSplash?.body ?? '')
+  if (reducedSplashDeclarations.get('animation') !== 'none !important'
+    || reducedSplashDeclarations.get('transition') !== 'none !important') {
+    throw new Error('custom.css reduced-motion media must suppress splash motion')
+  }
+  const reducedCursor = findRule(rules, '.factory-boot__cursor', reducedMedia)
+  if (parseDeclarations(reducedCursor?.body ?? '').get('animation') !== 'none !important') {
+    throw new Error('custom.css reduced-motion media must suppress cursor motion')
   }
 }
