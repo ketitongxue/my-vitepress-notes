@@ -51,7 +51,3 @@ export function shouldActivateFromEnter(event, state) {
   return state === 'ready' && event?.key === 'Enter' && !event.repeat && !event.isComposing
     && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey && !isInteractiveTarget(event.target)
 }
-
-// Temporary aliases keep the pre-Task-2 component buildable until it is rewritten.
-export const writeBooted = writeAccessed
-export const shouldStartFromEnter = shouldActivateFromEnter

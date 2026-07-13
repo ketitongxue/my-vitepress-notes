@@ -123,49 +123,47 @@ test('head watchdog fails open and releases its pending timer id', async () => {
   assert.equal(Object.hasOwn(claimed.browser, '__personalSiteAccessFallback'), false)
 })
 
-test('factory boot stays inline, optional, and cleans up browser effects', async () => {
-  const [boot, state] = await Promise.all([
+test('factory boot is one exact accessible fullscreen replacement', async () => {
+  const [boot, home, css, state] = await Promise.all([
     read('docs/.vitepress/theme/components/FactoryBoot.vue'),
+    read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue'),
+    read('docs/.vitepress/theme/custom.css'),
     read('docs/.vitepress/theme/components/factoryBootState.mjs'),
   ])
-  assert.match(state, /personal-site-accessed/)
-  assert.doesNotMatch(`${boot}\n${state}`, /localStorage/)
+  for (const copy of ['JuZX@digital-factory ~ zsh', '> Press Enter to Access System', 'aria-label="进入个人网站"']) {
+    assert.match(boot, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+  }
+  assert.match(boot, /class="factory-boot__cursor" aria-hidden="true">_<\/span>/)
+  assert.doesNotMatch(`${boot}\n${state}`, /启动知识系统|跳过启动|Loading knowledge archives|Connecting Ask Console|ai-era:knowledge-factory:booted|localStorage/)
+  assert.match(home, /<FactoryBoot @reveal="handleReveal"\s*\/>\s*<main/)
+  assert.doesNotMatch(home.match(/<section class="factory-hero"[\s\S]*?<\/section>/)?.[0] ?? '', /FactoryBoot/)
+  assert.match(boot, /v-if="visible"/)
+  assert.match(boot, /defineEmits\(\['reveal'\]\)/)
+  assert.match(boot, /window\.setTimeout\(finishExit, 400\)/)
   assert.match(boot, /onBeforeUnmount/)
-  assert.equal([...boot.matchAll(/getSessionStorage\(window\)/g)].length, 3)
-  assert.match(boot, /const hydrated = ref\(false\)/)
-  assert.match(boot, /const state = ref\('complete'\)/)
-  assert.match(boot, /state\.value = readInitialBootState\(getSessionStorage\(window\), getReducedMotionPreference\(window\)\)[\s\S]*hydrated\.value = true/)
-  assert.match(boot, /v-if="hydrated && \(state === 'ready' \|\| state === 'booting'\)"/)
-  assert.match(state, /matchMedia\('\(prefers-reduced-motion: reduce\)'\)/)
-  assert.match(boot, /启动知识系统/)
-  assert.match(boot, /跳过启动/)
-  assert.doesNotMatch(boot, /position:\s*fixed/)
+  assert.match(boot, /focus\(\{ preventScroll: true \}\)/)
+  assert.match(css, /\.factory-boot\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?inset:\s*0;[\s\S]*?min-height:\s*100vh;[\s\S]*?height:\s*100dvh;[\s\S]*?min-height:\s*100dvh;/)
 })
 
-test('factory styles keep cards fluid, controls touchable, and motion optional', async () => {
+test('splash visual, motion, mobile, and fail-open rules are exact', async () => {
   const css = await read('docs/.vitepress/theme/custom.css')
-  assert.match(css, /\.factory-module a:focus-visible[\s\S]*outline:\s*2px solid var\(--factory-focus\)/)
-  const card = css.match(/\.factory-module\s*\{([\s\S]*?)\}/)?.[1] ?? ''
-  assert.ok(card, 'factory module card rule must exist')
-  assert.doesNotMatch(card, /(?:^|\s)(?:height|min-height|max-height)\s*:/)
-  assert.match(css, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.factory-home \*[\s\S]*animation:\s*none !important;[\s\S]*transition:\s*none !important;/)
-  assert.doesNotMatch(css, /neon|glow|infinite[-_ ]?canvas|draggable[-_ ]?window/i)
+  for (const source of [
+    '#F7F4EC', '#1E2430', '"JetBrains Mono", "Fira Code", Consolas, monospace',
+    '400ms cubic-bezier(0.16, 1, 0.3, 1)', '600ms cubic-bezier(0.16, 1, 0.3, 1)',
+    '800ms', 'touch-action: manipulation', 'min-width: 44px', 'min-height: 44px',
+  ]) assert.match(css, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+  assert.match(css, /html\[data-personal-site-access="pending"\] \.factory-boot/)
+  assert.match(css, /html:not\(\[data-personal-site-access="pending"\]\):not\(\[data-personal-site-access="leaving"\]\) \.factory-home/)
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.factory-boot__cursor[\s\S]*animation:\s*none !important;/)
+  assert.doesNotMatch(css, /\.dark[\s\S]{0,240}\.factory-boot/)
 })
 
-test('every mobile factory link and boot control has a 44 by 44 hit area', async () => {
-  const css = await read('docs/.vitepress/theme/custom.css')
-  const mobileStart = css.indexOf('@media (max-width: 639px)')
-  const mobileEnd = css.indexOf('@media (prefers-reduced-motion: reduce)', mobileStart)
-  assert.ok(mobileStart >= 0 && mobileEnd > mobileStart, 'mobile factory media block must be present')
-  const mobile = css.slice(mobileStart, mobileEnd)
-  for (const selector of [
-    '.factory-status a',
-    '.factory-actions a',
-    '.factory-module a',
-    '.factory-log a',
-    '.factory-notes a',
-    '.factory-boot button',
-  ]) assert.match(mobile, new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
-  assert.match(mobile, /min-width:\s*44px;/)
-  assert.match(mobile, /min-height:\s*44px;/)
+test('input lock, preflight claim, cleanup, and focus handoff are explicit', async () => {
+  const boot = await read('docs/.vitepress/theme/components/FactoryBoot.vue')
+  for (const source of [
+    "state.value !== 'ready'", "transitionBoot(state.value, 'ACTIVATE')", 'writeAccessed(getSessionStorage(window))',
+    "document.documentElement.dataset.personalSiteAccess = 'leaving'", "delete window['__personalSiteAccessFallback']",
+    "window.removeEventListener('keydown', handleKeydown)", "document.getElementById('factory-title')",
+    "event.key === 'Tab'", 'event.preventDefault()', '@click.stop="activate"', '@click="handleOverlayClick"',
+  ]) assert.match(boot, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
 })
