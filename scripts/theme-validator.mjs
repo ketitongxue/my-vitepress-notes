@@ -103,11 +103,21 @@ export function validateThemeCss(source) {
     }
   }
 
-  const placementSelectors = [
+  const surfaceSelectors = [
     '.profile-card', '.current-status-card', '.featured-project-card', '.project-folder',
     '.notes-launcher', '.lab-launcher', '.contact-terminal', '.canvas-controls'
   ]
-  for (const selector of ['.desktop-canvas', '.system-topbar', ...placementSelectors, '.factory-boot']) {
+  const placements = [
+    ['.desktop-canvas__profile', '1 / 8', '1 / 5', '50ms'],
+    ['.desktop-canvas__status', '9 / 13', '1 / 4', '110ms'],
+    ['.desktop-canvas__featured', '4 / 11', '5 / 10', '170ms'],
+    ['.desktop-canvas__projects', '11 / 15', '4 / 8', '230ms'],
+    ['.desktop-canvas__notes', '1 / 4', '6 / 10', '290ms'],
+    ['.desktop-canvas__lab', '11 / 15', '9 / 13', '350ms'],
+    ['.desktop-canvas__contact', '3 / 10', '11 / 15', '410ms'],
+    ['.desktop-canvas__controls', '12 / 15', '14 / 15', '470ms']
+  ]
+  for (const selector of ['.desktop-canvas', '.system-topbar', ...surfaceSelectors, ...placements.map(([selector]) => selector), '.factory-boot']) {
     const rule = findRule(rules, selector)
     if (!rule || parseDeclarations(rule.body).size === 0) {
       throw new Error(`custom.css must contain an active ${selector} rule`)
@@ -115,31 +125,34 @@ export function validateThemeCss(source) {
   }
 
   const topbarDeclarations = parseDeclarations(findRule(rules, '.system-topbar')?.body ?? '')
-  if (topbarDeclarations.get('position') !== 'fixed') {
-    throw new Error('Personal OS topbar must use fixed positioning')
+  if (topbarDeclarations.get('position') !== 'fixed' || topbarDeclarations.get('height') !== '56px') {
+    throw new Error('Personal OS topbar must use fixed positioning and a 56px height')
   }
 
   const canvasDeclarations = parseDeclarations(findRule(rules, '.desktop-canvas')?.body ?? '')
   if (canvasDeclarations.get('display') !== 'grid'
-    || canvasDeclarations.get('grid-template-columns') !== 'repeat(14, minmax(0, 1fr))') {
-    throw new Error('Personal OS desktop canvas must use a 14-column grid')
+    || canvasDeclarations.get('width') !== 'min(1360px, calc(100vw - 48px))'
+    || canvasDeclarations.get('min-height') !== '1040px'
+    || canvasDeclarations.get('grid-template-columns') !== 'repeat(14, minmax(0, 1fr))'
+    || canvasDeclarations.get('grid-template-rows') !== 'repeat(14, minmax(0, 1fr))'
+    || canvasDeclarations.get('gap') !== '16px') {
+    throw new Error('Personal OS desktop canvas must use the exact 14-column grid')
   }
 
-  const entranceDelays = []
-  for (const selector of placementSelectors) {
-    if (!parseDeclarations(findRule(rules, selector)?.body ?? '').get('grid-column')) {
-      throw new Error(`Personal OS placement ${selector} must declare grid-column`)
+  for (const [selector, column, row, delay] of placements) {
+    const placement = parseDeclarations(findRule(rules, selector)?.body ?? '')
+    if (placement.get('grid-column') !== column || placement.get('grid-row') !== row) {
+      throw new Error(`Personal OS placement ${selector} must use grid-column ${column} and grid-row ${row}`)
     }
     const stagger = findRule(rules, `.factory-home.is-entering ${selector}`)
-    const delay = parseDeclarations(stagger?.body ?? '').get('animation-delay')
-    if (!delay) {
-      throw new Error(`Personal OS entrance must stagger ${selector}`)
+    const staggerDeclarations = parseDeclarations(stagger?.body ?? '')
+    if (staggerDeclarations.get('animation-delay') !== delay) {
+      throw new Error(`Personal OS entrance must stagger ${selector} at ${delay}`)
     }
-    entranceDelays.push(delayInMilliseconds(delay))
   }
-  if (entranceDelays.some((delay) => delay === undefined)
-    || entranceDelays.some((delay, index) => index > 0 && delay <= entranceDelays[index - 1])) {
-    throw new Error('Personal OS entrance delays must be distinct and strictly increasing')
+  const topbarEntrance = parseDeclarations(findRule(rules, '.factory-home.is-entering .system-topbar')?.body ?? '')
+  if (topbarEntrance.get('animation-delay') !== '0ms') {
+    throw new Error('Personal OS entrance must stagger .system-topbar at 0ms')
   }
 
   const splash = findRule(rules, '.factory-boot')
@@ -162,7 +175,9 @@ export function validateThemeCss(source) {
 
   const mobileMedia = '@media (max-width: 767px)'
   const mobileCanvas = findRule(rules, '.desktop-canvas', mobileMedia)
-  if (parseDeclarations(mobileCanvas?.body ?? '').get('grid-template-columns') !== '1fr') {
+  const mobileCanvasDeclarations = parseDeclarations(mobileCanvas?.body ?? '')
+  if (mobileCanvasDeclarations.get('grid-template-columns') !== '1fr'
+    || mobileCanvasDeclarations.get('width') !== 'calc(100vw - 32px)') {
     throw new Error(`custom.css ${mobileMedia} must set .desktop-canvas to one column`)
   }
 
@@ -190,7 +205,15 @@ export function validateThemeCss(source) {
     throw new Error('custom.css reduced-motion media must suppress cursor motion')
   }
 
-  if (/cursor\s*:\s*(?:grab|grabbing)|touch-action\s*:\s*none|\b(?:pointerdown|pointermove|wheel)\b/i.test(css)) {
+  const osSource = source.match(/\/\* Personal OS start \*\/([\s\S]*?)\/\* Personal OS end \*\//)?.[1]
+  if (!osSource) throw new Error('custom.css must contain the scoped Personal OS block')
+  for (const color of ['#F7F4EC', '#FFFDF7', '#1E2430', '#69707D', '#315EFB', '#F2C94C', '#EF7B45', '#3FAE78', '#192232']) {
+    if (!new RegExp(color, 'i').test(osSource)) throw new Error(`Personal OS palette must include ${color}`)
+  }
+  if (/linear-gradient|backdrop-filter|cursor\s*:\s*(?:grab|grabbing|zoom-in|zoom-out)|touch-action\s*:\s*none|\b(?:pointerdown|pointermove|wheel)\b/i.test(osSource)) {
     throw new Error('custom.css must not enable drag or zoom behavior')
+  }
+  if (/@keyframes[\s\S]*?transform\s*:[^;}]*rotate/i.test(osSource)) {
+    throw new Error('Personal OS reveal transforms must not rotate')
   }
 }

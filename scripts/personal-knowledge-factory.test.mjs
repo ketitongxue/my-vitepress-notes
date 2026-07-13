@@ -13,9 +13,54 @@ const read = (path) => readFile(new URL(path, root), 'utf8')
 test('homepage mounts the dedicated factory component', async () => {
   const page = await read('docs/index.md')
   assert.match(page, /layout:\s*page/)
+  assert.match(page, /navbar:\s*false/)
   assert.match(page, /sidebar:\s*false/)
   assert.match(page, /outline:\s*false/)
   assert.match(page, /<KnowledgeFactoryHome\s*\/>/)
+})
+
+test('Personal OS visual contract is exact, scoped, static, and responsive', async () => {
+  const css = await read('docs/.vitepress/theme/custom.css')
+  const os = css.match(/\/\* Personal OS start \*\/([\s\S]*?)\/\* Personal OS end \*\//)?.[1] ?? ''
+  assert.ok(os, 'homepage OS styles must have an auditable scoped block')
+
+  for (const color of [
+    '#F7F4EC', '#FFFDF7', '#1E2430', '#69707D', '#315EFB',
+    '#F2C94C', '#EF7B45', '#3FAE78', '#192232',
+  ]) assert.match(os, new RegExp(color, 'i'))
+
+  for (const source of [
+    'overflow-x: clip',
+    'width: min(1360px, calc(100vw - 48px))',
+    'min-height: 1040px',
+    'grid-template-columns: repeat(14, minmax(0, 1fr))',
+    'grid-template-rows: repeat(14, minmax(0, 1fr))',
+    '@media (max-width: 767px)',
+    'grid-template-columns: 1fr',
+    'min-width: 0',
+    'overflow-wrap: anywhere',
+    '@media (prefers-reduced-motion: reduce)',
+    'outline: 2px solid #315EFB',
+  ]) assert.match(os, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'))
+
+  const placements = new Map([
+    ['profile', ['1 / 8', '1 / 5']],
+    ['status', ['9 / 13', '1 / 4']],
+    ['projects', ['11 / 15', '4 / 8']],
+    ['featured', ['4 / 11', '5 / 10']],
+    ['notes', ['1 / 4', '6 / 10']],
+    ['lab', ['11 / 15', '9 / 13']],
+    ['contact', ['3 / 10', '11 / 15']],
+    ['controls', ['12 / 15', '14 / 15']],
+  ])
+  for (const [name, [column, row]] of placements) {
+    const rule = os.match(new RegExp(`\\.desktop-canvas__${name}\\s*\\{([\\s\\S]*?)\\}`))?.[1] ?? ''
+    assert.match(rule, new RegExp(`grid-column:\\s*${column.replace('/', '\\/')}`))
+    assert.match(rule, new RegExp(`grid-row:\\s*${row.replace('/', '\\/')}`))
+  }
+
+  assert.doesNotMatch(os, /linear-gradient|backdrop-filter|cursor\s*:\s*(?:grab|grabbing|zoom-in|zoom-out)|touch-action\s*:\s*none/i)
+  assert.doesNotMatch(os, /@keyframes[\s\S]*?transform\s*:[^;}]*rotate/i)
 })
 
 test('factory homepage exposes the static Personal OS component and copy contract', async () => {
@@ -37,7 +82,7 @@ test('factory homepage exposes the static Personal OS component and copy contrac
     'ProfileCard', 'CurrentStatusCard', 'FeaturedProjectCard', 'ProjectFolder',
     'NotesLauncher', 'LabLauncher', 'ContactTerminal', 'CanvasControls',
   ]) {
-    assert.match(canvas, new RegExp(`import\\s+${name}\\s+from\\s+["']\\./${name}\\.vue["']`))
+    assert.ok(canvas.includes(`import ${name} from './${name}.vue'`))
     assert.match(canvas, new RegExp(`<${name}\\s*/>`))
   }
   const copyByComponent = new Map([

@@ -127,10 +127,12 @@ test('navigation exposes the skill under Tools and defines its four-page sidebar
   ])
 })
 
-test('homepage links visibly to the local guide without bypassing it for GitHub', async () => {
-  const home = await readFile('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue', 'utf8')
-  assert.match(home, /title:\s*['"]LLM Wiki Skill['"][^}\n]*href:\s*['"]\/llm-wiki\/['"]/)
-  assert.doesNotMatch(home, /github\.com\/ketitongxue\/llm-wiki-skill/)
+test('global navigation links visibly to the local guide without bypassing it for GitHub', async () => {
+  const config = await resolveConfig('docs', 'build')
+  const navigation = JSON.stringify(config.site.themeConfig.nav)
+  assert.match(navigation, /"text":"LLM Wiki Skill","link":"\/llm-wiki\/"/)
+  assert.doesNotMatch(navigation, /github\.com\/ketitongxue\/llm-wiki-skill/)
+  await assert.doesNotReject(readFile('docs/llm-wiki/index.md', 'utf8'))
 })
 
 test('security scanning recognizes the local guide routes as public site paths', () => {

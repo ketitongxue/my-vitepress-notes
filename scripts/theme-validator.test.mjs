@@ -32,24 +32,55 @@ function validTheme() {
   return `
 :root { ${palette('#f6f3ea', '#275dad')} }
 .dark { ${palette('#0b1020', '#8aa8ff')} }
-.system-topbar { position: fixed; inset: 0 0 auto; }
-.desktop-canvas { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); }
-.profile-card { grid-column: 1 / span 5; }
-.current-status-card { grid-column: 6 / span 3; }
-.featured-project-card { grid-column: 9 / span 6; }
-.project-folder { grid-column: 1 / span 4; }
-.notes-launcher { grid-column: 5 / span 3; }
-.lab-launcher { grid-column: 8 / span 3; }
-.contact-terminal { grid-column: 11 / span 4; }
-.canvas-controls { grid-column: 1 / span 14; }
-.factory-home.is-entering .profile-card { animation-delay: 40ms; }
-.factory-home.is-entering .current-status-card { animation-delay: 80ms; }
-.factory-home.is-entering .featured-project-card { animation-delay: 120ms; }
-.factory-home.is-entering .project-folder { animation-delay: 160ms; }
-.factory-home.is-entering .notes-launcher { animation-delay: 200ms; }
-.factory-home.is-entering .lab-launcher { animation-delay: 240ms; }
-.factory-home.is-entering .contact-terminal { animation-delay: 280ms; }
-.factory-home.is-entering .canvas-controls { animation-delay: 320ms; }
+/* Personal OS start */
+.factory-home {
+  --os-bg: #F7F4EC; --os-surface: #FFFDF7; --os-ink: #1E2430;
+  --os-muted: #69707D; --os-blue: #315EFB; --os-yellow: #F2C94C;
+  --os-orange: #EF7B45; --os-green: #3FAE78; --os-terminal: #192232;
+}
+.system-topbar { position: fixed; inset: 0 0 auto; height: 56px; }
+.desktop-canvas {
+  display: grid; width: min(1360px, calc(100vw - 48px)); min-height: 1040px;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  grid-template-rows: repeat(14, minmax(0, 1fr)); gap: 16px;
+}
+.profile-card { min-width: 0; }
+.current-status-card { min-width: 0; }
+.featured-project-card { min-width: 0; }
+.project-folder { min-width: 0; }
+.notes-launcher { min-width: 0; }
+.lab-launcher { min-width: 0; }
+.contact-terminal { min-width: 0; }
+.canvas-controls { min-width: 0; }
+.desktop-canvas__profile { grid-column: 1 / 8; grid-row: 1 / 5; }
+.desktop-canvas__status { grid-column: 9 / 13; grid-row: 1 / 4; }
+.desktop-canvas__featured { grid-column: 4 / 11; grid-row: 5 / 10; }
+.desktop-canvas__projects { grid-column: 11 / 15; grid-row: 4 / 8; }
+.desktop-canvas__notes { grid-column: 1 / 4; grid-row: 6 / 10; }
+.desktop-canvas__lab { grid-column: 11 / 15; grid-row: 9 / 13; }
+.desktop-canvas__contact { grid-column: 3 / 10; grid-row: 11 / 15; }
+.desktop-canvas__controls { grid-column: 12 / 15; grid-row: 14 / 15; }
+.factory-home.is-entering .system-topbar { animation-delay: 0ms; }
+.factory-home.is-entering .desktop-canvas__profile { animation-delay: 50ms; }
+.factory-home.is-entering .desktop-canvas__status { animation-delay: 110ms; }
+.factory-home.is-entering .desktop-canvas__featured { animation-delay: 170ms; }
+.factory-home.is-entering .desktop-canvas__projects { animation-delay: 230ms; }
+.factory-home.is-entering .desktop-canvas__notes { animation-delay: 290ms; }
+.factory-home.is-entering .desktop-canvas__lab { animation-delay: 350ms; }
+.factory-home.is-entering .desktop-canvas__contact { animation-delay: 410ms; }
+.factory-home.is-entering .desktop-canvas__controls { animation-delay: 470ms; }
+@media (max-width: 767px) {
+  .desktop-canvas { width: calc(100vw - 32px); grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .factory-home.is-entering .system-topbar,
+  .factory-home.is-entering .desktop-canvas > * {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+/* Personal OS end */
 .factory-boot {
   position: fixed;
   inset: 0;
@@ -61,14 +92,7 @@ function validTheme() {
 }
 .factory-boot__access { min-width: 44px; min-height: 44px; }
 .factory-boot__cursor { animation: factory-cursor-blink 800ms step-end infinite; }
-@media (max-width: 767px) { .desktop-canvas { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) {
-  .factory-home.is-entering .system-topbar,
-  .factory-home.is-entering .desktop-canvas > * {
-    animation: none !important;
-    transition: none !important;
-    transform: none !important;
-  }
   .factory-boot { animation: none !important; transition: none !important; }
   .factory-boot__cursor { animation: none !important; }
 }
@@ -76,17 +100,6 @@ function validTheme() {
 }
 
 assert.equal(runChecker(validTheme()).status, 0, 'complete Personal OS palettes and responsive rules must pass validation')
-
-const visualTransforms = runChecker(validTheme()
-  .replace(
-    '.desktop-canvas { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); }',
-    '.desktop-canvas { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); transform: scale(.995) translateY(4px); }',
-  )
-  .replace(
-    'transition: opacity 400ms cubic-bezier(0.16, 1, 0.3, 1);',
-    'transition: opacity 400ms cubic-bezier(0.16, 1, 0.3, 1); transform: scale(.995) translateY(4px);',
-  ))
-assert.equal(visualTransforms.status, 0, 'non-interactive splash and OS scale/translate effects must remain valid')
 
 const commented = runChecker(`/* ${validTheme()} */`)
 assert.notEqual(commented.status, 0, 'commented-out declarations and selectors must fail validation')
@@ -101,39 +114,32 @@ assert.match(missingToken.stderr, /must declare --factory-focus/)
 
 const nonFixedTopbar = runChecker(validTheme().replace('.system-topbar { position: fixed;', '.system-topbar { position: sticky;'))
 assert.notEqual(nonFixedTopbar.status, 0, 'the OS topbar must remain fixed')
-assert.match(nonFixedTopbar.stderr, /topbar must use fixed positioning/)
+assert.match(nonFixedTopbar.stderr, /topbar must use fixed positioning and a 56px height/)
 
 const nonFourteenColumnCanvas = runChecker(validTheme().replace(
   'repeat(14, minmax(0, 1fr))',
   'repeat(12, minmax(0, 1fr))',
 ))
 assert.notEqual(nonFourteenColumnCanvas.status, 0, 'the desktop canvas must use exactly 14 columns')
-assert.match(nonFourteenColumnCanvas.stderr, /desktop canvas must use a 14-column grid/)
+assert.match(nonFourteenColumnCanvas.stderr, /desktop canvas must use the exact 14-column grid/)
 
-const missingPlacement = runChecker(validTheme().replace('.lab-launcher { grid-column: 8 / span 3; }', ''))
+const missingPlacement = runChecker(validTheme().replace('.desktop-canvas__lab { grid-column: 11 / 15; grid-row: 9 / 13; }', ''))
 assert.notEqual(missingPlacement.status, 0, 'every OS card needs an explicit placement selector')
-assert.match(missingPlacement.stderr, /active \.lab-launcher rule/)
+assert.match(missingPlacement.stderr, /active \.desktop-canvas__lab rule/)
 
 const misplacedMobile = runChecker(validTheme().replace(
-  '@media (max-width: 767px) { .desktop-canvas { grid-template-columns: 1fr; } }',
-  '.desktop-canvas { grid-template-columns: 1fr; }',
+  '@media (max-width: 767px) {\n  .desktop-canvas { width: calc(100vw - 32px); grid-template-columns: 1fr; }\n}',
+  '.desktop-canvas { width: calc(100vw - 32px); grid-template-columns: 1fr; }',
 ))
 assert.notEqual(misplacedMobile.status, 0, 'the mobile grid declaration must be inside the 767px media query')
 assert.match(misplacedMobile.stderr, /must set \.desktop-canvas to one column/)
 
 const missingStagger = runChecker(validTheme().replace(
-  '.factory-home.is-entering .contact-terminal { animation-delay: 280ms; }',
-  '.factory-home.is-entering .contact-terminal { opacity: 0; }',
+  '.factory-home.is-entering .desktop-canvas__contact { animation-delay: 410ms; }',
+  '.factory-home.is-entering .desktop-canvas__contact { opacity: 0; }',
 ))
 assert.notEqual(missingStagger.status, 0, 'OS cards need explicit stagger delays')
-assert.match(missingStagger.stderr, /entrance must stagger \.contact-terminal/)
-
-const unorderedStagger = runChecker(validTheme().replace(
-  '.factory-home.is-entering .contact-terminal { animation-delay: 280ms; }',
-  '.factory-home.is-entering .contact-terminal { animation-delay: 200ms; }',
-))
-assert.notEqual(unorderedStagger.status, 0, 'OS stagger delays must be unique and ordered')
-assert.match(unorderedStagger.stderr, /delays must be distinct and strictly increasing/)
+assert.match(missingStagger.stderr, /entrance must stagger \.desktop-canvas__contact at 410ms/)
 
 const missingReducedMotion = runChecker(validTheme().replace('transform: none !important;', 'transform: scale(.995);'))
 assert.notEqual(missingReducedMotion.status, 0, 'OS motion and transforms must be reset for reduced-motion users')
@@ -164,7 +170,7 @@ const missingSplashReduction = runChecker(validTheme().replace(
 assert.notEqual(missingSplashReduction.status, 0, 'reduced motion must cover the splash')
 assert.match(missingSplashReduction.stderr, /reduced-motion media must suppress splash motion/)
 
-const forbiddenDrag = runChecker(`${validTheme()}\n.desktop-canvas { cursor: grab; touch-action: none; }`)
+const forbiddenDrag = runChecker(validTheme().replace('/* Personal OS end */', '.desktop-canvas { cursor: grab; touch-action: none; }\n/* Personal OS end */'))
 assert.notEqual(forbiddenDrag.status, 0, 'static OS CSS must not advertise drag or zoom behavior')
 assert.match(forbiddenDrag.stderr, /must not enable drag or zoom behavior/)
 
