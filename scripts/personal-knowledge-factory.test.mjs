@@ -59,8 +59,21 @@ test('Personal OS visual contract is exact, scoped, static, and responsive', asy
     assert.match(rule, new RegExp(`grid-row:\\s*${row.replace('/', '\\/')}`))
   }
 
+  const osSelectors = [...os.matchAll(/(?:^|\})\s*([^@][^{]+)\{/g)]
+    .flatMap((match) => match[1].split(',').map((selector) => selector.trim()))
+  const homepageClasses = [
+    'system-topbar', 'desktop-canvas', 'profile-card', 'current-status-card',
+    'featured-project-card', 'project-folder', 'notes-launcher', 'lab-launcher',
+    'contact-terminal', 'canvas-controls',
+  ]
+  for (const selector of osSelectors.filter((candidate) =>
+    homepageClasses.some((name) => candidate.includes(`.${name}`)))) {
+    assert.match(selector, /^(?:\.factory-home|\.knowledge-factory-page)(?:$|[\s.:#\[])/)
+  }
+
+  assert.doesNotMatch(os, /box-shadow:\s*(?:[^;]*(?:#315EFB|#F2C94C|#EF7B45|#3FAE78)|[^;]*\b(?:[4-9]|\d{2,})px)/i)
+  assert.match(os, /@keyframes personal-os-reveal\s*\{[\s\S]*?from\s*\{\s*opacity:\s*0;\s*transform:\s*translateY\(8px\) scale\(\.995\);\s*\}[\s\S]*?to\s*\{\s*opacity:\s*1;\s*transform:\s*none;\s*\}/)
   assert.doesNotMatch(os, /linear-gradient|backdrop-filter|cursor\s*:\s*(?:grab|grabbing|zoom-in|zoom-out)|touch-action\s*:\s*none/i)
-  assert.doesNotMatch(os, /@keyframes[\s\S]*?transform\s*:[^;}]*rotate/i)
 })
 
 test('factory homepage exposes the static Personal OS component and copy contract', async () => {

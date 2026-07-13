@@ -74,10 +74,10 @@ test('theme styles balance the factory, knowledge, and QA surfaces', async () =>
   for (const selector of [
     '.system-topbar', '.desktop-canvas', '.profile-card', '.project-folder',
     '.notes-launcher', '.lab-launcher', '.contact-terminal', '.canvas-controls',
-  ]) assert.match(css, new RegExp(`${selector.replace('.', '\\.')}(?:\\s|,|\\{|:)`))
+  ]) assert.match(css, new RegExp(`\\.factory-home ${selector.replace('.', '\\.')}(?:\\s|,|\\{|:)`))
   assert.match(css, /\.factory-home a:focus-visible\s*\{[^}]*outline:\s*2px solid #315EFB/)
-  assert.match(css, /\.desktop-canvas\s*\{[^}]*grid-template-columns:\s*repeat\(14, minmax\(0, 1fr\)\)/)
-  assert.match(css, /@media \(max-width: 767px\)[\s\S]*?\.desktop-canvas\s*\{[^}]*grid-template-columns:\s*1fr/)
+  assert.match(css, /\.factory-home \.desktop-canvas\s*\{[^}]*grid-template-columns:\s*repeat\(14, minmax\(0, 1fr\)\)/)
+  assert.match(css, /@media \(max-width: 767px\)[\s\S]*?\.factory-home \.desktop-canvas\s*\{[^}]*grid-template-columns:\s*1fr/)
   assert.doesNotMatch(css, /\.garden-/)
   assert.doesNotMatch(css, /\.wiki-ask__conversation[\s\S]{0,400}min-height:\s*190px/)
 })
