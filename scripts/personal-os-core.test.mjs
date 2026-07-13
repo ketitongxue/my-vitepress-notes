@@ -15,7 +15,8 @@ import {
   closeWindow, createWindowState, moveWindow, openWindow, resizeWindow, resizeWindowByKey,
 } from '../docs/.vitepress/theme/components/windowManagerState.mjs'
 import {
-  clampScale, connectionEndpoints, fitWorldBounds, screenToWorld, touchGesture, zoomAtPoint,
+  canvasWheelTransform, clampScale, connectionEndpoints, fitWorldBounds, resolveTouchOwner,
+  screenToWorld, touchGesture, zoomAtPoint,
 } from '../docs/.vitepress/theme/components/canvasGeometry.mjs'
 
 const readComponent = (name) => readFileSync(
@@ -399,6 +400,46 @@ test('canvas geometry is deterministic, immutable, and pointer centered', () => 
   assert.deepEqual(toCard, { x: 250, y: 100, width: 120, height: 60 })
 })
 
+test('canvas touch ownership isolates mixed interactive and blank sequences', () => {
+  const cardTarget = Object.freeze({ kind: 'interactive', id: 'card' })
+  const blankTarget = Object.freeze({ kind: 'blank', id: 'world' })
+  const isInteractive = (target) => target.kind === 'interactive'
+  const touch = (target) => Object.freeze({ target })
+
+  let cardFirst = resolveTouchOwner(null, [touch(cardTarget)], isInteractive)
+  assert.equal(cardFirst, 'interactive')
+  cardFirst = resolveTouchOwner(cardFirst, [touch(cardTarget), touch(blankTarget)], isInteractive)
+  assert.equal(cardFirst, 'interactive')
+  cardFirst = resolveTouchOwner(cardFirst, [touch(blankTarget)], isInteractive)
+  assert.equal(cardFirst, 'interactive')
+  assert.equal(resolveTouchOwner(cardFirst, [], isInteractive), null)
+
+  let blankFirst = resolveTouchOwner(null, [touch(blankTarget)], isInteractive)
+  assert.equal(blankFirst, 'canvas')
+  blankFirst = resolveTouchOwner(blankFirst, [touch(blankTarget), touch(cardTarget)], isInteractive)
+  assert.equal(blankFirst, 'interactive')
+  blankFirst = resolveTouchOwner(blankFirst, [touch(blankTarget)], isInteractive)
+  assert.equal(blankFirst, 'interactive')
+  assert.equal(resolveTouchOwner(blankFirst, [], isInteractive), null)
+})
+
+test('canvas wheel zoom remains pointer centered over an interactive target', () => {
+  const transform = Object.freeze({ scale: 1, panX: 20, panY: -10 })
+  const point = Object.freeze({ x: 360, y: 240 })
+  const cardWheelEvent = Object.freeze({
+    deltaY: -200,
+    target: Object.freeze({ kind: 'canvas-card' }),
+  })
+
+  const before = screenToWorld(point, transform)
+  const next = canvasWheelTransform(transform, cardWheelEvent, point)
+  const after = screenToWorld(point, next)
+  assert.ok(next.scale > transform.scale)
+  assert.ok(Math.abs(after.x - before.x) <= 1e-9)
+  assert.ok(Math.abs(after.y - before.y) <= 1e-9)
+  assert.deepEqual(cardWheelEvent, { deltaY: -200, target: { kind: 'canvas-card' } })
+})
+
 test('infinite canvas components preserve interaction and source contracts', () => {
   const canvas = readComponent('InfiniteCanvas.vue')
   const card = readComponent('CanvasCard.vue')
@@ -411,8 +452,10 @@ test('infinite canvas components preserve interaction and source contracts', () 
   assert.match(canvas, /canvasCards\.map\(\(card\) => \(\{ \.\.\.card \}\)\)/)
   assert.match(canvas, /translate\(\$\{transform\.value\.panX\}px, \$\{transform\.value\.panY\}px\) scale\(\$\{transform\.value\.scale\}\)/)
   assert.match(canvas, /transform-origin: 0 0/)
-  assert.match(canvas, /Math\.exp\(-event\.deltaY \* 0\.001\)/)
   assert.match(canvas, /const currentTransform = pendingTransform \?\? transform\.value/)
+  assert.match(canvas, /canvasWheelTransform\(currentTransform, event, point\)/)
+  assert.match(canvas, /resolveTouchOwner\(touchOwner, event\.touches, isInteractiveTarget\)/)
+  assert.doesNotMatch(canvas, /function handleWheel\(event\) \{\s*if \(isInteractiveTarget/)
   assert.match(canvas, /requestAnimationFrame/)
   assert.match(canvas, /cancelAnimationFrame/)
   assert.match(canvas, /addEventListener\('wheel', handleWheel, \{ passive: false \}\)/)

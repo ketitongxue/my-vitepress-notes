@@ -2,7 +2,9 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import CanvasCard from './CanvasCard.vue'
 import CanvasConnections from './CanvasConnections.vue'
-import { clampScale, screenToWorld, touchGesture, zoomAtPoint } from './canvasGeometry.mjs'
+import {
+  canvasWheelTransform, clampScale, resolveTouchOwner, screenToWorld, touchGesture,
+} from './canvasGeometry.mjs'
 import { canvasCards, canvasConnections } from './personalOsContent.mjs'
 
 const emit = defineEmits(['layout-change'])
@@ -14,6 +16,7 @@ const stackingOrder = ref(cards.value.map((card) => card.id))
 
 let pointerGesture = null
 let touchBaseline = null
+let touchOwner = null
 let pendingTransform = null
 let frameId = null
 
@@ -103,12 +106,10 @@ function cancelPointerPan(event) {
 }
 
 function handleWheel(event) {
-  if (isInteractiveTarget(event.target)) return
   event.preventDefault()
   const point = viewportPoint(event.clientX, event.clientY)
   const currentTransform = pendingTransform ?? transform.value
-  const nextScale = currentTransform.scale * Math.exp(-event.deltaY * 0.001)
-  queueTransform(zoomAtPoint(currentTransform, nextScale, point))
+  queueTransform(canvasWheelTransform(currentTransform, event, point))
 }
 
 function resetTouchBaseline(touches) {
@@ -135,14 +136,34 @@ function resetTouchBaseline(touches) {
 }
 
 function handleTouchStart(event) {
-  if (!touchBaseline && isInteractiveTarget(event.target)) return
+  const nextOwner = resolveTouchOwner(touchOwner, event.touches, isInteractiveTarget)
+  if (nextOwner === 'interactive') {
+    if (touchOwner === 'canvas') flushTransform()
+    touchOwner = nextOwner
+    touchBaseline = null
+    return
+  }
+
+  touchOwner = nextOwner
   event.preventDefault()
   flushTransform()
   resetTouchBaseline(event.touches)
 }
 
 function handleTouchMove(event) {
-  if (!touchBaseline) return
+  const nextOwner = resolveTouchOwner(touchOwner, event.touches, isInteractiveTarget)
+  if (nextOwner !== 'canvas') {
+    if (touchOwner === 'canvas') flushTransform()
+    touchOwner = nextOwner
+    touchBaseline = null
+    return
+  }
+
+  touchOwner = nextOwner
+  if (!touchBaseline) {
+    resetTouchBaseline(event.touches)
+    return
+  }
   event.preventDefault()
   if (event.touches.length !== touchBaseline.count) {
     flushTransform()
@@ -173,17 +194,23 @@ function handleTouchMove(event) {
 }
 
 function handleTouchEnd(event) {
-  if (!touchBaseline) return
-  event.preventDefault()
-  flushTransform()
-  resetTouchBaseline(event.touches)
+  if (touchOwner === 'canvas') {
+    event.preventDefault()
+    flushTransform()
+  }
+  touchOwner = resolveTouchOwner(touchOwner, event.touches, isInteractiveTarget)
+  touchBaseline = null
+  if (touchOwner === 'canvas') resetTouchBaseline(event.touches)
 }
 
 function handleTouchCancel(event) {
-  if (!touchBaseline) return
-  event.preventDefault()
-  flushTransform()
+  if (touchOwner === 'canvas') {
+    event.preventDefault()
+    flushTransform()
+  }
+  touchOwner = resolveTouchOwner(touchOwner, event.touches, isInteractiveTarget)
   touchBaseline = null
+  if (touchOwner === 'canvas') resetTouchBaseline(event.touches)
 }
 
 function selectCard(id) {
@@ -221,6 +248,7 @@ onBeforeUnmount(() => {
   pendingTransform = null
   pointerGesture = null
   touchBaseline = null
+  touchOwner = null
 })
 </script>
 
