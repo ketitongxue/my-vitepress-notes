@@ -6,6 +6,8 @@ import {
   getReducedMotionPreference,
   getSessionStorage,
   progressCells,
+  shouldActivateMacbookFromEnter,
+  shouldSkipMacbookBoot,
   transitionMacbookBoot,
   writeAccessed,
 } from './macbookBootState.mjs'
@@ -18,7 +20,6 @@ const state = ref('typing')
 const visibleLineCount = ref(0)
 const progress = ref(0)
 const timers = new Set()
-const interactiveSelector = 'a, button, input, select, textarea, [contenteditable="true"], [role="button"]'
 let storage
 
 const visibleLines = computed(() => bootLines.slice(0, visibleLineCount.value))
@@ -42,11 +43,6 @@ function clearPreflightFallback() {
   const timer = window['__personalSiteAccessFallback']
   if (timer !== undefined) window.clearTimeout(timer)
   delete window['__personalSiteAccessFallback']
-}
-
-function wasAccessed(candidate) {
-  try { return candidate?.getItem('personal-site-accessed') === 'true' }
-  catch { return true }
 }
 
 async function enterDesktop() {
@@ -91,8 +87,7 @@ function activate() {
 }
 
 function handleKeydown(event) {
-  if (event.key !== 'Enter' || event.repeat || event.isComposing || state.value !== 'ready') return
-  if (typeof event.target?.closest === 'function' && event.target?.closest(interactiveSelector)) return
+  if (!shouldActivateMacbookFromEnter(event, state.value)) return
   event.preventDefault()
   activate()
 }
@@ -111,11 +106,11 @@ function revealNextLine() {
 onMounted(() => {
   storage = getSessionStorage(window)
   const reduceMotion = getReducedMotionPreference(window)
-  const returning = wasAccessed(storage)
+  const skipBoot = shouldSkipMacbookBoot(storage, reduceMotion)
   clearPreflightFallback()
   window.addEventListener('keydown', handleKeydown)
 
-  if (returning || reduceMotion) {
+  if (skipBoot) {
     state.value = transitionMacbookBoot(state.value, 'SKIP')
     document.documentElement.dataset.personalSiteAccess = 'returning'
     schedule(() => void enterDesktop(), 80)

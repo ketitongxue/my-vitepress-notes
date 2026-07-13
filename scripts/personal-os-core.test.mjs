@@ -2,7 +2,10 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { hashForOsView, normalizeOsHash, OS_VIEWS } from '../docs/.vitepress/theme/components/personalOsRouter.mjs'
 import { bootLines, canvasCards, canvasConnections, desktopEntries, knowledgeSections } from '../docs/.vitepress/theme/components/personalOsContent.mjs'
-import { computeCoverTransform, progressCells, transitionMacbookBoot } from '../docs/.vitepress/theme/components/macbookBootState.mjs'
+import {
+  computeCoverTransform, getSessionStorage, MACBOOK_INTERACTIVE_SELECTOR, progressCells,
+  shouldActivateMacbookFromEnter, shouldSkipMacbookBoot, transitionMacbookBoot, writeAccessed,
+} from '../docs/.vitepress/theme/components/macbookBootState.mjs'
 
 test('OS hashes normalize without browser globals', () => {
   assert.deepEqual(OS_VIEWS, ['home', 'knowledge', 'system'])
@@ -43,4 +46,52 @@ test('MacBook boot accepts one launch and computes viewport cover', () => {
     { left: 300, top: 200, width: 600, height: 360 },
     { width: 1440, height: 900 },
   ), { scale: 2.5, translateX: 120, translateY: 70 })
+})
+
+test('MacBook boot fails open when session storage cannot be read and written', () => {
+  const values = new Map()
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+    removeItem: (key) => values.delete(key),
+  }
+
+  assert.equal(shouldSkipMacbookBoot(storage, false), false)
+  assert.equal(values.has('personal-site-access-probe'), false)
+  values.set('personal-site-accessed', 'true')
+  assert.equal(shouldSkipMacbookBoot(storage, false), true)
+  assert.equal(shouldSkipMacbookBoot(storage, true), true)
+  assert.equal(shouldSkipMacbookBoot(undefined, false), true)
+  assert.equal(shouldSkipMacbookBoot({ getItem() { throw new Error('denied') } }, false), true)
+  assert.equal(shouldSkipMacbookBoot({
+    getItem: () => null,
+    setItem() { throw new Error('denied') },
+    removeItem() {},
+  }, false), true)
+  assert.equal(shouldSkipMacbookBoot({
+    getItem: () => null,
+    setItem() {},
+    removeItem() { throw new Error('denied') },
+  }, false), true)
+
+  const deniedWindow = Object.defineProperty({}, 'sessionStorage', {
+    get() { throw new Error('denied') },
+  })
+  assert.equal(getSessionStorage(deniedWindow), undefined)
+  assert.equal(writeAccessed({ setItem() { throw new Error('denied') } }), false)
+})
+
+test('MacBook Enter activation excludes every interactive target', () => {
+  for (const selector of [
+    'a', 'button', 'input', 'textarea', 'select', 'summary',
+    '[contenteditable]:not([contenteditable="false"])', '[tabindex]',
+    'audio[controls]', 'video[controls]', '[role="button"]', '[role="link"]',
+  ]) assert.ok(MACBOOK_INTERACTIVE_SELECTOR.split(',').includes(selector), selector)
+
+  const plainTarget = { closest: () => null }
+  assert.equal(shouldActivateMacbookFromEnter({ key: 'Enter', target: plainTarget }, 'ready'), true)
+  assert.equal(shouldActivateMacbookFromEnter({ key: 'Enter', target: { closest: () => ({}) } }, 'ready'), false)
+  assert.equal(shouldActivateMacbookFromEnter({ key: 'Enter', repeat: true, target: plainTarget }, 'ready'), false)
+  assert.equal(shouldActivateMacbookFromEnter({ key: 'Enter', isComposing: true, target: plainTarget }, 'ready'), false)
+  assert.equal(shouldActivateMacbookFromEnter({ key: 'Enter', target: plainTarget }, 'typing'), false)
 })

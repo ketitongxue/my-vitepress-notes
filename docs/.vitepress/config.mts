@@ -10,9 +10,9 @@ const personalSiteAccessPreflight = String.raw`(function () {
     var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (stored === 'true' || reduced) root.dataset.personalSiteAccess = 'returning'
     else root.dataset.personalSiteAccess = 'pending'
-    if (root.dataset.personalSiteAccess === 'pending') {
+    if (root.dataset.personalSiteAccess === 'pending' || root.dataset.personalSiteAccess === 'returning') {
       window['__personalSiteAccessFallback'] = window.setTimeout(function () {
-        if (root.dataset.personalSiteAccess === 'pending') root.dataset.personalSiteAccess = 'fallback'
+        if (root.dataset.personalSiteAccess === 'pending' || root.dataset.personalSiteAccess === 'returning') root.dataset.personalSiteAccess = 'fallback'
         delete window['__personalSiteAccessFallback']
       }, 2500)
     }

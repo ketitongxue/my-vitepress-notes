@@ -8,6 +8,7 @@ import { hashForOsView, normalizeOsHash } from './personalOsRouter.mjs'
 
 const activeView = ref('home')
 const homeEntered = ref(false)
+const hydrated = ref(false)
 const systemRequested = ref(false)
 const systemError = ref(false)
 const InfiniteCanvas = shallowRef(null)
@@ -31,6 +32,14 @@ async function applyHash({ scroll = true } = {}) {
   const nextView = normalizeOsHash(window.location.hash)
   activeView.value = nextView
   if (nextView === 'system') void requestSystem()
+  if (nextView === 'home') {
+    if (!homeEntered.value) document.documentElement.dataset.personalSiteAccess = 'pending'
+    if (!scroll || !homeEntered.value) return
+    await nextTick()
+    window.scrollTo(0, 0)
+    return
+  }
+  document.documentElement.dataset.personalSiteAccess = 'entered'
   if (!scroll || nextView === 'system') return
   await nextTick()
   document.querySelector(`[data-os-view="${nextView}"]`)?.scrollIntoView({ block: 'start' })
@@ -49,12 +58,21 @@ function selectView(view) {
   window.location.hash = hashForOsView(view)
 }
 
+async function handleHomeEntered() {
+  homeEntered.value = true
+  await nextTick()
+  if (activeView.value === 'home') window.scrollTo(0, 0)
+}
+
 function retrySystem() {
   InfiniteCanvas.value = null
   void requestSystem()
 }
 
 onMounted(() => {
+  const accessState = document.documentElement.dataset.personalSiteAccess
+  homeEntered.value = accessState === 'returning' || accessState === 'fallback'
+  hydrated.value = true
   void applyHash({ scroll: false })
   window.addEventListener('hashchange', handleHashChange)
 })
@@ -66,8 +84,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <MacbookBoot v-if="activeView === 'home'" @entered="homeEntered = true" />
-  <section v-show="activeView === 'home' && homeEntered" class="factory-home" data-os-view="home">
+  <MacbookBoot v-if="activeView === 'home'" @entered="handleHomeEntered" />
+  <section v-show="!hydrated || (activeView === 'home' && homeEntered)" class="factory-home" data-os-view="home">
     <SystemTopBar />
     <DesktopCanvas />
   </section>

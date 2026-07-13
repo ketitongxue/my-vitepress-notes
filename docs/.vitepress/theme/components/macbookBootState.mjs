@@ -1,3 +1,5 @@
+export const MACBOOK_INTERACTIVE_SELECTOR = 'a,button,input,textarea,select,summary,[contenteditable]:not([contenteditable="false"]),[tabindex],audio[controls],video[controls],[role="button"],[role="link"]'
+
 export function transitionMacbookBoot(state, event) {
   if (event === 'SKIP') return 'desktop'
   if (state === 'typing' && event === 'TYPING_COMPLETE') return 'ready'
@@ -28,6 +30,30 @@ export function getSessionStorage(browser) {
 export function getReducedMotionPreference(browser) {
   try { return typeof browser?.matchMedia !== 'function' || browser.matchMedia('(prefers-reduced-motion: reduce)').matches }
   catch { return true }
+}
+
+export function shouldSkipMacbookBoot(storage, reducedMotion = false) {
+  if (reducedMotion || !storage) return true
+  const probeKey = 'personal-site-access-probe'
+  try {
+    const accessed = storage.getItem('personal-site-accessed') === 'true'
+    storage.setItem(probeKey, 'true')
+    storage.removeItem(probeKey)
+    return accessed
+  } catch {
+    try { storage.removeItem?.(probeKey) } catch {}
+    return true
+  }
+}
+
+export function isMacbookInteractiveTarget(target) {
+  return Boolean(target?.closest?.(MACBOOK_INTERACTIVE_SELECTOR))
+}
+
+export function shouldActivateMacbookFromEnter(event, state) {
+  return state === 'ready' && event?.key === 'Enter' && !event.repeat && !event.isComposing
+    && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey
+    && !isMacbookInteractiveTarget(event.target)
 }
 
 export function writeAccessed(storage) {

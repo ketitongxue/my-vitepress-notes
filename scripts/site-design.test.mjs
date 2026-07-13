@@ -95,7 +95,7 @@ test('theme styles balance the factory, knowledge, and QA surfaces', async () =>
 test('MacBook splash and hash shell preserve homepage discovery', async () => {
   const home = await read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue')
   assert.doesNotMatch(home, /FactoryBoot/)
-  assert.match(home, /<MacbookBoot v-if="activeView === 'home'" @entered="homeEntered = true"\s*\/>/)
+  assert.match(home, /<MacbookBoot v-if="activeView === 'home'" @entered="handleHomeEntered"\s*\/>/)
   assert.deepEqual([...home.matchAll(/data-os-view="(home|knowledge|system)"/g)].map((match) => match[1]), [
     'home', 'knowledge', 'system',
   ])

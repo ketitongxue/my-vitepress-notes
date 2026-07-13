@@ -787,6 +787,14 @@ html[data-personal-site-access="leaving"] {
   overflow: hidden;
 }
 
+.macbook-boot {
+  display: none !important;
+}
+
+html[data-personal-site-access="pending"] .macbook-boot {
+  display: grid !important;
+}
+
 html[data-personal-site-access="pending"] .factory-boot,
 html[data-personal-site-access="leaving"] .factory-boot {
   display: flex;

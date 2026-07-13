@@ -135,11 +135,15 @@ test('factory homepage exposes the hash-selected Personal OS shell and copy cont
   assert.match(home, /window\.addEventListener\('hashchange'/)
   assert.match(home, /normalizeOsHash\(window\.location\.hash\)/)
   assert.match(home, /window\.location\.hash = hashForOsView\(view\)/)
+  assert.match(home, /const hydrated = ref\(false\)/)
+  assert.match(home, /v-show="!hydrated \|\| \(activeView === 'home' && homeEntered\)"/)
+  assert.match(home, /@entered="handleHomeEntered"/)
+  assert.match(home, /async function handleHomeEntered[\s\S]*homeEntered\.value = true[\s\S]*await nextTick\(\)[\s\S]*window\.scrollTo\(0, 0\)/)
   assert.equal([...home.matchAll(/data-os-view="(home|knowledge|system)"/g)].length, 3)
   for (const view of ['home', 'knowledge', 'system']) {
     assert.match(home, new RegExp(`data-os-view="${view}"`))
   }
-  assert.match(home, /<MacbookBoot v-if="activeView === 'home'" @entered="homeEntered = true"\s*\/>/)
+  assert.match(home, /<MacbookBoot v-if="activeView === 'home'" @entered="handleHomeEntered"\s*\/>/)
   assert.match(home, /<SystemTopBar\s*\/>/)
   assert.match(home, /<DesktopCanvas\s*\/>/)
   assert.match(home, /<BottomOsNavigation :active-view="activeView" @select="selectView"\s*\/>/)
@@ -166,8 +170,9 @@ test('MacBook boot and bottom navigation expose the timed accessible shell contr
   assert.match(boot, /getSessionStorage\(window\)/)
   assert.match(boot, /getReducedMotionPreference\(window\)/)
   assert.match(boot, /writeAccessed\(storage\)/)
-  assert.match(boot, /event\.key !== 'Enter'/)
-  assert.match(boot, /event\.target\?\.closest\(interactiveSelector\)/)
+  assert.match(boot, /shouldActivateMacbookFromEnter\(event, state\.value\)/)
+  assert.match(boot, /shouldSkipMacbookBoot\(storage, reduceMotion\)/)
+  assert.match(boot, /if \(skipBoot\)[\s\S]*schedule\(\(\) => void enterDesktop\(\), 80\)/)
   assert.match(boot, /document\.getElementById\('factory-title'\)\?\.focus/)
   assert.match(boot, /onBeforeUnmount/)
 
@@ -292,7 +297,8 @@ test('VitePress head preflight is homepage-only, synchronous, exact, and bounded
     "window.setTimeout", '2500', "window['__personalSiteAccessFallback']",
   ]) assert.match(config, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
   assert.match(config, /head:\s*\[\s*\['script',\s*\{\},\s*personalSiteAccessPreflight\]\s*\]/)
-  assert.match(config, /window\.setTimeout\(function \(\) \{[\s\S]*delete window\['__personalSiteAccessFallback'\][\s\S]*\}, 2500\)/)
+  assert.match(config, /if \(root\.dataset\.personalSiteAccess === 'pending' \|\| root\.dataset\.personalSiteAccess === 'returning'\)/)
+  assert.match(config, /window\.setTimeout\(function \(\) \{[\s\S]*root\.dataset\.personalSiteAccess = 'fallback'[\s\S]*delete window\['__personalSiteAccessFallback'\][\s\S]*\}, 2500\)/)
   assert.doesNotMatch(config, /type:\s*['"]module['"]/)
 })
 
@@ -331,7 +337,7 @@ test('head watchdog fails open and releases its pending timer id', async () => {
   const claimed = runPreflight()
   claimed.root.dataset.personalSiteAccess = 'returning'
   claimed.watchdog()
-  assert.equal(claimed.root.dataset.personalSiteAccess, 'returning')
+  assert.equal(claimed.root.dataset.personalSiteAccess, 'fallback')
   assert.equal(Object.hasOwn(claimed.browser, '__personalSiteAccessFallback'), false)
 })
 
@@ -345,7 +351,7 @@ test('MacBook boot is one exact accessible fullscreen replacement', async () => 
   assert.match(boot, /aria-label="个人系统启动页"/)
   assert.match(boot, />\s*启动 JuZX OS\s*<\/button>/)
   assert.doesNotMatch(`${boot}\n${state}`, /启动知识系统|跳过启动|Loading knowledge archives|Connecting Ask Console|ai-era:knowledge-factory:booted|localStorage/)
-  assert.match(home, /<MacbookBoot v-if="activeView === 'home'" @entered="homeEntered = true"\s*\/>/)
+  assert.match(home, /<MacbookBoot v-if="activeView === 'home'" @entered="handleHomeEntered"\s*\/>/)
   assert.match(boot, /v-if="visible"/)
   assert.match(boot, /defineEmits\(\['entered'\]\)/)
   assert.match(boot, /schedule\(\(\) => void enterDesktop\(\), 80\)/)
@@ -362,6 +368,8 @@ test('splash visual, motion, mobile, and fail-open rules are exact', async () =>
     '800ms', 'touch-action: manipulation', 'min-width: 44px', 'min-height: 44px',
   ]) assert.match(css, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
   assert.match(css, /html\[data-personal-site-access="pending"\] \.factory-boot/)
+  assert.match(css, /\.macbook-boot\s*\{\s*display:\s*none !important;/)
+  assert.match(css, /html\[data-personal-site-access="pending"\] \.macbook-boot\s*\{\s*display:\s*grid !important;/)
   assert.match(css, /html:not\(\[data-personal-site-access="pending"\]\):not\(\[data-personal-site-access="leaving"\]\) \.factory-home/)
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.factory-boot__cursor[\s\S]*animation:\s*none !important;/)
   assert.doesNotMatch(css, /\.dark[\s\S]{0,240}\.factory-boot/)
