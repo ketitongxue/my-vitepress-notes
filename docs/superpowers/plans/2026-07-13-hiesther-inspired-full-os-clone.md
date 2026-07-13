@@ -675,7 +675,7 @@ Expected: all Node suites, content validation, VitePress rendering, security sca
 
 - [ ] **Step 6: Perform browser acceptance at matching viewports**
 
-Run `npm run docs:dev -- --host 127.0.0.1`, then inspect `http://127.0.0.1:5173/` with browser tooling at `1440 x 900` and `390 x 844`. In a fresh session verify Enter/click launch, one launch only, blue no-star/no-illustration desktop, all ten keyboard/touch entries, drag/resize/close/raise/reset, all three hashes, four knowledge-product links, wheel/pinch/fit/layers/minimap/undo/save/reset, invalid storage fallback, lazy-load retry, reduced motion, no horizontal overflow, and a clean console. Capture home/knowledge/system screenshots at both sizes; compare structure rather than protected reference content/assets. Resolve every P0/P1/P2 mismatch, rerun the focused test for each fix, and stop the server.
+Run `npm run docs:dev -- --host localhost`, then inspect `http://localhost:5173/` with browser tooling at `1440 x 900` and `390 x 844`. In a fresh session verify Enter/click launch, one launch only, blue no-star/no-illustration desktop, all ten keyboard/touch entries, drag/resize/close/raise/reset, all three hashes, four knowledge-product links, wheel/pinch/fit/layers/minimap/undo/save/reset, invalid storage fallback, lazy-load retry, reduced motion, no horizontal overflow, and a clean console. Capture home/knowledge/system screenshots at both sizes; compare structure rather than protected reference content/assets. Resolve every P0/P1/P2 mismatch, rerun the focused test for each fix, and stop the server.
 
 - [ ] **Step 7: Commit the integrated feature**
 
