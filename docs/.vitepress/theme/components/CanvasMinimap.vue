@@ -80,7 +80,7 @@ function navigate(event) {
 <style scoped>
 .canvas-minimap {
   position: absolute;
-  right: 18px;
+  left: 18px;
   bottom: 82px;
   z-index: 30;
   width: 180px;
@@ -127,7 +127,7 @@ function navigate(event) {
 
 @media (max-width: 767px) {
   .canvas-minimap {
-    right: 10px;
+    left: 10px;
     bottom: 76px;
     width: 132px;
   }

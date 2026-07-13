@@ -22,7 +22,8 @@ import {
   CANVAS_LAYOUT_KEY, loadCanvasLayout, parseCanvasLayout, saveCanvasLayout, serializeCanvasLayout,
 } from '../docs/.vitepress/theme/components/canvasPersistence.mjs'
 import {
-  createHistory, pushHistory, resetHistory, undoHistory,
+  captureCardGeometry, createHistory, pushHistory, rebaseHistoryTransform, resetHistory,
+  restoreCardGeometry, undoHistory,
 } from '../docs/.vitepress/theme/components/canvasHistory.mjs'
 
 const readComponent = (name) => readFileSync(
@@ -579,6 +580,43 @@ test('canvas history is immutable, bounded, undoable, and resettable', () => {
   assert.deepEqual(undoHistory(created), created)
 })
 
+test('non-history transforms survive later undo without restoring a stale viewport', () => {
+  const defaults = trustedCanvasDefaults()
+  const moved = structuredClone(defaults)
+  moved.cards[0].x += 80
+  const afterMove = pushHistory(createHistory(defaults), moved)
+  const currentTransform = { scale: 1.8, panX: -420, panY: 160 }
+  const rebased = rebaseHistoryTransform(afterMove, currentTransform)
+  const undone = undoHistory(rebased)
+
+  assert.equal(undone.present.cards[0].x, defaults.cards[0].x)
+  assert.deepEqual(undone.present.transform, currentTransform)
+  assert.deepEqual(undone.future[0].transform, currentTransform)
+  assert.deepEqual(afterMove.present.transform, defaults.transform)
+})
+
+test('cancelled card geometry restores the atomic gesture-start geometry', () => {
+  const defaults = trustedCanvasDefaults()
+  const start = captureCardGeometry(defaults, 'identity')
+  const intermediate = structuredClone(defaults)
+  intermediate.cards[0] = {
+    ...intermediate.cards[0], x: 500, y: 600, width: 700, height: 400,
+  }
+  intermediate.cards[1].visible = false
+  intermediate.transform = { scale: 2, panX: -100, panY: 40 }
+  const restored = restoreCardGeometry(intermediate, start)
+
+  assert.deepEqual(
+    (({ x, y, width, height }) => ({ x, y, width, height }))(restored.cards[0]),
+    (({ x, y, width, height }) => ({ x, y, width, height }))(defaults.cards[0]),
+  )
+  assert.equal(restored.cards[1].visible, false)
+  assert.deepEqual(restored.transform, intermediate.transform)
+  assert.deepEqual(intermediate.cards[0], {
+    ...defaults.cards[0], x: 500, y: 600, width: 700, height: 400,
+  })
+})
+
 test('infinite canvas components preserve interaction and source contracts', () => {
   const canvas = readComponent('InfiniteCanvas.vue')
   const card = readComponent('CanvasCard.vue')
@@ -671,6 +709,10 @@ test('canvas chrome wires layers, minimap, controls, persistence, and bounded hi
   assert.match(canvas, /function completeCardGesture[\s\S]*?pushHistory/)
   assert.match(canvas, /function changeVisibility[\s\S]*?pushHistory/)
   assert.match(canvas, /function restoreDefaults[\s\S]*?pushHistory/)
+  assert.match(canvas, /@pointercancel\.capture="cancelCardGesture"/)
+  assert.match(canvas, /@lostpointercapture\.capture="cancelCardGesture"/)
+  assert.match(canvas, /@pointerup\.capture="markCardGestureCompleting"/)
+  assert.match(canvas, /function cancelPointerPan[\s\S]*?applyTransform\(pointerGesture\.transform\)/)
   for (const handler of ['updateCardGeometry', 'applyTransform', 'selectCard', 'focusCard', 'navigateToPoint']) {
     const match = canvas.match(new RegExp(`function ${handler}[^]*?(?=\\nfunction |\\nonMounted)`))
     assert.ok(match, handler)
@@ -698,6 +740,9 @@ test('canvas chrome wires layers, minimap, controls, persistence, and bounded hi
   assert.match(minimap, /emit\('navigate', \{ x, y \}\)/)
   assert.match(minimap, /<svg\b/)
   assert.match(minimap, /<rect\b/)
+  assert.match(minimap, /left: 18px/)
+  assert.match(minimap, /left: 10px/)
+  assert.doesNotMatch(minimap, /right: (?:18|10)px/)
 
   assert.match(controls, /defineEmits\(\['zoom-in', 'zoom-out', 'fit', 'undo', 'save', 'reset'\]\)/)
   for (const label of ['缩小画布', '放大画布', '适应全部内容', '撤销上一步', '保存画布布局', '恢复默认布局']) {

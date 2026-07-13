@@ -5,6 +5,12 @@ function cloneLayout(layout) {
   }
 }
 
+function withTransform(layout, transform) {
+  const cloned = cloneLayout(layout)
+  cloned.transform = { ...transform }
+  return cloned
+}
+
 function layoutsEqual(left, right) {
   if (!left || !right || left.cards.length !== right.cards.length) return false
   const transformEqual = left.transform.scale === right.transform.scale
@@ -61,4 +67,39 @@ export function undoHistory(history) {
 
 export function resetHistory(_history, defaults) {
   return createHistory(defaults)
+}
+
+export function rebaseHistoryTransform(history, transform) {
+  return {
+    past: history.past.map((layout) => withTransform(layout, transform)),
+    present: withTransform(history.present, transform),
+    future: history.future.map((layout) => withTransform(layout, transform)),
+  }
+}
+
+export function captureCardGeometry(layout, id) {
+  const card = layout.cards.find((candidate) => candidate.id === id)
+  if (!card) return null
+  return {
+    id: card.id,
+    x: card.x,
+    y: card.y,
+    width: card.width,
+    height: card.height,
+  }
+}
+
+export function restoreCardGeometry(layout, snapshot) {
+  const cloned = cloneLayout(layout)
+  if (!snapshot) return cloned
+  cloned.cards = cloned.cards.map((card) => card.id === snapshot.id
+    ? {
+        ...card,
+        x: snapshot.x,
+        y: snapshot.y,
+        width: snapshot.width,
+        height: snapshot.height,
+      }
+    : card)
+  return cloned
 }

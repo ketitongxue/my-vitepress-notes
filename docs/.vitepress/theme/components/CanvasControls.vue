@@ -71,8 +71,10 @@ function confirmReset() {
 }
 
 .canvas-controls__confirm {
+  width: max-content;
   justify-content: flex-end;
   margin-bottom: 6px;
+  margin-left: auto;
 }
 
 .canvas-controls button {
@@ -115,6 +117,10 @@ function confirmReset() {
   .canvas-controls button {
     min-width: 44px;
     min-height: 44px;
+  }
+
+  .canvas-controls__confirm span {
+    display: none;
   }
 }
 </style>

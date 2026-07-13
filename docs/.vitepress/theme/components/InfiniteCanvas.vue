@@ -9,7 +9,10 @@ import {
   canvasWheelTransform, clampScale, fitWorldBounds, resolveTouchOwner, screenToWorld,
   touchGesture, zoomAtPoint,
 } from './canvasGeometry.mjs'
-import { createHistory, pushHistory, undoHistory } from './canvasHistory.mjs'
+import {
+  captureCardGeometry, createHistory, pushHistory, rebaseHistoryTransform,
+  restoreCardGeometry, undoHistory,
+} from './canvasHistory.mjs'
 import { loadCanvasLayout, saveCanvasLayout } from './canvasPersistence.mjs'
 import { canvasCards, canvasConnections } from './personalOsContent.mjs'
 
@@ -46,6 +49,7 @@ let frameId = null
 let saveTimer = null
 let storage
 let resizeObserver
+let activeCardGesture = null
 
 const worldStyle = computed(() => ({
   transform: `translate(${transform.value.panX}px, ${transform.value.panY}px) scale(${transform.value.scale})`,
@@ -64,7 +68,7 @@ function applyLayout(layout) {
 }
 
 function syncHistoryPresent() {
-  history.value = { ...history.value, present: currentLayout() }
+  history.value = rebaseHistoryTransform(history.value, transform.value)
 }
 
 function zIndexFor(id) {
@@ -176,6 +180,7 @@ function cancelPointerPan(event) {
     frameId = null
   }
   const pointerId = pointerGesture.pointerId
+  applyTransform(pointerGesture.transform)
   pointerGesture = null
   if (viewport.value?.hasPointerCapture?.(pointerId)) viewport.value.releasePointerCapture(pointerId)
 }
@@ -295,15 +300,37 @@ function selectCard(id) {
 }
 
 function updateCardGeometry({ id, geometry }) {
+  if (!activeCardGesture || activeCardGesture.id !== id) {
+    activeCardGesture = {
+      id,
+      snapshot: captureCardGeometry(currentLayout(), id),
+      completing: false,
+    }
+  }
   cards.value = cards.value.map((card) => card.id === id ? { ...card, ...geometry } : card)
   emitLayout()
 }
 
-function completeCardGesture({ changed }) {
+function completeCardGesture({ id, changed }) {
   if (!changed) return
+  if (activeCardGesture?.id === id) activeCardGesture = null
   history.value = pushHistory(history.value, currentLayout())
   emitLayout()
   scheduleSave()
+}
+
+function markCardGestureCompleting(event) {
+  if (!activeCardGesture || !event.target.closest?.('[data-canvas-card]')) return
+  activeCardGesture.completing = true
+}
+
+function cancelCardGesture(event) {
+  if (!activeCardGesture || !event.target.closest?.('[data-canvas-card]')) return
+  if (event.type === 'lostpointercapture' && activeCardGesture.completing) return
+  const restored = restoreCardGeometry(currentLayout(), activeCardGesture.snapshot)
+  activeCardGesture = null
+  applyLayout(restored)
+  emitLayout()
 }
 
 function changeVisibility({ id, visible }) {
@@ -419,6 +446,7 @@ onBeforeUnmount(() => {
   pointerGesture = null
   touchBaseline = null
   touchOwner = null
+  activeCardGesture = null
   storage = undefined
 })
 </script>
@@ -431,8 +459,11 @@ onBeforeUnmount(() => {
       @pointerdown="beginPointerPan"
       @pointermove="movePointerPan"
       @pointerup="finishPointerPan"
+      @pointerup.capture="markCardGestureCompleting"
       @pointercancel="cancelPointerPan"
+      @pointercancel.capture="cancelCardGesture"
       @lostpointercapture="cancelPointerPan"
+      @lostpointercapture.capture="cancelCardGesture"
     >
       <div class="infinite-canvas__world" :style="worldStyle">
         <CanvasConnections :cards="cards" :connections="canvasConnections" />
