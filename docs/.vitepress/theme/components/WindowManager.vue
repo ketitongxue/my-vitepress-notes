@@ -221,11 +221,13 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-rows: 38px 1fr;
   overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 32%);
-  border-radius: 10px;
-  background: #f9fafb;
+  min-width: 280px;
+  min-height: 200px;
+  border: 1px solid #1e2430;
+  border-radius: 6px;
+  background: #fffdf7;
   color: #1e2430;
-  box-shadow: 0 20px 55px rgb(7 15 31 / 38%);
+  box-shadow: 0 8px 12px rgb(25 34 50 / 24%);
   pointer-events: auto;
 }
 
@@ -235,7 +237,8 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 12px;
   padding: 0 8px 0 12px;
-  background: #e9edf4;
+  border-bottom: 1px solid #1e2430;
+  background: #f7f4ec;
   touch-action: none;
   user-select: none;
   cursor: move;
@@ -263,7 +266,8 @@ onBeforeUnmount(() => {
 
 .window-manager__controls a,
 .window-manager__controls button {
-  min-height: 28px;
+  min-width: 44px;
+  min-height: 38px;
   padding: 4px 8px;
   border: 1px solid #aeb8c8;
   border-radius: 5px;
@@ -288,8 +292,8 @@ onBeforeUnmount(() => {
   position: absolute;
   right: 4px;
   bottom: 4px;
-  width: 72px;
-  min-height: 28px;
+  width: 84px;
+  min-height: 38px;
   padding: 4px;
   border: 1px solid #aeb8c8;
   border-radius: 5px;
@@ -304,6 +308,30 @@ onBeforeUnmount(() => {
 .window-manager.is-manipulating .window-manager__preview {
   pointer-events: none;
   user-select: none;
+}
+
+.window-manager :where(a, button):focus-visible {
+  outline: 3px solid #315efb;
+  outline-offset: 2px;
+}
+
+@media (max-width: 767px) {
+  .window-manager__window {
+    grid-template-rows: 46px 1fr;
+    max-width: calc(100vw - 16px);
+    max-height: calc(100dvh - 46px);
+  }
+
+  .window-manager__controls a,
+  .window-manager__controls button,
+  .window-manager__resize {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .window-manager__preview {
+    padding: 18px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

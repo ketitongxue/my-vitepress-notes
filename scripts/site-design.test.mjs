@@ -6,19 +6,20 @@ const root = new URL('../', import.meta.url)
 const read = (path) => readFile(new URL(path, root), 'utf8')
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-test('homepage delegates its Personal OS shell to focused components', async () => {
-  const [page, home, canvas] = await Promise.all([
+test('homepage keeps the Personal OS route shell and focused view components available', async () => {
+  const [page, home, desktop, knowledge, system] = await Promise.all([
     read('docs/index.md'),
     read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue'),
-    read('docs/.vitepress/theme/components/DesktopCanvas.vue'),
+    read('docs/.vitepress/theme/components/DesktopSurface.vue'),
+    read('docs/.vitepress/theme/components/KnowledgePortfolio.vue'),
+    read('docs/.vitepress/theme/components/InfiniteCanvas.vue'),
   ])
   assert.match(page, /<KnowledgeFactoryHome\s*\/>/)
-  assert.match(home, /<SystemTopBar\s*\/>/)
-  assert.match(home, /<DesktopCanvas\s*\/>/)
-  for (const name of [
-    'ProfileCard', 'CurrentStatusCard', 'FeaturedProjectCard', 'ProjectFolder',
-    'NotesLauncher', 'LabLauncher', 'ContactTerminal', 'CanvasControls',
-  ]) assert.match(canvas, new RegExp(`<${name}\\s*/>`))
+  for (const view of ['home', 'knowledge', 'system']) assert.match(home, new RegExp(`data-os-view="${view}"`))
+  assert.match(desktop, /<DesktopIcon\b/)
+  assert.match(desktop, /<WindowManager\b/)
+  assert.match(knowledge, /<main class="knowledge-portfolio"/)
+  assert.match(system, /<CanvasControls\b/)
 })
 
 test('knowledge pages are generated as compact accessible hubs', async () => {
@@ -38,20 +39,12 @@ test('Q&A clearly limits retrieval to the AI knowledge base', async () => {
   assert.doesNotMatch(component, /金融知识库/)
 })
 
-test('factory homepage links and local anchors resolve after the OS component split', async () => {
-  const [topbar, canvas, profile, featured] = await Promise.all([
-    read('docs/.vitepress/theme/components/SystemTopBar.vue'),
-    read('docs/.vitepress/theme/components/DesktopCanvas.vue'),
-    read('docs/.vitepress/theme/components/ProfileCard.vue'),
-    read('docs/.vitepress/theme/components/FeaturedProjectCard.vue'),
-  ])
-  assert.match(topbar, /href="#projects"/)
-  assert.match(topbar, /href="#notes"/)
-  assert.match(profile, /href="\/about"/)
-  assert.match(profile, /href="#projects"/)
-  assert.match(featured, /href="#projects"/)
-  assert.match(canvas, /<ProjectFolder\s*\/>/)
-  assert.match(canvas, /<NotesLauncher\s*\/>/)
+test('Personal OS menu destinations and local routes resolve', async () => {
+  const desktop = await read('docs/.vitepress/theme/components/DesktopSurface.vue')
+  assert.match(desktop, /href="#home"/)
+  assert.match(desktop, /href="#knowledge"/)
+  assert.match(desktop, /href="#system"/)
+  assert.match(desktop, /href="\/about"/)
   await assert.doesNotReject(access(new URL('docs/about.md', root)), '/about must resolve')
 })
 
@@ -67,27 +60,30 @@ test('Q&A and local search expose Chinese interface labels', async () => {
   }
 })
 
-test('theme styles balance the factory, knowledge, and QA surfaces', async () => {
+test('theme styles balance the Personal OS, knowledge, and QA surfaces', async () => {
   const css = await read('docs/.vitepress/theme/custom.css')
   assert.match(css, /\.VPHero \.main[\s\S]*max-width:\s*900px/)
   assert.match(css, /\.VPHero \.text[\s\S]*text-wrap:\s*balance/)
   assert.match(css, /\.knowledge-hub__featured/)
   assert.match(css, /\.knowledge-hub__all/)
   for (const selector of [
-    '.system-topbar', '.desktop-canvas', '.profile-card', '.project-folder',
-    '.notes-launcher', '.lab-launcher', '.contact-terminal', '.canvas-controls',
+    '.macbook-boot', '.desktop-surface', '.desktop-surface__menu', '.desktop-icon',
+    '.window-manager__window', '.bottom-os-navigation', '.knowledge-portfolio',
+    '.infinite-canvas', '.canvas-card', '.canvas-layers', '.canvas-minimap', '.canvas-controls',
   ]) assert.match(css, new RegExp(`\\.factory-home ${selector.replace('.', '\\.')}(?:\\s|,|\\{|:)`))
-  assert.match(css, /\.factory-home a:focus-visible\s*\{[^}]*outline:\s*2px solid #315EFB/)
-  assert.match(css, /\.factory-home \.desktop-canvas\s*\{[^}]*grid-template-columns:\s*repeat\(14, minmax\(0, 1fr\)\)/)
-  assert.match(css, /@media \(max-width: 767px\)[\s\S]*?\.factory-home \.desktop-canvas\s*\{[^}]*grid-template-columns:\s*1fr/)
+  assert.match(css, /\.factory-home :where\(a, button\):focus-visible\s*\{[^}]*outline:\s*3px solid #315EFB/)
+  assert.match(css, /\.factory-home \.desktop-surface__menu\s*\{[^}]*height:\s*30px/)
+  assert.match(css, /\.factory-home \.desktop-surface__workspace\s*\{[^}]*height:\s*calc\(100vh - 30px\)/)
+  assert.match(css, /\.factory-home \.desktop-surface__workspace\s*\{[^}]*height:\s*calc\(100dvh - 30px\)/)
+  const mobileOverflowPattern = [
+    '@media \\(max-width: 767px\\)[\\s\\S]*?\\.factory-home\\s*\\{[^}]*overflow-x:',
+    '\\s*clip',
+  ].join('')
+  assert.match(css, new RegExp(mobileOverflowPattern))
+  assert.match(css, /@media \(max-width: 767px\)[\s\S]*?\.factory-home \.canvas-controls button\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px/)
   assert.match(css, /\.factory-home\s*\{[^}]*font-family:\s*var\(--vp-font-family-base\)/)
-  assert.match(css, /\.factory-home \.system-topbar\s*\{[^}]*font-family:\s*"JetBrains Mono", "Fira Code", Consolas, monospace/)
-  for (const selector of [
-    '.profile-card__summary', '.current-status-card dd', '.featured-project-card h2 + p',
-    '.notes-launcher li', '.lab-launcher li',
-  ]) {
-    assert.match(css, new RegExp(`\\.factory-home ${escapeRegex(selector)}(?:\\s|,)[\\s\\S]*?\\{[^}]*font-family:\\s*var\\(--vp-font-family-base\\)`))
-  }
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*animation:\s*none !important;[\s\S]*transition:\s*none !important;/)
+  assert.doesNotMatch(css.match(/\/\* Personal OS start \*\/([\s\S]*?)\/\* Personal OS end \*\//)?.[1] ?? '', /linear-gradient|radial-gradient|backdrop-filter|\bstars?\b|sparkle|particle|illustration|character-art/i)
   assert.doesNotMatch(css, /\.garden-/)
   assert.doesNotMatch(css, /\.wiki-ask__conversation[\s\S]{0,400}min-height:\s*190px/)
 })

@@ -513,6 +513,10 @@ onBeforeUnmount(() => {
 .infinite-canvas {
   position: fixed;
   inset: 0;
+  width: 100%;
+  max-width: 100vw;
+  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background: #2b7fd8;
 }
@@ -535,5 +539,13 @@ onBeforeUnmount(() => {
   width: 1px;
   height: 1px;
   transform-origin: 0 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .infinite-canvas,
+  .infinite-canvas * {
+    scroll-behavior: auto;
+    transition: none !important;
+  }
 }
 </style>

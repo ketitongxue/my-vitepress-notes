@@ -73,9 +73,10 @@ function changeVisibility(card, event) {
   z-index: 30;
   width: min(240px, calc(100vw - 36px));
   border: 1px solid #1e2430;
+  border-radius: 5px;
   background: #fffdf7;
   color: #1e2430;
-  font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 12px/1.35 "JetBrains Mono", "Fira Code", Consolas, monospace;
 }
 
 .canvas-layers__toggle {
@@ -101,6 +102,7 @@ function changeVisibility(card, event) {
 }
 
 .canvas-layers__focus {
+  min-height: 44px;
   min-width: 0;
   padding: 8px 4px;
   overflow: hidden;
@@ -127,6 +129,8 @@ function changeVisibility(card, event) {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 6px 2px;
   cursor: pointer;
 }
@@ -140,10 +144,11 @@ function changeVisibility(card, event) {
 
 @media (max-width: 767px) {
   .canvas-layers {
-    top: 10px;
-    left: 10px;
+    top: max(10px, env(safe-area-inset-top));
+    left: max(10px, env(safe-area-inset-left));
     width: min(240px, calc(100vw - 20px));
     border: 0;
+    border-radius: 0;
     background: transparent;
   }
 
@@ -154,6 +159,7 @@ function changeVisibility(card, event) {
     align-items: center;
     justify-content: center;
     border: 1px solid #1e2430;
+    border-radius: 4px;
     background: #fffdf7;
     color: #1e2430;
   }
@@ -167,6 +173,13 @@ function changeVisibility(card, event) {
 
   .canvas-layers.is-open .canvas-layers__list {
     display: block;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .canvas-layers,
+  .canvas-layers :where(button, input) {
+    transition: none !important;
   }
 }
 </style>

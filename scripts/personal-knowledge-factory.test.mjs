@@ -19,117 +19,47 @@ test('homepage mounts the dedicated factory component', async () => {
   assert.match(page, /<KnowledgeFactoryHome\s*\/>/)
 })
 
-test('Personal OS visual contract is exact, scoped, static, and responsive', async () => {
+test('Personal OS visual contract is exact, scoped, interactive, and responsive', async () => {
   const css = await read('docs/.vitepress/theme/custom.css')
   const os = css.match(/\/\* Personal OS start \*\/([\s\S]*?)\/\* Personal OS end \*\//)?.[1] ?? ''
   assert.ok(os, 'homepage OS styles must have an auditable scoped block')
 
   for (const color of [
     '#F7F4EC', '#FFFDF7', '#1E2430', '#69707D', '#315EFB',
-    '#F2C94C', '#EF7B45', '#3FAE78', '#192232',
+    '#F4D758', '#EF7B45', '#3FAE78', '#192232', '#2B7FD8',
   ]) assert.match(os, new RegExp(color, 'i'))
 
   for (const source of [
     'overflow-x: clip',
-    'width: min(1360px, calc(100vw - 48px))',
-    'min-height: 1040px',
-    'grid-template-columns: repeat(14, minmax(0, 1fr))',
-    'grid-template-rows: repeat(14, minmax(0, 1fr))',
+    'height: 30px',
+    'height: calc(100vh - 30px)',
+    'height: calc(100dvh - 30px)',
+    'min-width: 280px',
+    'min-height: 200px',
     '@media (max-width: 767px)',
-    'grid-template-columns: 1fr',
-    'min-width: 0',
-    'overflow-wrap: anywhere',
+    'min-width: 44px',
+    'min-height: 44px',
     '@media (prefers-reduced-motion: reduce)',
-    'outline: 2px solid #315EFB',
+    'outline: 3px solid #315EFB',
   ]) assert.match(os, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'))
 
-  const placements = new Map([
-    ['profile', ['1 / 8', '1 / 5']],
-    ['status', ['9 / 13', '1 / 4']],
-    ['projects', ['11 / 15', '4 / 8']],
-    ['featured', ['4 / 11', '5 / 10']],
-    ['notes', ['1 / 4', '6 / 10']],
-    ['lab', ['11 / 15', '9 / 13']],
-    ['contact', ['3 / 10', '11 / 15']],
-    ['controls', ['12 / 15', '14 / 15']],
-  ])
-  for (const [name, [column, row]] of placements) {
-    const rule = os.match(new RegExp(`\\.desktop-canvas__${name}\\s*\\{([\\s\\S]*?)\\}`))?.[1] ?? ''
-    assert.match(rule, new RegExp(`grid-column:\\s*${column.replace('/', '\\/')}`))
-    assert.match(rule, new RegExp(`grid-row:\\s*${row.replace('/', '\\/')}`))
-  }
+  for (const selector of [
+    'macbook-boot', 'desktop-surface', 'desktop-surface__menu', 'desktop-icon',
+    'window-manager__window', 'bottom-os-navigation', 'knowledge-portfolio',
+    'infinite-canvas', 'canvas-card', 'canvas-layers', 'canvas-minimap', 'canvas-controls',
+  ]) assert.match(os, new RegExp(`\\.factory-home \\.${selector}(?:\\s|,|\\{|:)`))
 
-  const osSelectors = [...os.matchAll(/(?:^|\})\s*([^@][^{]+)\{/g)]
-    .flatMap((match) => match[1].split(',').map((selector) => selector.trim()))
-  const homepageClasses = [
-    'system-topbar', 'desktop-canvas', 'profile-card', 'current-status-card',
-    'featured-project-card', 'project-folder', 'notes-launcher', 'lab-launcher',
-    'contact-terminal', 'canvas-controls',
-  ]
-  for (const selector of osSelectors.filter((candidate) =>
-    homepageClasses.some((name) => candidate.includes(`.${name}`)))) {
-    assert.match(selector, /^(?:\.factory-home|\.knowledge-factory-page)(?:$|[\s.:#\[])/)
-  }
-
-  assert.doesNotMatch(os, /box-shadow:\s*(?:[^;]*(?:#315EFB|#F2C94C|#EF7B45|#3FAE78)|[^;]*\b(?:[4-9]|\d{2,})px)/i)
-  assert.match(os, /@keyframes personal-os-reveal\s*\{[\s\S]*?from\s*\{\s*opacity:\s*0;\s*transform:\s*translateY\(8px\) scale\(\.995\);\s*\}[\s\S]*?to\s*\{\s*opacity:\s*1;\s*transform:\s*none;\s*\}/)
   assert.match(os, /\.factory-home\s*\{[^}]*font-family:\s*var\(--vp-font-family-base\)/)
-  assert.match(os, /\.factory-home \.system-topbar\s*\{[^}]*font-family:\s*"JetBrains Mono", "Fira Code", Consolas, monospace/)
-  assert.doesNotMatch(os, /\.factory-home\s*\{[^}]*font-family:\s*"JetBrains Mono"/)
-  assert.doesNotMatch(os, /linear-gradient|backdrop-filter|cursor\s*:\s*(?:grab|grabbing|zoom-in|zoom-out)|touch-action\s*:\s*none/i)
+  assert.doesNotMatch(os, /linear-gradient|radial-gradient|backdrop-filter|\bstars?\b|sparkle|particle|illustration|character-art/i)
+  assert.doesNotMatch(os, /(?:^|\})\s*(?:html|body|\.factory-home)\s*\{[^}]*touch-action:\s*none/i)
 })
 
-test('factory homepage exposes the hash-selected Personal OS shell and copy contract', async () => {
-  const home = await read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue')
-  const components = [
-    'SystemTopBar', 'DesktopCanvas', 'ProfileCard', 'CurrentStatusCard',
-    'FeaturedProjectCard', 'ProjectFolder', 'NotesLauncher', 'LabLauncher',
-    'ContactTerminal', 'CanvasControls',
-  ]
-  const componentSources = new Map()
-  for (const name of components) {
-    const path = `docs/.vitepress/theme/components/${name}.vue`
-    await assert.doesNotReject(read(path))
-    componentSources.set(name, await read(path))
-  }
-  const allComponentSources = `${home}\n${[...componentSources.values()].join('\n')}`
-  const canvas = componentSources.get('DesktopCanvas')
-  for (const name of [
-    'ProfileCard', 'CurrentStatusCard', 'FeaturedProjectCard', 'ProjectFolder',
-    'NotesLauncher', 'LabLauncher', 'ContactTerminal', 'CanvasControls',
-  ]) {
-    assert.ok(canvas.includes(`import ${name} from './${name}.vue'`))
-    assert.match(canvas, new RegExp(`<${name}\\s*/>`))
-  }
-  const copyByComponent = new Map([
-    ['SystemTopBar', ['JuZX OS', '01 HOME', '02 PROJECTS', '03 NOTES', '04 ABOUT', 'SYSTEM ONLINE', 'v1.0']],
-    ['ProfileCard', [
-      "HELLO, I'M JuZX", 'JuZX', 'MES Product Manager', 'Industrial Digitalization Explorer',
-      '关注工业数字化、智能制造，', '以及 AI 在个人工作流中的实践。', 'ABOUT ME', 'VIEW PROJECTS',
-    ]],
-    ['CurrentStatusCard', [
-      'CURRENT STATUS', 'Working', 'MES 产品设计与项目实践',
-      'Learning', 'Rust / AI Agent / Web Development', 'Building', 'Personal Digital Factory',
-    ]],
-    ['FeaturedProjectCard', [
-      'FEATURED PROJECT / 001', '核电制造 MES 系统', '生产、物资、质量、焊接和设备业务',
-      '全过程数字化管理。', 'ROLE', 'Product Manager', 'STATUS', 'Delivered', 'OPEN ARCHIVE', '→',
-    ]],
-    ['ProjectFolder', ['PROJECTS/', 'MES System', 'Digital Dashboard', 'Product Design', 'AI Experiments']],
-    ['NotesLauncher', [
-      'NOTES/', 'Rust 学习笔记.md', 'AI Agent 实践.md', '产品经理复盘.md', '工业数字化.md',
-    ]],
-    ['LabLauncher', ['LAB/', '互联网黑话翻译器', '飞书群问答机器人', '个人知识库', 'MES 数据助手']],
-    ['ContactTerminal', [
-      'JuZX@digital-factory ~ zsh', '$ cat contact.md', 'Email', 'Available on request',
-      'GitHub', 'ketitongxue', 'Social Media', 'JuZX', '$ echo "Let\'s build something useful."', 'Ready.', '_',
-    ]],
+test('Personal OS view components expose exact navigation and desktop menu labels', async () => {
+  const [home, desktop, navigation] = await Promise.all([
+    read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue'),
+    read('docs/.vitepress/theme/components/DesktopSurface.vue'),
+    read('docs/.vitepress/theme/components/BottomOsNavigation.vue'),
   ])
-  for (const [name, copies] of copyByComponent) {
-    for (const copy of copies) {
-      assert.match(componentSources.get(name), new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
-    }
-  }
   assert.match(home, /import MacbookBoot from '.\/MacbookBoot\.vue'/)
   assert.match(home, /import BottomOsNavigation from '.\/BottomOsNavigation\.vue'/)
   assert.match(home, /window\.addEventListener\('hashchange'/)
@@ -145,13 +75,13 @@ test('factory homepage exposes the hash-selected Personal OS shell and copy cont
     assert.match(home, new RegExp(`data-os-view="${view}"`))
   }
   assert.match(home, /<MacbookBoot[\s\S]*v-if="activeView === 'home'"[\s\S]*:disabled="bootDisabled"[\s\S]*@entered="handleHomeEntered"[\s\S]*\/>/)
-  assert.match(home, /<SystemTopBar\s*\/>/)
-  assert.match(home, /<DesktopCanvas\s*\/>/)
   assert.match(home, /<BottomOsNavigation :active-view="activeView" @select="selectView"\s*\/>/)
-  assert.doesNotMatch(
-    allComponentSources,
-    /(?:@|v-on:)(?:mouse[a-z]+|touch[a-z]+|pointer[a-z]+|wheel|drag[a-z]*|drop)\b|addEventListener\(\s*["'](?:mouse[a-z]+|touch[a-z]+|pointer[a-z]+|wheel|drag[a-z]*|drop)["']|\bon(?:mouse[a-z]+|touch[a-z]+|pointer[a-z]+|wheel|drag[a-z]*|drop)\b|\b(?:draggable|startDrag|handleDrag|isDragging|dragging|zoomIn|zoomOut|handleZoom|zoomLevel|startPan|isPanning|panning)\b/i,
-  )
+  for (const label of ['JuZX OS', 'About', 'Knowledge', 'Now']) assert.match(desktop, new RegExp(`>${label}<`))
+  assert.match(desktop, /<time :datetime="clock">\{\{ clock \}\}<\/time>/)
+  assert.match(desktop, />重置桌面位置<\/button>/)
+  assert.deepEqual([...navigation.matchAll(/>\s*(0[1-3] (?:主页|知识库|我的 OS))\s*<\/button>/g)].map((match) => match[1]), [
+    '01 主页', '02 知识库', '03 我的 OS',
+  ])
 })
 
 test('knowledge portfolio preserves the six-section content and navigation contract', async () => {
@@ -423,18 +353,23 @@ test('MacBook boot is one exact accessible fullscreen replacement', async () => 
   assert.match(boot, /\.macbook-boot\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?inset:\s*0;[\s\S]*?min-height:\s*100dvh;/)
 })
 
-test('splash visual, motion, mobile, and fail-open rules are exact', async () => {
-  const css = await read('docs/.vitepress/theme/custom.css')
+test('MacBook visual, mobile, reduced-motion, and fail-open rules are exact', async () => {
+  const [css, boot] = await Promise.all([
+    read('docs/.vitepress/theme/custom.css'),
+    read('docs/.vitepress/theme/components/MacbookBoot.vue'),
+  ])
   for (const source of [
     '#F7F4EC', '#1E2430', '"JetBrains Mono", "Fira Code", Consolas, monospace',
-    '400ms cubic-bezier(0.16, 1, 0.3, 1)', '600ms cubic-bezier(0.16, 1, 0.3, 1)',
-    '800ms', 'touch-action: manipulation', 'min-width: 44px', 'min-height: 44px',
-  ]) assert.match(css, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    'min-width: 44px', 'min-height: 44px',
+  ]) assert.match(`${css}\n${boot}`, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+  assert.match(boot, /min-height:\s*100vh;[\s\S]*min-height:\s*100dvh;/)
+  assert.match(boot, /transition:\s*transform 500ms cubic-bezier\(0\.16, 1, 0\.3, 1\)/)
   assert.match(css, /html\[data-personal-site-access="pending"\] \.factory-boot/)
   assert.match(css, /\.macbook-boot\s*\{\s*display:\s*none !important;/)
   assert.match(css, /html\[data-personal-site-access="pending"\] \.macbook-boot\s*\{\s*display:\s*grid !important;/)
   assert.match(css, /html:not\(\[data-personal-site-access="pending"\]\):not\(\[data-personal-site-access="leaving"\]\) \.factory-home/)
-  assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.factory-boot__cursor[\s\S]*animation:\s*none !important;/)
+  const os = css.match(/\/\* Personal OS start \*\/([\s\S]*?)\/\* Personal OS end \*\//)?.[1] ?? ''
+  assert.match(os, /@media \(prefers-reduced-motion: reduce\)[\s\S]*animation:\s*none !important;[\s\S]*transition:\s*none !important;/)
   assert.doesNotMatch(css, /\.dark[\s\S]{0,240}\.factory-boot/)
 })
 

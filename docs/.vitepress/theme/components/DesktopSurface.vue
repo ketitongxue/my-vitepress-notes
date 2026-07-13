@@ -128,6 +128,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .desktop-surface {
   position: relative;
+  min-height: 100vh;
   min-height: 100dvh;
   overflow: hidden;
   background: #2B7FD8;
@@ -144,9 +145,9 @@ onBeforeUnmount(() => {
   height: 30px;
   padding: 0 12px;
   gap: 18px;
-  background: rgb(9 17 30 / 88%);
-  border-bottom: 1px solid rgb(255 255 255 / 18%);
-  font-size: 12px;
+  background: rgb(43 127 216 / 96%);
+  border-bottom: 1px solid rgb(255 255 255 / 22%);
+  font-size: 11px;
 }
 
 .desktop-surface__menu nav {
@@ -160,7 +161,7 @@ onBeforeUnmount(() => {
 }
 
 .desktop-surface__menu a:focus-visible {
-  outline: 2px solid #f2c94c;
+  outline: 3px solid #f4d758;
   outline-offset: 2px;
 }
 
@@ -182,13 +183,53 @@ onBeforeUnmount(() => {
 }
 
 .desktop-surface__menu button:focus-visible {
-  outline: 2px solid #f2c94c;
+  outline: 3px solid #f4d758;
   outline-offset: 1px;
 }
 
 .desktop-surface__workspace {
   position: absolute;
   inset: 30px 0 0;
+  height: calc(100vh - 30px);
+  height: calc(100dvh - 30px);
   overflow: hidden;
+}
+
+@media (max-width: 767px) {
+  .desktop-surface__menu {
+    grid-template-columns: auto 1fr auto;
+    gap: 8px;
+    padding: 0 8px;
+  }
+
+  .desktop-surface__menu nav {
+    display: none;
+  }
+
+  .desktop-surface__menu button {
+    min-width: 44px;
+    min-height: 44px;
+    justify-self: end;
+    overflow: hidden;
+    max-width: 44px;
+    color: transparent;
+    white-space: nowrap;
+  }
+
+  .desktop-surface__menu button::after {
+    content: "Reset";
+    color: #fffdf7;
+  }
+
+  .desktop-surface__menu time {
+    min-width: 42px;
+    text-align: right;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .desktop-surface :where(a, button) {
+    transition: none !important;
+  }
 }
 </style>

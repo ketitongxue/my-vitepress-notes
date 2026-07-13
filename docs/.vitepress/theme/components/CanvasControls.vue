@@ -57,7 +57,7 @@ function confirmReset() {
   bottom: 18px;
   z-index: 31;
   color: #1e2430;
-  font: 12px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 12px/1 "JetBrains Mono", "Fira Code", Consolas, monospace;
 }
 
 .canvas-controls__actions,
@@ -67,6 +67,7 @@ function confirmReset() {
   gap: 4px;
   padding: 6px;
   border: 1px solid #1e2430;
+  border-radius: 5px;
   background: #fffdf7;
 }
 
@@ -78,7 +79,7 @@ function confirmReset() {
 }
 
 .canvas-controls button {
-  min-height: 34px;
+  min-height: 38px;
   padding: 0 10px;
   border: 1px solid #69707d;
   background: #f7f4ec;
@@ -92,7 +93,7 @@ function confirmReset() {
 }
 
 .canvas-controls button:focus-visible {
-  outline: 3px solid #f2c94c;
+  outline: 3px solid #315efb;
   outline-offset: 2px;
 }
 
@@ -104,7 +105,7 @@ function confirmReset() {
 @media (max-width: 767px) {
   .canvas-controls {
     right: 10px;
-    bottom: 10px;
+    bottom: max(72px, calc(env(safe-area-inset-bottom) + 62px));
     left: 10px;
     overflow-x: auto;
   }
@@ -121,6 +122,13 @@ function confirmReset() {
 
   .canvas-controls__confirm span {
     display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .canvas-controls,
+  .canvas-controls :where(button, output) {
+    transition: none !important;
   }
 }
 </style>

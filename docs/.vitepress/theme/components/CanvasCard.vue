@@ -186,6 +186,7 @@ onBeforeUnmount(() => {
   min-height: 120px;
   overflow: hidden;
   border: 1px solid #1e2430;
+  border-radius: 5px;
   background: #fffdf7;
   color: #1e2430;
 }
@@ -198,7 +199,8 @@ onBeforeUnmount(() => {
 .canvas-card__titlebar {
   display: grid;
   width: 100%;
-  padding: 12px;
+  min-height: 44px;
+  padding: 10px 12px;
   border: 0;
   border-bottom: 1px solid #1e2430;
   background: #f7f4ec;
@@ -230,15 +232,21 @@ onBeforeUnmount(() => {
 }
 
 .canvas-card__body a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
   color: #315efb;
+  font-weight: 700;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
 }
 
 .canvas-card__resize {
   position: absolute;
   right: 0;
   bottom: 0;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   overflow: hidden;
   border: 0;
   border-top: 1px solid #1e2430;
@@ -247,5 +255,12 @@ onBeforeUnmount(() => {
   color: transparent;
   cursor: nwse-resize;
   touch-action: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .canvas-card,
+  .canvas-card :where(a, button) {
+    transition: none !important;
+  }
 }
 </style>

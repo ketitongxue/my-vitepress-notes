@@ -185,6 +185,7 @@ onBeforeUnmount(() => {
   z-index: 1000;
   inset: 0;
   display: grid;
+  min-height: 100vh;
   min-height: 100dvh;
   place-items: center;
   overflow: hidden;
@@ -194,7 +195,7 @@ onBeforeUnmount(() => {
 }
 
 .macbook-boot__computer {
-  width: min(760px, calc(100vw - 32px));
+  width: min(760px, calc(100vw - 40px));
 }
 
 .macbook-boot__screen {
@@ -205,8 +206,8 @@ onBeforeUnmount(() => {
   min-height: min(430px, 64vh);
   padding: clamp(24px, 5vw, 56px);
   overflow: hidden;
-  border: 12px solid #192232;
-  border-radius: 24px 24px 10px 10px;
+  border: 10px solid #192232;
+  border-radius: 18px 18px 8px 8px;
   background: #fffdf7;
   transform-origin: center;
 }
@@ -250,7 +251,7 @@ onBeforeUnmount(() => {
 }
 
 .macbook-boot__launch:focus-visible {
-  outline: 2px solid #315efb;
+  outline: 3px solid #315efb;
   outline-offset: 3px;
 }
 
@@ -264,7 +265,26 @@ onBeforeUnmount(() => {
 
 @media (prefers-reduced-motion: reduce) {
   .macbook-boot__screen {
-    transition-duration: 0.01ms !important;
+    transition-duration: 80ms !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .macbook-boot__computer {
+    width: calc(100vw - 40px);
+  }
+
+  .macbook-boot__screen {
+    min-height: min(390px, 58vh);
+    padding: 24px 20px;
+    border-width: 8px;
+    border-radius: 14px 14px 6px 6px;
+  }
+
+  .macbook-boot__base {
+    width: calc(100% + 28px);
+    height: 18px;
+    margin-left: -14px;
   }
 }
 </style>

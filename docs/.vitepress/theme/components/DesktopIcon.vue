@@ -136,7 +136,7 @@ function handleKeydown(event) {
   place-items: center;
   gap: 4px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 5px;
   background: transparent;
   color: #f6f7fb;
   font: inherit;
@@ -153,13 +153,13 @@ function handleKeydown(event) {
 }
 
 .desktop-icon:focus-visible {
-  outline: 2px solid #f2c94c;
+  outline: 3px solid #f4d758;
   outline-offset: 2px;
 }
 
 .desktop-icon :deep(svg) {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   stroke-width: 1.6;
 }
 
@@ -168,6 +168,29 @@ function handleKeydown(event) {
   overflow-wrap: anywhere;
   font-size: 12px;
   line-height: 1.2;
-  text-shadow: 0 1px 3px rgb(0 0 0 / 80%);
+  text-shadow: 0 1px 2px rgb(25 34 50 / 72%);
+}
+
+@media (max-width: 767px) {
+  .desktop-icon {
+    width: 68px;
+    min-height: 76px;
+    padding: 6px 2px;
+  }
+
+  .desktop-icon :deep(svg) {
+    width: 42px;
+    height: 42px;
+  }
+
+  .desktop-icon span {
+    font-size: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .desktop-icon {
+    transition: none !important;
+  }
 }
 </style>
