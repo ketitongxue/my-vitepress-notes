@@ -27,6 +27,15 @@ const DEFAULT_ICON_SIZE = { width: 88, height: 76 }
 
 const clamp = (value, maximum) => Math.max(0, Math.min(value, Math.max(0, maximum)))
 
+export function resolveSurfaceBounds(currentBounds, width, height, inset = 0) {
+  const nextWidth = Number(width)
+  const nextHeight = Number(height) - Number(inset)
+  if (!Number.isFinite(nextWidth) || !Number.isFinite(nextHeight) || nextWidth <= 0 || nextHeight <= 0) {
+    return currentBounds
+  }
+  return { width: nextWidth, height: nextHeight }
+}
+
 export function constrainIconPosition(position, bounds, size = DEFAULT_ICON_SIZE) {
   return {
     anchor: position.anchor === 'right' ? 'right' : 'left',

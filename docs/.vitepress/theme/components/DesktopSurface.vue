@@ -2,7 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import DesktopIcon from './DesktopIcon.vue'
 import WindowManager from './WindowManager.vue'
-import { constrainIconPosition } from './desktopGeometry.mjs'
+import { constrainIconPosition, resolveSurfaceBounds } from './desktopGeometry.mjs'
 import { desktopEntries } from './personalOsContent.mjs'
 import {
   createWindowState,
@@ -64,10 +64,13 @@ function constrainOpenWindows(nextBounds) {
 
 function measureSurface() {
   if (!surface.value) return
-  const nextBounds = {
-    width: surface.value.clientWidth,
-    height: Math.max(0, surface.value.clientHeight - MENU_HEIGHT),
-  }
+  const nextBounds = resolveSurfaceBounds(
+    bounds.value,
+    surface.value.clientWidth,
+    surface.value.clientHeight,
+    MENU_HEIGHT,
+  )
+  if (nextBounds === bounds.value) return
   bounds.value = nextBounds
   constrainIconPositions(nextBounds)
   constrainOpenWindows(nextBounds)

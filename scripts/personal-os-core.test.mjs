@@ -11,7 +11,7 @@ import {
 } from '../docs/.vitepress/theme/components/macbookBootState.mjs'
 import {
   consumeIconDoubleClick, constrainIconPosition, constrainWindow, createIconActivationState, distance,
-  finishIconPointer, isDragDistance, resolveIconPosition,
+  finishIconPointer, isDragDistance, resolveIconPosition, resolveSurfaceBounds,
 } from '../docs/.vitepress/theme/components/desktopGeometry.mjs'
 import {
   closeWindow, createWindowState, moveWindow, openWindow, resizeWindow, resizeWindowByKey,
@@ -296,6 +296,50 @@ test('dragged desktop icons convert to left coordinates and survive a narrower s
   )
 })
 
+test('hidden desktop measurements preserve icons and moved or resized windows', () => {
+  const currentBounds = { width: 1280, height: 690 }
+  const initialIcons = Object.fromEntries(desktopEntries.map((entry) => [entry.id, {
+    anchor: 'right',
+    ...entry.position,
+  }]))
+  let icons = structuredClone(initialIcons)
+  let windows = resizeWindow(
+    moveWindow(openWindow(createWindowState(), desktopEntries[0], currentBounds), desktopEntries[0].id, { x: 240, y: 160 }, currentBounds),
+    desktopEntries[0].id,
+    { width: 520, height: 360 },
+    currentBounds,
+  )
+  const windowSnapshot = structuredClone(windows)
+  let iconConstraints = 0
+  let windowConstraints = 0
+
+  function applyMeasurement(width, height) {
+    const nextBounds = resolveSurfaceBounds(currentBounds, width, height, 30)
+    if (nextBounds === currentBounds) return
+    iconConstraints += 1
+    icons = Object.fromEntries(Object.entries(icons).map(([id, position]) => [
+      id,
+      constrainIconPosition(position, nextBounds),
+    ]))
+    windowConstraints += 1
+    for (const item of windows.windows) {
+      windows = moveWindow(windows, item.id, { x: item.x, y: item.y }, nextBounds)
+    }
+  }
+
+  for (const directView of ['knowledge', 'system']) applyMeasurement(0, 0)
+  assert.equal(iconConstraints, 0)
+  assert.equal(windowConstraints, 0)
+  assert.deepEqual(icons, initialIcons)
+  assert.deepEqual(windows, windowSnapshot)
+
+  applyMeasurement(1280, 720)
+  assert.equal(new Set(Object.values(icons).map(({ x, y }) => `${x}:${y}`)).size, 10)
+  assert.deepEqual(windows, windowSnapshot)
+  assert.equal(resolveSurfaceBounds(currentBounds, Number.NaN, 720, 30), currentBounds)
+  assert.equal(resolveSurfaceBounds(currentBounds, 1280, 30, 30), currentBounds)
+})
+
 test('desktop window reducer keeps singleton windows within viewport bounds', () => {
   const bounds = { width: 800, height: 600 }
   const entry = desktopEntries[0]
@@ -410,6 +454,7 @@ test('desktop components use local Tabler icons and native pointer interactions'
   assert.match(surface, /right: `\$\{position\.x\}px`/)
   assert.match(surface, /left: `\$\{position\.x\}px`/)
   assert.match(surface, /constrainIconPositions\(nextBounds\)/)
+  assert.match(surface, /const nextBounds = resolveSurfaceBounds\([\s\S]*?if \(nextBounds === bounds\.value\) return[\s\S]*?bounds\.value = nextBounds[\s\S]*?constrainIconPositions\(nextBounds\)[\s\S]*?constrainOpenWindows\(nextBounds\)/)
   assert.match(surface, /function resetIconPositions\(\)[\s\S]*?constrainIconPositions\(bounds\.value\)/)
   assert.match(surface, /background: #2B7FD8;/)
   assert.equal(surface.toLowerCase().includes('gradient'), false)
