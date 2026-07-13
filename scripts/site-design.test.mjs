@@ -5,6 +5,15 @@ import test from 'node:test'
 const root = new URL('../', import.meta.url)
 const read = (path) => readFile(new URL(path, root), 'utf8')
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const task7Components = [
+  'MacbookBoot', 'BottomOsNavigation', 'DesktopSurface', 'DesktopIcon', 'WindowManager',
+  'KnowledgePortfolio', 'InfiniteCanvas', 'CanvasCard', 'CanvasConnections', 'CanvasLayers',
+  'CanvasMinimap', 'CanvasControls',
+]
+
+function scopedStyles(source) {
+  return [...source.matchAll(/<style scoped>([\s\S]*?)<\/style>/g)].map((match) => match[1]).join('\n')
+}
 
 test('homepage keeps the Personal OS route shell and focused view components available', async () => {
   const [page, home, desktop, knowledge, system] = await Promise.all([
@@ -86,6 +95,49 @@ test('theme styles balance the Personal OS, knowledge, and QA surfaces', async (
   assert.doesNotMatch(css.match(/\/\* Personal OS start \*\/([\s\S]*?)\/\* Personal OS end \*\//)?.[1] ?? '', /linear-gradient|radial-gradient|backdrop-filter|\bstars?\b|sparkle|particle|illustration|character-art/i)
   assert.doesNotMatch(css, /\.garden-/)
   assert.doesNotMatch(css, /\.wiki-ask__conversation[\s\S]{0,400}min-height:\s*190px/)
+})
+
+test('all allowed Personal OS component styles enforce the approved visual policy', async () => {
+  const components = new Map(await Promise.all(task7Components.map(async (name) => [
+    name,
+    await read(`docs/.vitepress/theme/components/${name}.vue`),
+  ])))
+  const forbiddenEffects = /linear-gradient|radial-gradient|backdrop-filter|\bstars?\b|sparkle|particle|illustration|character-art/i
+  const remoteVisual = /data:image|url\(\s*['"]?https?:|https?:\/\/[^\s'"()<>]+\.(?:svg|png|jpe?g|webp|gif)(?:[?#][^\s'"()<>]*)?/i
+
+  for (const [name, source] of components) {
+    const styles = scopedStyles(source)
+    assert.doesNotMatch(styles, forbiddenEffects, `${name} scoped styles must not add forbidden visual effects`)
+    assert.doesNotMatch(styles, /#f2c94c/i, `${name} must not retain the rejected yellow`)
+    assert.doesNotMatch(source, /<(?:img|picture)\b/i, `${name} must not add image elements`)
+    assert.doesNotMatch(source, remoteVisual, `${name} must not load remote visual assets`)
+
+    const inlineSvgCount = [...source.matchAll(/<svg\b/gi)].length
+    if (name === 'CanvasConnections' || name === 'CanvasMinimap') {
+      assert.equal(inlineSvgCount, 1, `${name} keeps exactly one approved structural SVG`)
+      assert.doesNotMatch(source, /<(?:path|image|foreignObject)\b/i, `${name} SVG must stay structural`)
+    } else {
+      assert.equal(inlineSvgCount, 0, `${name} must not add decorative inline SVG`)
+    }
+  }
+
+  assert.match(scopedStyles(components.get('MacbookBoot')), /\.macbook-boot__launch\s*\{[^}]*background:\s*#F4D758;/)
+  assert.match(scopedStyles(components.get('CanvasCard')), /\.canvas-card__resize\s*\{[^}]*background:\s*#F4D758;/)
+})
+
+test('every required mobile Personal OS target keeps a 44 by 44 hit area', async () => {
+  const [boot, windows, navigation, layers, minimap, controls, card] = await Promise.all([
+    'MacbookBoot', 'WindowManager', 'BottomOsNavigation', 'CanvasLayers', 'CanvasMinimap',
+    'CanvasControls', 'CanvasCard',
+  ].map(async (name) => scopedStyles(await read(`docs/.vitepress/theme/components/${name}.vue`))))
+
+  assert.match(boot, /\.macbook-boot__launch\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
+  assert.match(windows, /@media \(max-width: 767px\)[\s\S]*?\.window-manager__controls a,\s*\.window-manager__controls button,\s*\.window-manager__resize\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
+  assert.match(navigation, /@media \(max-width: 767px\)[\s\S]*?\.bottom-os-navigation button\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
+  assert.match(layers, /@media \(max-width: 767px\)[\s\S]*?\.canvas-layers__toggle\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
+  assert.match(minimap, /\.canvas-minimap__surface\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
+  assert.match(controls, /@media \(max-width: 767px\)[\s\S]*?\.canvas-controls button\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
+  assert.match(card, /\.canvas-card__resize\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/)
 })
 
 test('MacBook splash and hash shell preserve homepage discovery', async () => {

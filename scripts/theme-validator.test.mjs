@@ -98,6 +98,21 @@ expectFailure(valid.replace('@media (max-width: 767px)', '@media (max-width: 700
 expectFailure(valid.replace('min-width: 44px;', 'min-width: 40px;'), 'mobile hit width is fixed', /44px hit area/)
 expectFailure(valid.replace('animation: none !important;', 'animation: fade 1s;'), 'reduced motion is required', /reduced-motion coverage/)
 expectFailure(valid.replace('.factory-home .desktop-icon', '.desktop-icon'), 'OS selectors cannot leak', /must be homepage scoped/)
+expectFailure(
+  valid.replace('/* Personal OS end */', '.desktop-surface__menu { height: 99px; }\n/* Personal OS end */'),
+  'unscoped BEM descendants cannot bypass homepage scope',
+  /must be homepage scoped/,
+)
+expectFailure(
+  valid.replace('/* Personal OS end */', '.desktop-surface_menu { height: 99px; }\n/* Personal OS end */'),
+  'unscoped single-underscore BEM descendants cannot bypass homepage scope',
+  /must be homepage scoped/,
+)
+expectFailure(
+  valid.replace('/* Personal OS end */', '.canvas-card--selected { opacity: .9; }\n/* Personal OS end */'),
+  'unscoped BEM modifiers cannot bypass homepage scope',
+  /must be homepage scoped/,
+)
 expectFailure(valid.replace('background: #FFFDF7;', 'background: linear-gradient(#FFFDF7, white);'), 'gradients are forbidden', /must not use gradients/)
 expectFailure(valid.replace('border-color: #69707D;', 'border-color: #69707D; backdrop-filter: blur(8px);'), 'backdrop blur is forbidden', /must not use gradients/)
 expectFailure(valid.replace('color: #FFFDF7;', 'color: #FFFDF7; --stars: visible;'), 'stars are forbidden', /must not use gradients/)

@@ -251,7 +251,7 @@ onBeforeUnmount(() => {
   border: 0;
   border-top: 1px solid #1e2430;
   border-left: 1px solid #1e2430;
-  background: #f2c94c;
+  background: #F4D758;
   color: transparent;
   cursor: nwse-resize;
   touch-action: none;

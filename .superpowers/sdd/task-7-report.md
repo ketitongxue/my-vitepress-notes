@@ -14,6 +14,16 @@ Implementation, source-contract tests, direct SFC compilation, and the VitePress
 - Added visible high-contrast focus states and reduced-motion rules while preserving deliberate icon/window/card/canvas gesture surfaces.
 - Corrected the visible navigation labels to `01 主页`, `02 知识库`, and `03 我的 OS`; preserved the desktop menu labels, clock, reset action, hashes, and event behavior.
 
+## Review follow-up
+
+The three Important review findings were reproduced and fixed with focused regression coverage:
+
+- RED: the validator accepted an appended unscoped `.desktop-surface__menu`; source policy tests exposed the two remaining `#f2c94c` accents; the mobile hit-area test exposed `min-width: 0` on bottom navigation. The minimap also lacked an explicit 44px minimum width.
+- GREEN: selector recognition now treats `_`, `__`, and `--` as BEM suffix boundaries, and three negative mutations prove those descendants/modifiers cannot escape homepage scope.
+- The MacBook launch button and canvas-card resize handle now use exact `#F4D758`. A case-insensitive scan across all 12 allowed SFCs rejects the old yellow.
+- The source contract now checks every brief-listed 44px target: launch, window close/open/resize, bottom navigation, layer toggle, minimap surface, and canvas controls; it also retains the 44px canvas-card resize handle.
+- All 12 allowed SFCs are scanned for forbidden gradients, backdrop filters, stars, particles, illustrations, image elements, data-image/remote visual assets, and decorative inline SVG. The single structural SVG in `CanvasConnections.vue` and `CanvasMinimap.vue` remains explicitly allowed; path/image/foreign-object content is rejected there.
+
 ## TDD evidence
 
 ### RED
@@ -34,6 +44,8 @@ After rewriting the validator and visual source tests, before CSS/component pres
 - `npm test` — passed end to end: the factory, site, content, theme, Worker, Personal OS, Wiki/Finance validation, VitePress build, and security scan all completed successfully.
 - Direct `@vue/compiler-sfc` parsing/script/template/style compilation — all 12 allowed SFCs compiled successfully: MacBook boot, bottom navigation, desktop surface/icon/window manager, knowledge portfolio, infinite canvas, card, connections, layers, minimap, and controls.
 - `git diff --check` — passed.
+
+After the review fixes, the focused validator/site/factory/core suites passed again, all 12 SFCs compiled directly with `@vue/compiler-sfc`, `npm run docs:build` completed in 2.48s, and the final full `npm test` completed with a 2.47s VitePress build and a passing security scan.
 
 The first full `npm test` run reached the final security suite and exposed a regex-shaped path false positive in the newly edited site-design test. The equivalent assertion was rewritten with a constructed `RegExp`; the final full suite then passed.
 

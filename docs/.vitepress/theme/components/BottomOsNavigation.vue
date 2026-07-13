@@ -77,7 +77,7 @@ const emit = defineEmits(['select'])
   }
 
   .bottom-os-navigation button {
-    min-width: 0;
+    min-width: 44px;
     min-height: 44px;
     padding: 0 12px;
     white-space: nowrap;

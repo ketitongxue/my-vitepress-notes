@@ -93,6 +93,7 @@ function navigate(event) {
 .canvas-minimap__surface {
   display: block;
   width: 100%;
+  min-width: 44px;
   min-height: 44px;
   height: 108px;
   padding: 0;

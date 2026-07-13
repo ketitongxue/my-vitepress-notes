@@ -74,7 +74,7 @@ function includesDeclaration(rules, selector, property, value, ancestor) {
 }
 
 function isPersonalOsSelector(selector) {
-  return /\.(?:macbook-boot|desktop-surface|desktop-icon|window-manager__window|bottom-os-navigation|knowledge-portfolio|infinite-canvas|canvas-card|canvas-layers|canvas-minimap|canvas-controls)(?:$|[\s.:#\[])/.test(selector)
+  return /\.(?:macbook-boot|desktop-surface|desktop-icon|window-manager__window|bottom-os-navigation|knowledge-portfolio|infinite-canvas|canvas-card|canvas-layers|canvas-minimap|canvas-controls)(?:$|[_-]|[\s.:#\[])/.test(selector)
 }
 
 function isPersonalOsScoped(selector) {
