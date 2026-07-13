@@ -58,7 +58,10 @@ test('factory homepage exposes the static Personal OS component and copy contrac
   assert.match(home, /<FactoryBoot @reveal="handleReveal"\s*\/>/)
   assert.match(home, /<SystemTopBar\s*\/>/)
   assert.match(home, /<DesktopCanvas\s*\/>/)
-  assert.doesNotMatch(allComponentSources, /@(?:pointerdown|pointermove|wheel)|addEventListener\(\s*["'](?:pointerdown|pointermove|wheel)["']|\bdraggable\b/i)
+  assert.doesNotMatch(
+    allComponentSources,
+    /(?:@|v-on:)(?:mouse[a-z]+|touch[a-z]+|pointer[a-z]+|wheel|drag[a-z]*|drop)\b|addEventListener\(\s*["'](?:mouse[a-z]+|touch[a-z]+|pointer[a-z]+|wheel|drag[a-z]*|drop)["']|\bon(?:mouse[a-z]+|touch[a-z]+|pointer[a-z]+|wheel|drag[a-z]*|drop)\b|\b(?:draggable|startDrag|handleDrag|isDragging|dragging|zoomIn|zoomOut|handleZoom|zoomLevel|startPan|isPanning|panning)\b/i,
+  )
 })
 
 test('Personal OS clock, navigation, semantics, and contact links are real', async () => {
@@ -84,8 +87,10 @@ test('Personal OS clock, navigation, semantics, and contact links are real', asy
   assert.equal(events[0], 'update', 'clock must update immediately before scheduling')
   assert.equal(events[1][2], 60000)
   assert.equal(typeof events[1][1], 'function')
+  events[1][1]()
+  assert.equal(events[2], 'update', 'scheduled clock callback must update again')
   stopClock()
-  assert.deepEqual(events[2], ['clear', intervalId])
+  assert.deepEqual(events[3], ['clear', intervalId])
   assert.match(topbar, /onMounted\(\(\)\s*=>\s*\{[\s\S]*stopClock\s*=\s*startLocalClock\(/)
   assert.match(topbar, /onBeforeUnmount\(\(\)\s*=>\s*\{?[\s\S]*stopClock\(\)/)
   assert.match(topbar, /<time(?:\s|>)/)
