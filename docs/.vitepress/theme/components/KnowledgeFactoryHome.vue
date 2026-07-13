@@ -6,14 +6,22 @@ import KnowledgePortfolio from './KnowledgePortfolio.vue'
 import MacbookBoot from './MacbookBoot.vue'
 import MacbookExit from './MacbookExit.vue'
 import { hashForOsView, normalizeOsHash } from './personalOsRouter.mjs'
+import { loadSystemCanvasModule } from './systemCanvasLoader.mjs'
 
 const activeView = ref('home')
 const homeEntered = ref(false)
 const hydrated = ref(false)
 const bootDisabled = ref(typeof document !== 'undefined'
-  && document.documentElement.dataset.personalSiteAccess === 'fallback')
+  && (document.documentElement.dataset.personalSiteAccess === 'fallback'
+    || document.documentElement.dataset.personalOsView === 'knowledge'
+    || document.documentElement.dataset.personalOsView === 'system'))
 const systemLoadState = ref('idle')
 const InfiniteCanvas = shallowRef(null)
+const systemImporters = Object.freeze({
+  initial: () => import('./InfiniteCanvas.vue'),
+  retry: () => import('./InfiniteCanvas.vue?retry=1'),
+})
+let systemImportAttempt = 0
 let requestId = 0
 
 async function requestSystem() {
@@ -21,7 +29,7 @@ async function requestSystem() {
   const currentRequest = ++requestId
   systemLoadState.value = 'loading'
   try {
-    const module = await import('./InfiniteCanvas.vue')
+    const module = await loadSystemCanvasModule(systemImportAttempt, systemImporters)
     if (currentRequest !== requestId) return
     InfiniteCanvas.value = markRaw(module.default)
     systemLoadState.value = 'loaded'
@@ -43,6 +51,7 @@ async function resetViewScroll(view) {
 async function applyHash({ scroll = true } = {}) {
   const nextView = normalizeOsHash(window.location.hash)
   activeView.value = nextView
+  document.documentElement.dataset.personalOsView = nextView
 
   if (nextView === 'system') void requestSystem()
   if (nextView === 'home' && !homeEntered.value) {
@@ -80,12 +89,17 @@ async function handleHomeEntered() {
 function retrySystem() {
   if (systemLoadState.value === 'loading') return
   InfiniteCanvas.value = null
+  systemImportAttempt = 1
   void requestSystem()
 }
 
 onMounted(() => {
   const accessState = document.documentElement.dataset.personalSiteAccess
-  homeEntered.value = accessState === 'returning' || accessState === 'fallback'
+  const claimedView = document.documentElement.dataset.personalOsView
+  homeEntered.value = accessState === 'returning'
+    || accessState === 'fallback'
+    || claimedView === 'knowledge'
+    || claimedView === 'system'
   hydrated.value = true
   void applyHash({ scroll: false })
   window.addEventListener('hashchange', handleHashChange)
@@ -99,13 +113,13 @@ onBeforeUnmount(() => {
 
 <template>
   <MacbookBoot
-    v-if="activeView === 'home' && !homeEntered"
+    v-if="!hydrated || (activeView === 'home' && !homeEntered)"
     :disabled="bootDisabled"
     @entered="handleHomeEntered"
   />
   <div class="factory-home">
     <main
-      v-show="hydrated && activeView === 'home' && homeEntered"
+      v-show="!hydrated || (activeView === 'home' && homeEntered)"
       id="personal-os-home"
       tabindex="-1"
       aria-label="JuZX OS 主页"
@@ -115,7 +129,7 @@ onBeforeUnmount(() => {
       <MacbookExit />
     </main>
     <section
-      v-show="hydrated && activeView === 'knowledge'"
+      v-show="!hydrated || activeView === 'knowledge'"
       id="personal-os-knowledge"
       class="knowledge-factory-page"
       aria-label="知识库视图"
@@ -124,7 +138,7 @@ onBeforeUnmount(() => {
       <KnowledgePortfolio />
     </section>
     <section
-      v-show="hydrated && activeView === 'system'"
+      v-show="!hydrated || activeView === 'system'"
       class="personal-system-view"
       aria-label="我的 OS 系统视图"
       data-os-view="system"
@@ -141,7 +155,7 @@ onBeforeUnmount(() => {
       <p v-else role="status">准备加载我的 OS…</p>
     </section>
     <BottomOsNavigation
-      v-if="hydrated && (activeView !== 'home' || homeEntered)"
+      v-show="hydrated && (activeView !== 'home' || homeEntered)"
       :active-view="activeView"
       @select="selectView"
     />

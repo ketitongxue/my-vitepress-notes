@@ -4,6 +4,12 @@ const personalSiteAccessPreflight = String.raw`(function () {
   var root = document.documentElement
   var isHomepage = location.pathname === '/' || location.pathname === '/index.html'
   if (!isHomepage) return
+  var view = location.hash === '#knowledge' ? 'knowledge' : location.hash === '#system' ? 'system' : 'home'
+  root.dataset.personalOsView = view
+  if (view !== 'home') {
+    root.dataset.personalSiteAccess = 'entered'
+    return
+  }
   try {
     if (typeof window.matchMedia !== 'function') throw new Error('motion query unavailable')
     var stored = window.sessionStorage.getItem('personal-site-accessed')

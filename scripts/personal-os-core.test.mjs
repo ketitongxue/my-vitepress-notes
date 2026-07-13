@@ -18,6 +18,9 @@ import {
   exitFrame, normalizeExitProgress,
 } from '../docs/.vitepress/theme/components/homeExitState.mjs'
 import {
+  loadSystemCanvasModule,
+} from '../docs/.vitepress/theme/components/systemCanvasLoader.mjs'
+import {
   canvasWheelTransform, clampScale, connectionEndpoints, fitWorldBounds, resolveTouchOwner,
   screenToWorld, touchGesture, zoomAtPoint,
 } from '../docs/.vitepress/theme/components/canvasGeometry.mjs'
@@ -102,6 +105,24 @@ test('home exit progress is finite, clamped, and follows the three approved phas
   })
   assert.deepEqual(exitFrame(-1), exitFrame(0))
   assert.deepEqual(exitFrame(2), exitFrame(1))
+})
+
+test('system canvas loader switches module identity after the first failed attempt', async () => {
+  const calls = []
+  const importers = {
+    initial: async () => {
+      calls.push('initial')
+      throw new Error('blocked chunk')
+    },
+    retry: async () => {
+      calls.push('retry')
+      return { default: 'InfiniteCanvas' }
+    },
+  }
+
+  await assert.rejects(loadSystemCanvasModule(0, importers), /blocked chunk/)
+  assert.deepEqual(await loadSystemCanvasModule(1, importers), { default: 'InfiniteCanvas' })
+  assert.deepEqual(calls, ['initial', 'retry'])
 })
 
 test('MacBook boot fails open when session storage cannot be read and written', () => {

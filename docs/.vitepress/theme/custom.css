@@ -466,6 +466,15 @@ html:not([data-personal-site-access="pending"]) .factory-home {
   visibility: visible;
 }
 
+html[data-personal-os-view="home"] .factory-home [data-os-view="knowledge"],
+html[data-personal-os-view="home"] .factory-home [data-os-view="system"],
+html[data-personal-os-view="knowledge"] .factory-home [data-os-view="home"],
+html[data-personal-os-view="knowledge"] .factory-home [data-os-view="system"],
+html[data-personal-os-view="system"] .factory-home [data-os-view="home"],
+html[data-personal-os-view="system"] .factory-home [data-os-view="knowledge"] {
+  display: none !important;
+}
+
 .knowledge-hub__stats,
 .knowledge-hub__featured,
 .knowledge-hub__sections {

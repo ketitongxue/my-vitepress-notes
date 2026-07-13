@@ -142,14 +142,15 @@ test('every required mobile Personal OS target keeps a 44 by 44 hit area', async
 
 test('MacBook splash and hash shell preserve homepage discovery', async () => {
   const home = await read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue')
-  assert.match(home, /<MacbookBoot[\s\S]*v-if="activeView === 'home' && !homeEntered"[\s\S]*:disabled="bootDisabled"[\s\S]*@entered="handleHomeEntered"[\s\S]*\/>/)
+  assert.match(home, /<MacbookBoot[\s\S]*v-if="!hydrated \|\| \(activeView === 'home' && !homeEntered\)"[\s\S]*:disabled="bootDisabled"[\s\S]*@entered="handleHomeEntered"[\s\S]*\/>/)
   assert.deepEqual([...home.matchAll(/data-os-view="(home|knowledge|system)"/g)].map((match) => match[1]), [
     'home', 'knowledge', 'system',
   ])
   assert.match(home, /<BottomOsNavigation[\s\S]*:active-view="activeView"[\s\S]*@select="selectView"[\s\S]*\/>/)
   assert.match(home, /<DesktopSurface\s*\/>[\s\S]*<MacbookExit\s*\/>/)
   assert.match(home, /<KnowledgePortfolio\s*\/>/)
-  assert.match(home, /import\('\.\/InfiniteCanvas\.vue'\)/)
+  assert.match(home, /\(\) => import\('\.\/InfiniteCanvas\.vue'\)/)
+  assert.match(home, /\(\) => import\('\.\/InfiniteCanvas\.vue\?retry=1'\)/)
   assert.doesNotMatch(home, /@vite-ignore/)
 })
 
