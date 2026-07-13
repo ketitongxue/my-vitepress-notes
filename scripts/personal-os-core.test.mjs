@@ -14,6 +14,9 @@ import {
 import {
   closeWindow, createWindowState, moveWindow, openWindow, resizeWindow, resizeWindowByKey,
 } from '../docs/.vitepress/theme/components/windowManagerState.mjs'
+import {
+  clampScale, connectionEndpoints, fitWorldBounds, screenToWorld, touchGesture, zoomAtPoint,
+} from '../docs/.vitepress/theme/components/canvasGeometry.mjs'
 
 const readComponent = (name) => readFileSync(
   new URL(`../docs/.vitepress/theme/components/${name}`, import.meta.url),
@@ -342,5 +345,117 @@ test('desktop components use local Tabler icons and native pointer interactions'
     assert.doesNotMatch(source, /<iframe\b/i)
     assert.doesNotMatch(source, /<svg\b/i)
     assert.doesNotMatch(source, /https?:\/\//i)
+  }
+})
+
+test('canvas geometry is deterministic, immutable, and pointer centered', () => {
+  const approximately = (actual, expected) => assert.ok(
+    Math.abs(actual - expected) <= 1e-9,
+    `${actual} was not within 1e-9 of ${expected}`,
+  )
+
+  assert.equal(clampScale(0.1), 0.15)
+  assert.equal(clampScale(3.1), 3)
+  assert.equal(clampScale(1.75), 1.75)
+
+  const transform = Object.freeze({ scale: 2, panX: 40, panY: -20 })
+  const point = Object.freeze({ x: 400, y: 300 })
+  assert.deepEqual(screenToWorld(point, transform), { x: 180, y: 160 })
+
+  const worldBefore = screenToWorld(point, transform)
+  const zoomed = zoomAtPoint(transform, 2.75, point)
+  const worldAfter = screenToWorld(point, zoomed)
+  approximately(worldAfter.x, worldBefore.x)
+  approximately(worldAfter.y, worldBefore.y)
+
+  const bounds = Object.freeze({ x: 100, y: 50, width: 1200, height: 800 })
+  const viewport = Object.freeze({ width: 1440, height: 900 })
+  const fitted = fitWorldBounds(bounds, viewport, 64)
+  approximately(fitted.scale, 0.965)
+  approximately(fitted.panX, 44.5)
+  approximately(fitted.panY, 15.75)
+
+  const touches = Object.freeze([
+    Object.freeze({ clientX: 100, clientY: 100 }),
+    Object.freeze({ clientX: 160, clientY: 180 }),
+  ])
+  assert.deepEqual(touchGesture(touches), {
+    center: { x: 130, y: 140 },
+    distance: 100,
+  })
+
+  const fromCard = Object.freeze({ x: 10, y: 20, width: 100, height: 80 })
+  const toCard = Object.freeze({ x: 250, y: 100, width: 120, height: 60 })
+  assert.deepEqual(connectionEndpoints(fromCard, toCard), {
+    x1: 60, y1: 60, x2: 310, y2: 130,
+  })
+
+  assert.deepEqual(transform, { scale: 2, panX: 40, panY: -20 })
+  assert.deepEqual(point, { x: 400, y: 300 })
+  assert.deepEqual(bounds, { x: 100, y: 50, width: 1200, height: 800 })
+  assert.deepEqual(viewport, { width: 1440, height: 900 })
+  assert.deepEqual(touches, [{ clientX: 100, clientY: 100 }, { clientX: 160, clientY: 180 }])
+  assert.deepEqual(fromCard, { x: 10, y: 20, width: 100, height: 80 })
+  assert.deepEqual(toCard, { x: 250, y: 100, width: 120, height: 60 })
+})
+
+test('infinite canvas components preserve interaction and source contracts', () => {
+  const canvas = readComponent('InfiniteCanvas.vue')
+  const card = readComponent('CanvasCard.vue')
+  const connections = readComponent('CanvasConnections.vue')
+
+  assert.match(canvas, /import \{ canvasCards, canvasConnections \} from '\.\/personalOsContent\.mjs'/)
+  assert.match(canvas, /from '\.\/canvasGeometry\.mjs'/)
+  assert.match(canvas, /import CanvasCard from '\.\/CanvasCard\.vue'/)
+  assert.match(canvas, /import CanvasConnections from '\.\/CanvasConnections\.vue'/)
+  assert.match(canvas, /canvasCards\.map\(\(card\) => \(\{ \.\.\.card \}\)\)/)
+  assert.match(canvas, /translate\(\$\{transform\.value\.panX\}px, \$\{transform\.value\.panY\}px\) scale\(\$\{transform\.value\.scale\}\)/)
+  assert.match(canvas, /transform-origin: 0 0/)
+  assert.match(canvas, /Math\.exp\(-event\.deltaY \* 0\.001\)/)
+  assert.match(canvas, /const currentTransform = pendingTransform \?\? transform\.value/)
+  assert.match(canvas, /requestAnimationFrame/)
+  assert.match(canvas, /cancelAnimationFrame/)
+  assert.match(canvas, /addEventListener\('wheel', handleWheel, \{ passive: false \}\)/)
+  assert.match(canvas, /removeEventListener\('wheel', handleWheel\)/)
+  assert.match(canvas, /addEventListener\('touchstart', handleTouchStart, \{ passive: false \}\)/)
+  assert.match(canvas, /removeEventListener\('touchstart', handleTouchStart\)/)
+  for (const [type, handler] of [
+    ['touchmove', 'handleTouchMove'],
+    ['touchend', 'handleTouchEnd'],
+    ['touchcancel', 'handleTouchCancel'],
+  ]) {
+    assert.match(canvas, new RegExp(`addEventListener\\('${type}', ${handler}, \\{ passive: false \\}\\)`))
+    assert.match(canvas, new RegExp(`removeEventListener\\('${type}', ${handler}\\)`))
+  }
+  assert.match(canvas, /event\.preventDefault\(\)/)
+  assert.match(canvas, /onBeforeUnmount/)
+  assert.match(canvas, /@lostpointercapture="cancelPointerPan"/)
+  assert.match(canvas, /:key="card\.id"/)
+  assert.match(canvas, /emit\('layout-change', \{ cards: cards\.value, transform: \{ \.\.\.transform\.value \} \}\)/)
+
+  assert.match(card, /data-canvas-card/)
+  assert.match(card, /setPointerCapture/)
+  assert.match(card, /releasePointerCapture/)
+  assert.match(card, /pointercancel/)
+  assert.match(card, /lostpointercapture/)
+  assert.match(card, /onBeforeUnmount\(\(\) => \{[\s\S]*?hasPointerCapture/)
+  assert.match(card, /\/ props\.scale/)
+  assert.match(card, /Math\.max\(180,/)
+  assert.match(card, /Math\.max\(120,/)
+  assert.match(card, /<a\s+v-if="card\.href"/)
+  assert.match(card, /gesture-complete/)
+  assert.doesNotMatch(card, /v-html/)
+
+  assert.match(connections, /import \{ connectionEndpoints \} from '\.\/canvasGeometry\.mjs'/)
+  assert.match(connections, /fromCard\.visible === false \|\| toCard\.visible === false/)
+  assert.match(connections, /:key="line\.key"/)
+  assert.match(connections, /<line\b/)
+  assert.match(connections, /aria-hidden="true"/)
+  assert.match(connections, /focusable="false"/)
+  assert.match(connections, /pointer-events: none/)
+
+  for (const source of [canvas, card, connections]) {
+    assert.doesNotMatch(source, /contenteditable|v-html|<iframe\b|<object\b|<embed\b/i)
+    assert.doesNotMatch(source, /https?:\/\/|sparkle|particle|illustration|create-card|delete-card/i)
   }
 })
