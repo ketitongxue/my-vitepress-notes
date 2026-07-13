@@ -44,7 +44,7 @@ function confirmReset() {
     </div>
     <div v-if="confirmingReset" class="canvas-controls__confirm" role="group" aria-label="确认恢复默认布局">
       <span>恢复默认布局？</span>
-      <button type="button" aria-label="确认恢复默认" @click="confirmReset">确认恢复默认</button>
+      <button type="button" aria-label="确认恢复默认" @click="confirmReset">确认</button>
       <button type="button" aria-label="取消恢复默认" @click="cancelReset">取消</button>
     </div>
   </aside>

@@ -103,3 +103,7 @@ export function restoreCardGeometry(layout, snapshot) {
     : card)
   return cloned
 }
+
+export function getCommittedLayout(history) {
+  return cloneLayout(history.present)
+}

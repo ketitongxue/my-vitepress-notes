@@ -137,4 +137,10 @@ function navigate(event) {
     height: 76px;
   }
 }
+
+@media (max-width: 359px) {
+  .canvas-minimap {
+    width: 112px;
+  }
+}
 </style>

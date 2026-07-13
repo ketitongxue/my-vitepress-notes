@@ -10,8 +10,8 @@ import {
   touchGesture, zoomAtPoint,
 } from './canvasGeometry.mjs'
 import {
-  captureCardGeometry, createHistory, pushHistory, rebaseHistoryTransform,
-  restoreCardGeometry, undoHistory,
+  captureCardGeometry, createHistory, getCommittedLayout, pushHistory,
+  rebaseHistoryTransform, restoreCardGeometry, undoHistory,
 } from './canvasHistory.mjs'
 import { loadCanvasLayout, saveCanvasLayout } from './canvasPersistence.mjs'
 import { canvasCards, canvasConnections } from './personalOsContent.mjs'
@@ -89,13 +89,13 @@ function scheduleSave() {
   cancelScheduledSave()
   saveTimer = window.setTimeout(() => {
     saveTimer = null
-    saveCanvasLayout(storage, currentLayout())
+    saveCanvasLayout(storage, getCommittedLayout(history.value))
   }, SAVE_DELAY)
 }
 
 function saveNow() {
   cancelScheduledSave()
-  saveCanvasLayout(storage, currentLayout())
+  saveCanvasLayout(storage, getCommittedLayout(history.value))
 }
 
 function applyTransform(nextTransform, persist = true) {
@@ -301,6 +301,7 @@ function selectCard(id) {
 
 function updateCardGeometry({ id, geometry }) {
   if (!activeCardGesture || activeCardGesture.id !== id) {
+    cancelScheduledSave()
     activeCardGesture = {
       id,
       snapshot: captureCardGeometry(currentLayout(), id),
@@ -331,6 +332,7 @@ function cancelCardGesture(event) {
   activeCardGesture = null
   applyLayout(restored)
   emitLayout()
+  saveNow()
 }
 
 function changeVisibility({ id, visible }) {

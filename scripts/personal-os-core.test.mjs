@@ -22,8 +22,8 @@ import {
   CANVAS_LAYOUT_KEY, loadCanvasLayout, parseCanvasLayout, saveCanvasLayout, serializeCanvasLayout,
 } from '../docs/.vitepress/theme/components/canvasPersistence.mjs'
 import {
-  captureCardGeometry, createHistory, pushHistory, rebaseHistoryTransform, resetHistory,
-  restoreCardGeometry, undoHistory,
+  captureCardGeometry, createHistory, getCommittedLayout, pushHistory, rebaseHistoryTransform,
+  resetHistory, restoreCardGeometry, undoHistory,
 } from '../docs/.vitepress/theme/components/canvasHistory.mjs'
 
 const readComponent = (name) => readFileSync(
@@ -617,6 +617,34 @@ test('cancelled card geometry restores the atomic gesture-start geometry', () =>
   })
 })
 
+test('pending persistence never serializes transient cancelled card geometry', () => {
+  const defaults = trustedCanvasDefaults()
+  const currentTransform = { scale: 1.4, panX: -120, panY: 70 }
+  const history = rebaseHistoryTransform(createHistory(defaults), currentTransform)
+  const start = captureCardGeometry(history.present, 'identity')
+  const transient = structuredClone(history.present)
+  transient.cards[0].x += 333
+  transient.cards[0].y += 222
+
+  const values = new Map()
+  const storage = {
+    setItem: (key, value) => values.set(key, value),
+    getItem: (key) => values.get(key) ?? null,
+  }
+  assert.equal(saveCanvasLayout(storage, getCommittedLayout(history)), true)
+  const savedWhileTransient = loadCanvasLayout(storage, defaults)
+  assert.equal(savedWhileTransient.cards[0].x, defaults.cards[0].x)
+  assert.deepEqual(savedWhileTransient.transform, currentTransform)
+
+  const restored = restoreCardGeometry(transient, start)
+  assert.equal(restored.cards[0].x, defaults.cards[0].x)
+  assert.equal(saveCanvasLayout(storage, getCommittedLayout(history)), true)
+  const savedAfterCancel = loadCanvasLayout(storage, defaults)
+  assert.equal(savedAfterCancel.cards[0].x, defaults.cards[0].x)
+  assert.deepEqual(savedAfterCancel.transform, currentTransform)
+  assert.equal(transient.cards[0].x, defaults.cards[0].x + 333)
+})
+
 test('infinite canvas components preserve interaction and source contracts', () => {
   const canvas = readComponent('InfiniteCanvas.vue')
   const card = readComponent('CanvasCard.vue')
@@ -702,7 +730,7 @@ test('canvas chrome wires layers, minimap, controls, persistence, and bounded hi
   assert.match(canvas, /const SAVE_DELAY = 250/)
   assert.match(canvas, /window\.localStorage/)
   assert.match(canvas, /loadCanvasLayout\(storage, defaultLayout\)/)
-  assert.match(canvas, /saveCanvasLayout\(storage, currentLayout\(\)\)/)
+  assert.match(canvas, /saveCanvasLayout\(storage, getCommittedLayout\(history\.value\)\)/)
   assert.match(canvas, /clearTimeout\(saveTimer\)/)
   assert.match(canvas, /:can-undo="history\.past\.length > 0"/)
   assert.match(canvas, /@gesture-complete="completeCardGesture"/)
@@ -713,6 +741,9 @@ test('canvas chrome wires layers, minimap, controls, persistence, and bounded hi
   assert.match(canvas, /@lostpointercapture\.capture="cancelCardGesture"/)
   assert.match(canvas, /@pointerup\.capture="markCardGestureCompleting"/)
   assert.match(canvas, /function cancelPointerPan[\s\S]*?applyTransform\(pointerGesture\.transform\)/)
+  assert.match(canvas, /function updateCardGeometry[\s\S]*?cancelScheduledSave\(\)/)
+  assert.match(canvas, /function cancelCardGesture[\s\S]*?saveNow\(\)/)
+  assert.match(canvas, /saveCanvasLayout\(storage, getCommittedLayout\(history\.value\)\)/)
   for (const handler of ['updateCardGeometry', 'applyTransform', 'selectCard', 'focusCard', 'navigateToPoint']) {
     const match = canvas.match(new RegExp(`function ${handler}[^]*?(?=\\nfunction |\\nonMounted)`))
     assert.ok(match, handler)
@@ -743,6 +774,7 @@ test('canvas chrome wires layers, minimap, controls, persistence, and bounded hi
   assert.match(minimap, /left: 18px/)
   assert.match(minimap, /left: 10px/)
   assert.doesNotMatch(minimap, /right: (?:18|10)px/)
+  assert.match(minimap, /@media \(max-width: 359px\)[\s\S]*?width: 112px/)
 
   assert.match(controls, /defineEmits\(\['zoom-in', 'zoom-out', 'fit', 'undo', 'save', 'reset'\]\)/)
   for (const label of ['缩小画布', '放大画布', '适应全部内容', '撤销上一步', '保存画布布局', '恢复默认布局']) {
@@ -750,6 +782,7 @@ test('canvas chrome wires layers, minimap, controls, persistence, and bounded hi
   }
   assert.match(controls, /:disabled="!canUndo"/)
   assert.match(controls, /确认恢复默认/)
+  assert.match(controls, /aria-label="确认恢复默认" @click="confirmReset">确认<\/button>/)
   assert.match(controls, /取消/)
   assert.match(controls, /emit\('reset'\)/)
   assert.doesNotMatch(controls, /window\.confirm/)
