@@ -3,8 +3,8 @@ import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { runInNewContext } from 'node:vm'
 import {
-  BOOT_STORAGE_KEY, BOOT_STORAGE_VALUE, getReducedMotionPreference, getSessionStorage, isInteractiveTarget,
-  readInitialBootState, shouldActivateFromEnter, transitionBoot, writeAccessed,
+  beginAccess, BOOT_STORAGE_KEY, BOOT_STORAGE_VALUE, getReducedMotionPreference, getSessionStorage,
+  isInteractiveTarget, readInitialBootState, shouldActivateFromEnter, shouldContainTab, transitionBoot, writeAccessed,
 } from '../docs/.vitepress/theme/components/factoryBootState.mjs'
 
 const root = new URL('../', import.meta.url)
@@ -68,6 +68,21 @@ test('splash transitions accept one activation and no repeated input', () => {
   assert.equal(shouldActivateFromEnter({ key: 'Enter', isComposing: true, target: { closest: () => null } }, 'ready'), false)
   assert.equal(shouldActivateFromEnter({ key: 'Enter', target: { closest: () => ({}) } }, 'ready'), false)
   assert.equal(shouldActivateFromEnter({ key: 'Enter', target: { closest: () => null } }, 'leaving'), false)
+})
+
+test('activation behavior contains exit input and fails open when persistence fails', () => {
+  let writes = 0
+  const storage = { setItem() { writes += 1 } }
+  assert.equal(beginAccess('ready', storage), 'leaving')
+  assert.equal(writes, 1)
+  assert.equal(beginAccess('leaving', storage), 'leaving')
+  assert.equal(writes, 1, 'repeated exit clicks must not write or restart activation')
+  assert.equal(beginAccess('ready', undefined), 'skipped')
+  assert.equal(beginAccess('ready', { setItem() { throw new Error('denied') } }), 'skipped')
+  assert.equal(shouldContainTab({ key: 'Tab' }, 'ready'), true)
+  assert.equal(shouldContainTab({ key: 'Tab', shiftKey: true }, 'leaving'), true)
+  assert.equal(shouldContainTab({ key: 'Tab' }, 'complete'), false)
+  assert.equal(shouldContainTab({ key: 'Enter' }, 'leaving'), false)
 })
 
 test('VitePress head preflight is homepage-only, synchronous, exact, and bounded', async () => {
@@ -159,11 +174,22 @@ test('splash visual, motion, mobile, and fail-open rules are exact', async () =>
 })
 
 test('input lock, preflight claim, cleanup, and focus handoff are explicit', async () => {
-  const boot = await read('docs/.vitepress/theme/components/FactoryBoot.vue')
+  const [boot, css] = await Promise.all([
+    read('docs/.vitepress/theme/components/FactoryBoot.vue'),
+    read('docs/.vitepress/theme/custom.css'),
+  ])
   for (const source of [
-    "state.value !== 'ready'", "transitionBoot(state.value, 'ACTIVATE')", 'writeAccessed(getSessionStorage(window))',
+    "state.value !== 'ready'", 'beginAccess(state.value, getSessionStorage(window))', "nextState === 'skipped'",
     "document.documentElement.dataset.personalSiteAccess = 'leaving'", "delete window['__personalSiteAccessFallback']",
     "window.removeEventListener('keydown', handleKeydown)", "document.getElementById('factory-title')",
-    "event.key === 'Tab'", 'event.preventDefault()', '@click.stop="activate"', '@click="handleOverlayClick"',
+    'shouldContainTab(event, state.value)', 'event.preventDefault()', '@click.stop="activate"', '@click="handleOverlayClick"',
   ]) assert.match(boot, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+  const activate = boot.match(/function activate\(\)[\s\S]*?\n\}\n\nfunction handleOverlayClick/)?.[0] ?? ''
+  assert.doesNotMatch(activate, /removeKeydown/)
+  assert.match(activate, /nextState === 'skipped'[\s\S]*failOpen\(\)[\s\S]*return[\s\S]*window\.setTimeout\(finishExit, 400\)/)
+  assert.match(boot, /async function finishExit[\s\S]*await nextTick\(\)[\s\S]*removeKeydown\(\)[\s\S]*getElementById\('factory-title'\)/)
+  assert.match(boot, /async function failOpen[\s\S]*dataset\.personalSiteAccess = 'fallback'[\s\S]*visible\.value = false[\s\S]*await nextTick\(\)[\s\S]*removeKeydown\(\)[\s\S]*getElementById\('factory-title'\)/)
+  const leavingRule = css.match(/\.factory-boot\[data-state="leaving"\]\s*\{([\s\S]*?)\}/)?.[1] ?? ''
+  assert.ok(leavingRule, 'leaving splash rule must exist')
+  assert.doesNotMatch(leavingRule, /pointer-events:\s*none/)
 })

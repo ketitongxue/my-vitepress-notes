@@ -43,6 +43,13 @@ export function transitionBoot(state, event) {
   return state
 }
 
+export function beginAccess(state, storage) {
+  if (state !== 'ready') return state
+  return writeAccessed(storage)
+    ? transitionBoot(state, 'ACTIVATE')
+    : transitionBoot(state, 'BYPASS')
+}
+
 export function isInteractiveTarget(target) {
   return Boolean(target?.closest?.('a,button,input,textarea,select,summary,[contenteditable]:not([contenteditable="false"]),[tabindex]:not([tabindex="-1"]),audio[controls],video[controls],[role="button"],[role="link"]'))
 }
@@ -50,4 +57,8 @@ export function isInteractiveTarget(target) {
 export function shouldActivateFromEnter(event, state) {
   return state === 'ready' && event?.key === 'Enter' && !event.repeat && !event.isComposing
     && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey && !isInteractiveTarget(event.target)
+}
+
+export function shouldContainTab(event, state) {
+  return (state === 'ready' || state === 'leaving') && event?.key === 'Tab'
 }

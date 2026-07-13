@@ -273,7 +273,6 @@ html:not([data-personal-site-access="pending"]):not([data-personal-site-access="
 
 .factory-boot[data-state="leaving"] {
   opacity: 0;
-  pointer-events: none;
 }
 
 .factory-boot__shell {

@@ -1,8 +1,8 @@
 <script setup>
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
-  getReducedMotionPreference, getSessionStorage, isInteractiveTarget, readInitialBootState,
-  shouldActivateFromEnter, transitionBoot, writeAccessed,
+  beginAccess, getReducedMotionPreference, getSessionStorage, isInteractiveTarget, readInitialBootState,
+  shouldActivateFromEnter, shouldContainTab, transitionBoot,
 } from './factoryBootState.mjs'
 
 const emit = defineEmits(['reveal'])
@@ -28,14 +28,27 @@ async function finishExit() {
   document.documentElement.dataset.personalSiteAccess = 'entered'
   emit('reveal')
   await nextTick()
+  removeKeydown()
+  document.getElementById('factory-title')?.focus({ preventScroll: true })
+}
+
+async function failOpen() {
+  clearPreflightFallback()
+  document.documentElement.dataset.personalSiteAccess = 'fallback'
+  visible.value = false
+  await nextTick()
+  removeKeydown()
   document.getElementById('factory-title')?.focus({ preventScroll: true })
 }
 
 function activate() {
   if (state.value !== 'ready') return
-  state.value = transitionBoot(state.value, 'ACTIVATE')
-  writeAccessed(getSessionStorage(window))
-  removeKeydown()
+  const nextState = beginAccess(state.value, getSessionStorage(window))
+  state.value = nextState
+  if (nextState === 'skipped') {
+    void failOpen()
+    return
+  }
   document.documentElement.dataset.personalSiteAccess = 'leaving'
   exitTimer = window.setTimeout(finishExit, 400)
 }
@@ -45,12 +58,12 @@ function handleOverlayClick(event) {
 }
 
 function handleKeydown(event) {
-  if (state.value !== 'ready') return
-  if (event.key === 'Tab') {
+  if (shouldContainTab(event, state.value)) {
     event.preventDefault()
     accessButton.value?.focus({ preventScroll: true })
     return
   }
+  if (state.value !== 'ready') return
   if (shouldActivateFromEnter(event, state.value)) activate()
 }
 
