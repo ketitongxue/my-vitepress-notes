@@ -59,7 +59,8 @@ function findRule(rules, selector, ancestor) {
 }
 
 export function validateThemeCss(source) {
-  const rules = parseRules(stripComments(source))
+  const css = stripComments(source)
+  const rules = parseRules(css)
   const root = findRule(rules, ':root')
   const rootDeclarations = root && parseDeclarations(root.body)
   const dark = findRule(rules, '.dark')
@@ -96,10 +97,35 @@ export function validateThemeCss(source) {
     }
   }
 
-  for (const selector of ['.factory-status', '.factory-hero', '.factory-modules__grid', '.factory-module', '.factory-boot']) {
+  const placementSelectors = [
+    '.profile-card', '.current-status-card', '.featured-project-card', '.project-folder',
+    '.notes-launcher', '.lab-launcher', '.contact-terminal', '.canvas-controls'
+  ]
+  for (const selector of ['.desktop-canvas', '.system-topbar', ...placementSelectors, '.factory-boot']) {
     const rule = findRule(rules, selector)
     if (!rule || parseDeclarations(rule.body).size === 0) {
       throw new Error(`custom.css must contain an active ${selector} rule`)
+    }
+  }
+
+  const topbarDeclarations = parseDeclarations(findRule(rules, '.system-topbar')?.body ?? '')
+  if (topbarDeclarations.get('position') !== 'fixed') {
+    throw new Error('Personal OS topbar must use fixed positioning')
+  }
+
+  const canvasDeclarations = parseDeclarations(findRule(rules, '.desktop-canvas')?.body ?? '')
+  if (canvasDeclarations.get('display') !== 'grid'
+    || canvasDeclarations.get('grid-template-columns') !== 'repeat(14, minmax(0, 1fr))') {
+    throw new Error('Personal OS desktop canvas must use a 14-column grid')
+  }
+
+  for (const selector of placementSelectors) {
+    if (!parseDeclarations(findRule(rules, selector)?.body ?? '').get('grid-column')) {
+      throw new Error(`Personal OS placement ${selector} must declare grid-column`)
+    }
+    const stagger = findRule(rules, `.factory-home.is-entering ${selector}`)
+    if (!parseDeclarations(stagger?.body ?? '').get('animation-delay')) {
+      throw new Error(`Personal OS entrance must stagger ${selector}`)
     }
   }
 
@@ -115,28 +141,23 @@ export function validateThemeCss(source) {
     throw new Error('factory splash must use the approved 400ms exit')
   }
 
-  const homepageEntrance = findRule(rules, '.factory-home.is-entering')
-  if (parseDeclarations(homepageEntrance?.body ?? '').get('animation') !== 'factory-home-enter 600ms cubic-bezier(0.16, 1, 0.3, 1) both') {
-    throw new Error('factory homepage must use the approved 600ms entrance')
-  }
-
   const accessButton = findRule(rules, '.factory-boot__access')
   const accessDeclarations = parseDeclarations(accessButton?.body ?? '')
   if (accessDeclarations.get('min-width') !== '44px' || accessDeclarations.get('min-height') !== '44px') {
     throw new Error('factory splash access button must keep a 44px hit area')
   }
 
-  const mobileMedia = '@media (max-width: 639px)'
-  const mobileModules = findRule(rules, '.factory-modules__grid', mobileMedia)
-  if (parseDeclarations(mobileModules?.body ?? '').get('grid-template-columns') !== '1fr') {
-    throw new Error(`custom.css ${mobileMedia} must set .factory-modules__grid to one column`)
+  const mobileMedia = '@media (max-width: 767px)'
+  const mobileCanvas = findRule(rules, '.desktop-canvas', mobileMedia)
+  if (parseDeclarations(mobileCanvas?.body ?? '').get('grid-template-columns') !== '1fr') {
+    throw new Error(`custom.css ${mobileMedia} must set .desktop-canvas to one column`)
   }
 
   const reducedMedia = '@media (prefers-reduced-motion: reduce)'
-  const reducedFactory = findRule(rules, '.factory-home *', reducedMedia)
+  const reducedFactory = findRule(rules, '.factory-home.is-entering .desktop-canvas > *', reducedMedia)
   const reducedDeclarations = parseDeclarations(reducedFactory?.body ?? '')
   if (reducedDeclarations.get('animation') !== 'none !important' || reducedDeclarations.get('transition') !== 'none !important') {
-    throw new Error('custom.css reduced-motion media must suppress factory animation and transition')
+    throw new Error('custom.css reduced-motion media must suppress Personal OS animation and transition')
   }
   const reducedSplash = findRule(rules, '.factory-boot', reducedMedia)
   const reducedSplashDeclarations = parseDeclarations(reducedSplash?.body ?? '')
@@ -147,5 +168,9 @@ export function validateThemeCss(source) {
   const reducedCursor = findRule(rules, '.factory-boot__cursor', reducedMedia)
   if (parseDeclarations(reducedCursor?.body ?? '').get('animation') !== 'none !important') {
     throw new Error('custom.css reduced-motion media must suppress cursor motion')
+  }
+
+  if (/cursor\s*:\s*(?:grab|grabbing)|touch-action\s*:\s*none|scale\s*\(|translate3d\s*\(/i.test(css)) {
+    throw new Error('custom.css must not enable drag or zoom behavior')
   }
 }

@@ -34,12 +34,8 @@ test('Q&A clearly limits retrieval to the AI knowledge base', async () => {
   assert.doesNotMatch(component, /金融知识库/)
 })
 
-test('factory homepage discovery labels and entries are actionable in Chinese', async () => {
+test('factory homepage entries still resolve after the OS component split', async () => {
   const home = await read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue')
-  assert.match(home, /KNOWLEDGE MODULES/)
-  assert.match(home, /知识模块/)
-  assert.match(home, /RECENT LOG/)
-  assert.match(home, /最近更新/)
   const entries = new Map([
     ['/wiki/', 'docs/wiki/index.md'],
     ['/finance/', 'docs/finance/index.md'],
@@ -70,9 +66,10 @@ test('theme styles balance the factory, knowledge, and QA surfaces', async () =>
   assert.match(css, /\.VPHero \.text[\s\S]*text-wrap:\s*balance/)
   assert.match(css, /\.knowledge-hub__featured/)
   assert.match(css, /\.knowledge-hub__all/)
-  assert.match(css, /\.factory-status\s*\{[\s\S]*?display:\s*flex;/)
-  assert.match(css, /\.factory-modules__grid\s*\{[\s\S]*?display:\s*grid;/)
-  assert.match(css, /\.factory-module a:focus-visible/)
+  for (const selector of [
+    '.system-topbar', '.desktop-canvas', '.profile-card', '.project-folder',
+    '.notes-launcher', '.lab-launcher', '.contact-terminal', '.canvas-controls',
+  ]) assert.match(css, new RegExp(`${selector.replace('.', '\\.')}(?:\\s|,|\\{|:)`))
   assert.doesNotMatch(css, /\.garden-/)
   assert.doesNotMatch(css, /\.wiki-ask__conversation[\s\S]{0,400}min-height:\s*190px/)
 })

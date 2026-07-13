@@ -18,15 +18,58 @@ test('homepage mounts the dedicated factory component', async () => {
   assert.match(page, /<KnowledgeFactoryHome\s*\/>/)
 })
 
-test('factory homepage exposes the real brand, actions, and exactly four modules', async () => {
+test('factory homepage exposes the static Personal OS component and copy contract', async () => {
   const home = await read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue')
-  for (const copy of ['AI 纪元', 'PERSONAL KNOWLEDGE FACTORY', '个人知识工厂', '向知识库提问', '浏览知识模块']) {
-    assert.match(home, new RegExp(copy))
+  const components = [
+    'SystemTopBar', 'DesktopCanvas', 'ProfileCard', 'CurrentStatusCard',
+    'FeaturedProjectCard', 'ProjectFolder', 'NotesLauncher', 'LabLauncher',
+    'ContactTerminal', 'CanvasControls',
+  ]
+  const componentSources = []
+  for (const name of components) {
+    const path = `docs/.vitepress/theme/components/${name}.vue`
+    await assert.doesNotReject(read(path))
+    componentSources.push(await read(path))
   }
-  const routes = [...home.matchAll(/href:\s*['"](\/(?:wiki|finance|ask|llm-wiki)\/?)['"]/g)].map((match) => match[1])
-  assert.deepEqual(routes.sort(), ['/ask/', '/finance/', '/llm-wiki/', '/wiki/'])
-  assert.match(home, /href="#knowledge-modules"/)
-  assert.doesNotMatch(home, /MES|项目档案|媒体库|实验室|infinite.canvas|draggable/i)
+  const allComponentSources = `${home}\n${componentSources.join('\n')}`
+  for (const copy of [
+    'JuZX OS', '01 HOME', '02 PROJECTS', '03 NOTES', '04 ABOUT', 'SYSTEM ONLINE', 'v1.0',
+    "HELLO, I'M JuZX", 'MES Product Manager', 'Industrial Digitalization Explorer',
+    'CURRENT STATUS', 'FEATURED PROJECT / 001', '核电制造 MES 系统', 'PROJECTS/',
+    'NOTES/', 'LAB/', 'JuZX@digital-factory ~ zsh', '$ cat contact.md', 'Ready.',
+  ]) assert.match(allComponentSources, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+  assert.match(home, /<FactoryBoot @reveal="handleReveal"\s*\/>/)
+  assert.match(home, /<SystemTopBar\s*\/>/)
+  assert.match(home, /<DesktopCanvas\s*\/>/)
+  assert.doesNotMatch(allComponentSources, /pointerdown|pointermove|wheel|scale\(|translate3d|drag|zoom/i)
+})
+
+test('Personal OS clock, navigation, semantics, and contact links are real', async () => {
+  const { formatLocalTime } = await import('../docs/.vitepress/theme/components/SystemTopBar.mjs')
+  const [topbar, profile, featured, contact] = await Promise.all([
+    read('docs/.vitepress/theme/components/SystemTopBar.vue'),
+    read('docs/.vitepress/theme/components/ProfileCard.vue'),
+    read('docs/.vitepress/theme/components/FeaturedProjectCard.vue'),
+    read('docs/.vitepress/theme/components/ContactTerminal.vue'),
+  ])
+
+  assert.equal(formatLocalTime(new Date(2026, 6, 13, 9, 5)), '09:05')
+  assert.match(topbar, /onMounted/)
+  assert.match(topbar, /onBeforeUnmount/)
+  assert.match(topbar, /setInterval\([\s\S]*?,\s*60000\s*\)/)
+  assert.match(topbar, /<time(?:\s|>)/)
+  assert.match(profile, /<h1 id="factory-title" tabindex="-1">/)
+
+  const topNavigation = topbar.match(/<nav[\s\S]*?<\/nav>/)?.[0] ?? ''
+  const topNavigationHrefs = [...topNavigation.matchAll(/href=["']([^"']+)["']/g)].map((match) => match[1])
+  assert.deepEqual(topNavigationHrefs, ['/', '#projects', '#notes', '/about'])
+  assert.match(profile, /href=["']\/about["']/)
+  assert.match(featured, /href=["']#projects["']/)
+
+  const externalContactLinks = [...contact.matchAll(/href=["'](https?:\/\/[^"']+)["']/g)].map((match) => match[1])
+  assert.equal(externalContactLinks.length, 1)
+  assert.match(externalContactLinks[0], /^https:\/\/(?:www\.)?github\.com\//)
+  assert.doesNotMatch(`${topbar}\n${profile}\n${featured}\n${contact}`, /href=["']#["']/)
 })
 
 test('splash state uses the exact session contract and fails open', () => {
