@@ -4,6 +4,7 @@ import test from 'node:test'
 
 const root = new URL('../', import.meta.url)
 const read = (path) => readFile(new URL(path, root), 'utf8')
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 test('homepage delegates its Personal OS shell to focused components', async () => {
   const [page, home, canvas] = await Promise.all([
@@ -47,6 +48,7 @@ test('factory homepage links and local anchors resolve after the OS component sp
   assert.match(topbar, /href="#projects"/)
   assert.match(topbar, /href="#notes"/)
   assert.match(profile, /href="\/about"/)
+  assert.match(profile, /href="#projects"/)
   assert.match(featured, /href="#projects"/)
   assert.match(canvas, /<ProjectFolder\s*\/>/)
   assert.match(canvas, /<NotesLauncher\s*\/>/)
@@ -78,6 +80,14 @@ test('theme styles balance the factory, knowledge, and QA surfaces', async () =>
   assert.match(css, /\.factory-home a:focus-visible\s*\{[^}]*outline:\s*2px solid #315EFB/)
   assert.match(css, /\.factory-home \.desktop-canvas\s*\{[^}]*grid-template-columns:\s*repeat\(14, minmax\(0, 1fr\)\)/)
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*?\.factory-home \.desktop-canvas\s*\{[^}]*grid-template-columns:\s*1fr/)
+  assert.match(css, /\.factory-home\s*\{[^}]*font-family:\s*var\(--vp-font-family-base\)/)
+  assert.match(css, /\.factory-home \.system-topbar\s*\{[^}]*font-family:\s*"JetBrains Mono", "Fira Code", Consolas, monospace/)
+  for (const selector of [
+    '.profile-card__summary', '.current-status-card dd', '.featured-project-card h2 + p',
+    '.notes-launcher li', '.lab-launcher li',
+  ]) {
+    assert.match(css, new RegExp(`\\.factory-home ${escapeRegex(selector)}(?:\\s|,)[\\s\\S]*?\\{[^}]*font-family:\\s*var\\(--vp-font-family-base\\)`))
+  }
   assert.doesNotMatch(css, /\.garden-/)
   assert.doesNotMatch(css, /\.wiki-ask__conversation[\s\S]{0,400}min-height:\s*190px/)
 })

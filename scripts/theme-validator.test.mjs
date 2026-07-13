@@ -37,9 +37,11 @@ function validTheme() {
   --os-bg: #F7F4EC; --os-surface: #FFFDF7; --os-ink: #1E2430;
   --os-muted: #69707D; --os-blue: #315EFB; --os-yellow: #F2C94C;
   --os-orange: #EF7B45; --os-green: #3FAE78; --os-terminal: #192232;
+  font-family: var(--vp-font-family-base);
 }
 .factory-home .system-topbar {
   position: fixed; inset: 0 0 auto; height: 56px;
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
 }
 .factory-home.is-entering .system-topbar {
   animation: personal-os-reveal 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -53,11 +55,38 @@ function validTheme() {
 .factory-home .profile-card { min-width: 0; }
 .factory-home .current-status-card { min-width: 0; }
 .factory-home .featured-project-card { min-width: 0; }
-.factory-home .project-folder { min-width: 0; }
+.factory-home .project-folder { min-width: 0; font-family: "JetBrains Mono", "Fira Code", Consolas, monospace; }
 .factory-home .notes-launcher { min-width: 0; }
 .factory-home .lab-launcher { min-width: 0; }
-.factory-home .contact-terminal { min-width: 0; }
-.factory-home .canvas-controls { min-width: 0; }
+.factory-home .contact-terminal { min-width: 0; font-family: "JetBrains Mono", "Fira Code", Consolas, monospace; }
+.factory-home .canvas-controls { min-width: 0; font-family: "JetBrains Mono", "Fira Code", Consolas, monospace; }
+.factory-home .profile-card__eyebrow,
+.factory-home .profile-card h1,
+.factory-home .profile-card__role,
+.factory-home .profile-card__specialty,
+.factory-home .profile-card__about,
+.factory-home .profile-card__projects,
+.factory-home .current-status-card h2,
+.factory-home .project-folder h2,
+.factory-home .current-status-card dt,
+.factory-home .featured-project-card > p:first-child,
+.factory-home .featured-project-card dl,
+.factory-home .featured-project-card a,
+.factory-home .notes-launcher h2,
+.factory-home .project-folder li span,
+.factory-home .notes-launcher li span,
+.factory-home .lab-launcher h2,
+.factory-home .lab-launcher li span {
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+}
+.factory-home .profile-card__summary,
+.factory-home .current-status-card dd,
+.factory-home .featured-project-card h2,
+.factory-home .featured-project-card h2 + p,
+.factory-home .notes-launcher li,
+.factory-home .lab-launcher li {
+  font-family: var(--vp-font-family-base);
+}
 .factory-home .desktop-canvas__profile { grid-column: 1 / 8; grid-row: 1 / 5; }
 .factory-home .desktop-canvas__status { grid-column: 9 / 13; grid-row: 1 / 4; }
 .factory-home .desktop-canvas__featured { grid-column: 4 / 11; grid-row: 5 / 10; }
@@ -119,7 +148,33 @@ function appendToOs(css, extra) {
   return css.replace('/* Personal OS end */', `${extra}\n/* Personal OS end */`)
 }
 
-assert.equal(runChecker(validTheme()).status, 0, 'complete Personal OS palettes and responsive rules must pass validation')
+const validThemeResult = runChecker(validTheme())
+assert.equal(
+  validThemeResult.status,
+  0,
+  `complete Personal OS palettes and responsive rules must pass validation: ${validThemeResult.stderr}`,
+)
+
+const monoRoot = runChecker(validTheme().replace(
+  'font-family: var(--vp-font-family-base);',
+  'font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;',
+))
+assert.notEqual(monoRoot.status, 0, 'Chinese homepage body copy must inherit the VitePress sans stack')
+assert.match(monoRoot.stderr, /root must use the VitePress base font/)
+
+const sansSystemText = runChecker(validTheme().replace(
+  'position: fixed; inset: 0 0 auto; height: 56px;\n  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;',
+  'position: fixed; inset: 0 0 auto; height: 56px;\n  font-family: var(--vp-font-family-base);',
+))
+assert.notEqual(sansSystemText.status, 0, 'system information must use the exact monospace stack')
+assert.match(sansSystemText.stderr, /system text must use the exact monospace stack/)
+
+const monoChineseCopy = runChecker(validTheme().replace(
+  '.factory-home .profile-card__summary,',
+  '.factory-home .profile-card__summary { font-family: "JetBrains Mono", "Fira Code", Consolas, monospace; }\n.factory-home .profile-card__summary-missing,',
+))
+assert.notEqual(monoChineseCopy.status, 0, 'Chinese body-copy selectors must keep the VitePress sans stack')
+assert.match(monoChineseCopy.stderr, /Chinese body text must use the VitePress base font/)
 
 const commented = runChecker(`/* ${validTheme()} */`)
 assert.notEqual(commented.status, 0, 'commented-out declarations and selectors must fail validation')

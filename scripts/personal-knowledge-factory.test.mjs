@@ -73,6 +73,9 @@ test('Personal OS visual contract is exact, scoped, static, and responsive', asy
 
   assert.doesNotMatch(os, /box-shadow:\s*(?:[^;]*(?:#315EFB|#F2C94C|#EF7B45|#3FAE78)|[^;]*\b(?:[4-9]|\d{2,})px)/i)
   assert.match(os, /@keyframes personal-os-reveal\s*\{[\s\S]*?from\s*\{\s*opacity:\s*0;\s*transform:\s*translateY\(8px\) scale\(\.995\);\s*\}[\s\S]*?to\s*\{\s*opacity:\s*1;\s*transform:\s*none;\s*\}/)
+  assert.match(os, /\.factory-home\s*\{[^}]*font-family:\s*var\(--vp-font-family-base\)/)
+  assert.match(os, /\.factory-home \.system-topbar\s*\{[^}]*font-family:\s*"JetBrains Mono", "Fira Code", Consolas, monospace/)
+  assert.doesNotMatch(os, /\.factory-home\s*\{[^}]*font-family:\s*"JetBrains Mono"/)
   assert.doesNotMatch(os, /linear-gradient|backdrop-filter|cursor\s*:\s*(?:grab|grabbing|zoom-in|zoom-out)|touch-action\s*:\s*none/i)
 })
 
@@ -100,13 +103,27 @@ test('factory homepage exposes the static Personal OS component and copy contrac
   }
   const copyByComponent = new Map([
     ['SystemTopBar', ['JuZX OS', '01 HOME', '02 PROJECTS', '03 NOTES', '04 ABOUT', 'SYSTEM ONLINE', 'v1.0']],
-    ['ProfileCard', ["HELLO, I'M JuZX", 'MES Product Manager', 'Industrial Digitalization Explorer']],
-    ['CurrentStatusCard', ['CURRENT STATUS']],
-    ['FeaturedProjectCard', ['FEATURED PROJECT / 001', '核电制造 MES 系统']],
-    ['ProjectFolder', ['PROJECTS/']],
-    ['NotesLauncher', ['NOTES/']],
-    ['LabLauncher', ['LAB/']],
-    ['ContactTerminal', ['JuZX@digital-factory ~ zsh', '$ cat contact.md', 'Ready.']],
+    ['ProfileCard', [
+      "HELLO, I'M JuZX", 'JuZX', 'MES Product Manager', 'Industrial Digitalization Explorer',
+      '关注工业数字化、智能制造，', '以及 AI 在个人工作流中的实践。', 'ABOUT ME', 'VIEW PROJECTS',
+    ]],
+    ['CurrentStatusCard', [
+      'CURRENT STATUS', 'Working', 'MES 产品设计与项目实践',
+      'Learning', 'Rust / AI Agent / Web Development', 'Building', 'Personal Digital Factory',
+    ]],
+    ['FeaturedProjectCard', [
+      'FEATURED PROJECT / 001', '核电制造 MES 系统', '生产、物资、质量、焊接和设备业务',
+      '全过程数字化管理。', 'ROLE', 'Product Manager', 'STATUS', 'Delivered', 'OPEN ARCHIVE', '→',
+    ]],
+    ['ProjectFolder', ['PROJECTS/', 'MES System', 'Digital Dashboard', 'Product Design', 'AI Experiments']],
+    ['NotesLauncher', [
+      'NOTES/', 'Rust 学习笔记.md', 'AI Agent 实践.md', '产品经理复盘.md', '工业数字化.md',
+    ]],
+    ['LabLauncher', ['LAB/', '互联网黑话翻译器', '飞书群问答机器人', '个人知识库', 'MES 数据助手']],
+    ['ContactTerminal', [
+      'JuZX@digital-factory ~ zsh', '$ cat contact.md', 'Email', 'Available on request',
+      'GitHub', 'ketitongxue', 'Social Media', 'JuZX', '$ echo "Let\'s build something useful."', 'Ready.', '_',
+    ]],
   ])
   for (const [name, copies] of copyByComponent) {
     for (const copy of copies) {
@@ -157,9 +174,17 @@ test('Personal OS clock, navigation, semantics, and contact links are real', asy
   const hrefs = (source) => [...source.matchAll(/href=["']([^"']+)["']/g)].map((match) => match[1])
   assert.match(topbar, /<nav(?:\s|>)/)
   assert.deepEqual(hrefs(topbar), ['/', '#projects', '#notes', '/about'])
-  assert.deepEqual(hrefs(profile), ['/about'])
+  assert.deepEqual(hrefs(profile), ['/about', '#projects'])
   assert.deepEqual(hrefs(featured), ['#projects'])
   assert.deepEqual(hrefs(contact), ['https://github.com/ketitongxue'])
+  assert.match(profile, /<a class="profile-card__projects" href="#projects">VIEW PROJECTS<\/a>/)
+  assert.deepEqual(
+    [...await Promise.all([
+      'DesktopCanvas', 'CurrentStatusCard', 'ProjectFolder', 'NotesLauncher', 'LabLauncher', 'CanvasControls',
+    ].map((name) => read(`docs/.vitepress/theme/components/${name}.vue`)))].flatMap(hrefs),
+    [],
+    'non-actionable project, note, lab, and control surfaces must not expose fake links',
+  )
 })
 
 test('splash state uses the exact session contract and fails open', () => {

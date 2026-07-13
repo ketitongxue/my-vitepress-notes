@@ -9,6 +9,6 @@
       以及 AI 在个人工作流中的实践。
     </p>
     <a class="profile-card__about" href="/about">ABOUT ME</a>
-    <span class="profile-card__projects">VIEW PROJECTS</span>
+    <a class="profile-card__projects" href="#projects">VIEW PROJECTS</a>
   </article>
 </template>

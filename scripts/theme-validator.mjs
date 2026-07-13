@@ -84,6 +84,8 @@ function delayInMilliseconds(value) {
 }
 
 const revealAnimation = 'personal-os-reveal 420ms cubic-bezier(0.16, 1, 0.3, 1) both'
+const baseFontFamily = 'var(--vp-font-family-base)'
+const monoFontFamily = '"JetBrains Mono", "Fira Code", Consolas, monospace'
 const topLevel = 'top level'
 const mobileMedia = '@media (max-width: 767px)'
 const reducedMedia = '@media (prefers-reduced-motion: reduce)'
@@ -97,6 +99,16 @@ function hasExactDeclarations(rule, expected) {
   const declarations = parseDeclarations(rule?.body ?? '')
   return declarations.size === expected.length
     && expected.every(([property, value]) => declarations.get(property) === value)
+}
+
+function requireFontFamily(rules, selector, expected, message) {
+  const declarations = rules
+    .filter((rule) => rule.selectors.includes(selector))
+    .map((rule) => parseDeclarations(rule.body).get('font-family'))
+    .filter(Boolean)
+  if (declarations.length !== 1 || declarations[0] !== expected) {
+    throw new Error(message)
+  }
 }
 
 function isStrongShadow(value) {
@@ -174,6 +186,69 @@ export function validateThemeCss(source) {
   }
   if (/linear-gradient|backdrop-filter|cursor\s*:\s*(?:grab|grabbing|zoom-in|zoom-out)|touch-action\s*:\s*none|\b(?:pointerdown|pointermove|wheel)\b/i.test(osSource)) {
     throw new Error('custom.css must not enable drag or zoom behavior')
+  }
+
+  requireFontFamily(
+    osRules,
+    '.factory-home',
+    baseFontFamily,
+    'Personal OS root must use the VitePress base font',
+  )
+  const sansBodySelectors = [
+    '.factory-home .profile-card__summary',
+    '.factory-home .current-status-card dd',
+    '.factory-home .featured-project-card h2',
+    '.factory-home .featured-project-card h2 + p',
+    '.factory-home .notes-launcher li',
+    '.factory-home .lab-launcher li',
+  ]
+  for (const selector of sansBodySelectors) {
+    requireFontFamily(
+      osRules,
+      selector,
+      baseFontFamily,
+      `Personal OS Chinese body text must use the VitePress base font: ${selector}`,
+    )
+  }
+  const monoSystemSelectors = [
+    '.factory-home .system-topbar',
+    '.factory-home .profile-card__eyebrow',
+    '.factory-home .profile-card h1',
+    '.factory-home .profile-card__role',
+    '.factory-home .profile-card__specialty',
+    '.factory-home .profile-card__about',
+    '.factory-home .profile-card__projects',
+    '.factory-home .current-status-card h2',
+    '.factory-home .project-folder h2',
+    '.factory-home .notes-launcher h2',
+    '.factory-home .lab-launcher h2',
+    '.factory-home .current-status-card dt',
+    '.factory-home .featured-project-card > p:first-child',
+    '.factory-home .featured-project-card dl',
+    '.factory-home .featured-project-card a',
+    '.factory-home .project-folder',
+    '.factory-home .project-folder li span',
+    '.factory-home .notes-launcher li span',
+    '.factory-home .lab-launcher li span',
+    '.factory-home .contact-terminal',
+    '.factory-home .canvas-controls',
+  ]
+  for (const selector of monoSystemSelectors) {
+    requireFontFamily(
+      osRules,
+      selector,
+      monoFontFamily,
+      `Personal OS system text must use the exact monospace stack: ${selector}`,
+    )
+  }
+  const allowedMonoSelectors = new Set(monoSystemSelectors)
+  for (const rule of osRules) {
+    if (parseDeclarations(rule.body).get('font-family') !== monoFontFamily) continue
+    for (const selector of rule.selectors) {
+      if (!allowedMonoSelectors.has(selector)) {
+        throw new Error(`Personal OS monospace font is not allowed on ${selector}`)
+      }
+    }
   }
 
   const surfaceSelectors = [
