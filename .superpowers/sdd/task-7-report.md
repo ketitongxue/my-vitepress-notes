@@ -24,6 +24,8 @@ The three Important review findings were reproduced and fixed with focused regre
 - The source contract now checks every brief-listed 44px target: launch, window close/open/resize, bottom navigation, layer toggle, minimap surface, and canvas controls; it also retains the 44px canvas-card resize handle.
 - All 12 allowed SFCs are scanned for forbidden gradients, backdrop filters, stars, particles, illustrations, image elements, data-image/remote visual assets, and decorative inline SVG. The single structural SVG in `CanvasConnections.vue` and `CanvasMinimap.vue` remains explicitly allowed; path/image/foreign-object content is rejected there.
 
+The final scope review exposed one narrower root-list defect. RED proved that appended unscoped `.window-manager__controls` and `.window-manager__resize` rules were still accepted because the validator listed `window-manager__window` rather than the component root. The matcher now recognizes `window-manager` and every BEM suffix while retaining the exact required `.window-manager__window` visual rule. The root audit also added `canvas-connections`, with negative mutations for controls, resize, and structural connections. Focused suites, all 12 direct SFC compilations, a 2.39s standalone build, and the final full suite passed; the full-suite VitePress build completed in 2.38s and its security scan passed.
+
 ## TDD evidence
 
 ### RED

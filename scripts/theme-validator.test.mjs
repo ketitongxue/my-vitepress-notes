@@ -113,6 +113,21 @@ expectFailure(
   'unscoped BEM modifiers cannot bypass homepage scope',
   /must be homepage scoped/,
 )
+expectFailure(
+  valid.replace('/* Personal OS end */', '.window-manager__controls { display: none; }\n/* Personal OS end */'),
+  'unscoped window controls cannot bypass homepage scope',
+  /must be homepage scoped/,
+)
+expectFailure(
+  valid.replace('/* Personal OS end */', '.window-manager__resize { width: 1px; }\n/* Personal OS end */'),
+  'unscoped window resize handles cannot bypass homepage scope',
+  /must be homepage scoped/,
+)
+expectFailure(
+  valid.replace('/* Personal OS end */', '.canvas-connections { opacity: 0; }\n/* Personal OS end */'),
+  'unscoped structural canvas connections cannot bypass homepage scope',
+  /must be homepage scoped/,
+)
 expectFailure(valid.replace('background: #FFFDF7;', 'background: linear-gradient(#FFFDF7, white);'), 'gradients are forbidden', /must not use gradients/)
 expectFailure(valid.replace('border-color: #69707D;', 'border-color: #69707D; backdrop-filter: blur(8px);'), 'backdrop blur is forbidden', /must not use gradients/)
 expectFailure(valid.replace('color: #FFFDF7;', 'color: #FFFDF7; --stars: visible;'), 'stars are forbidden', /must not use gradients/)
