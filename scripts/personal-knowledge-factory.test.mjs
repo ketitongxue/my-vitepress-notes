@@ -154,6 +154,53 @@ test('factory homepage exposes the hash-selected Personal OS shell and copy cont
   )
 })
 
+test('knowledge portfolio preserves the six-section content and navigation contract', async () => {
+  const portfolio = await read('docs/.vitepress/theme/components/KnowledgePortfolio.vue')
+  const requiredHrefs = [
+    '/wiki/',
+    '/finance/',
+    '/ask/',
+    '/llm-wiki/',
+    '/llm-wiki/principles',
+    '/llm-wiki/build',
+    'https://github.com/ketitongxue/llm-wiki-skill',
+    '/notes/product-validation-loop',
+    '/notes/static-site-delivery',
+    '/notes/sustainable-ai-workflow',
+  ]
+
+  assert.match(portfolio, /import \{ knowledgeSections \} from '.\/personalOsContent\.mjs'/)
+  assert.match(portfolio, /<main class="knowledge-portfolio" aria-labelledby="knowledge-portfolio-title">/)
+  assert.equal([...portfolio.matchAll(/<h1\b/g)].length, 1)
+  assert.match(portfolio, /<h1 id="knowledge-portfolio-title">/)
+  assert.equal([...portfolio.matchAll(/<section\b/g)].length, 1, 'one source section template must render all six records')
+  assert.match(portfolio, /<section[\s\S]*v-for="section in knowledgeSections"[\s\S]*:key="section\.id"[\s\S]*:data-knowledge-section="section\.id"/)
+  assert.match(portfolio, /<h2[\s\S]*\{\{ section\.title \}\}[\s\S]*<\/h2>/)
+  assert.match(portfolio, /section\.id === 'intro'/)
+  for (const id of ['llm-wiki', 'finance', 'qa', 'skill', 'recent']) {
+    assert.match(portfolio, new RegExp(`section\\.id === '${id}'`))
+  }
+  for (const property of ['section.id', 'section.label', 'section.title', 'section.summary']) {
+    assert.match(portfolio, new RegExp(property.replace('.', '\\.') ))
+  }
+
+  const workflow = portfolio.match(/<ol class="knowledge-portfolio__workflow">([\s\S]*?)<\/ol>/)?.[1] ?? ''
+  assert.equal([...workflow.matchAll(/<li\b/g)].length, 4)
+  for (const copy of ['来源接收与分流', '结构化摄取', '验证与链接检查', '发布与更新']) {
+    assert.match(workflow, new RegExp(copy))
+  }
+  assert.match(portfolio, /<ul class="knowledge-portfolio__recent-list">/)
+  assert.equal([...portfolio.matchAll(/<time datetime="\d{4}-\d{2}-\d{2}">/g)].length, 3)
+
+  for (const href of requiredHrefs) {
+    const pattern = new RegExp(`href="${href.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`, 'g')
+    assert.equal([...portfolio.matchAll(pattern)].length, 1, `${href} must be one native link`)
+  }
+  for (const anchor of portfolio.matchAll(/<a\b[^>]*target="_blank"[^>]*>/g)) {
+    assert.match(anchor[0], /rel="noopener noreferrer"/)
+  }
+})
+
 test('MacBook boot and bottom navigation expose the timed accessible shell contract', async () => {
   const [boot, navigation] = await Promise.all([
     read('docs/.vitepress/theme/components/MacbookBoot.vue'),

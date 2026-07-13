@@ -103,3 +103,18 @@ test('MacBook splash and hash shell preserve homepage discovery', async () => {
   assert.match(home, /<SystemTopBar\s*\/>/)
   assert.match(home, /<DesktopCanvas\s*\/>/)
 })
+
+test('knowledge portfolio is semantic document flow without copied visual effects', async () => {
+  const portfolio = await read('docs/.vitepress/theme/components/KnowledgePortfolio.vue')
+
+  assert.match(portfolio, /<main class="knowledge-portfolio" aria-labelledby="knowledge-portfolio-title">/)
+  assert.match(portfolio, /<article class="knowledge-portfolio__(?:feature|callout|method)"/)
+  assert.match(portfolio, /<ol class="knowledge-portfolio__workflow">/)
+  assert.match(portfolio, /<ul class="knowledge-portfolio__recent-list">/)
+  assert.match(portfolio, /<time datetime="\d{4}-\d{2}-\d{2}">/)
+  assert.doesNotMatch(portfolio, /<iframe\b|<object\b|<embed\b|<svg\b|v-html|contenteditable/i)
+  assert.doesNotMatch(portfolio, /BottomOsNavigation|DesktopSurface|window\.location|hashchange|sessionStorage/i)
+  assert.doesNotMatch(portfolio, /position:\s*(?:fixed|absolute)|transform:|touch-action:\s*none|dragg|resize|canvas/i)
+  assert.doesNotMatch(portfolio, /star|sparkle|particle|illustration|sticker|photograph|gradient|backdrop-filter|data:image|emoji/i)
+  assert.doesNotMatch(portfolio, /https?:\/\/(?!github\.com\/ketitongxue\/llm-wiki-skill)/i)
+})
