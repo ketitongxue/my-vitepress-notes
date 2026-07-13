@@ -1,8 +1,8 @@
 # JuZX Full Personal OS Clone Design
 
-**Date:** 2026-07-13  
-**Status:** Approved design, awaiting written-spec review  
-**Target:** Replace the current static Personal OS homepage on `feature/personal-os-static`  
+**Date:** 2026-07-13
+**Status:** Approved design, awaiting written-spec review
+**Target:** Replace the current static Personal OS homepage on `feature/personal-os-static`
 **Reference:** `https://hiesther.me/#home`
 
 ## 1. Context

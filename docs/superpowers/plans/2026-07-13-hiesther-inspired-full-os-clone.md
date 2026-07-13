@@ -6,7 +6,7 @@
 
 **Architecture:** Keep VitePress and Vue as the document/runtime shell, with `KnowledgeFactoryHome.vue` owning only hash routing and lazy view composition. Configuration and interaction math live in browser-global-free `.mjs` modules tested with Node; focused Vue components render the boot journey, desktop/window manager, knowledge portfolio, and canvas controls. Homepage CSS remains scoped between the existing Personal OS markers so wiki, finance, Q&A, Worker, and publishing behavior stay untouched.
 
-**Tech Stack:** Node.js 22, VitePress 1.6.4, Vue 3 SFCs, ES modules, plain CSS/SVG, Node.js built-in test runner, Wrangler 4.107.0.
+**Tech Stack:** Node.js 22, VitePress 1.6.4, Vue 3 SFCs, ES modules, plain CSS, `@tabler/icons-vue`, Node.js built-in test runner, Wrangler 4.107.0.
 
 ## Global Constraints
 
@@ -21,7 +21,7 @@
 - `prefers-reduced-motion: reduce` bypasses typing, progress, zoom, and long transitions; the desktop is usable within `100ms`.
 - At `390 x 844`, no horizontal page overflow is allowed; close/open controls are at least `44 x 44` CSS pixels and the canvas layer panel is collapsible.
 - Do not change generated wiki content, retrieval logic, quotas, Worker bindings, publishing scripts, or unrelated documentation pages.
-- Use local SVG icon assets; do not approximate icons with emoji or CSS drawings.
+- Use only the locally bundled `@tabler/icons-vue` package for desktop icon art; do not remotely load icons, hand-author SVG assets, or approximate icons with emoji/CSS drawings.
 - Use TDD in every task: focused RED, minimal implementation, focused GREEN, then a reviewable commit.
 
 ---
@@ -36,7 +36,7 @@
 
 **Interfaces:**
 - Produces: `OS_VIEWS`, `normalizeOsHash(hash): 'home'|'knowledge'|'system'`, `hashForOsView(view): '#home'|'#knowledge'|'#system'`.
-- Produces: immutable `bootLines`, `desktopEntries`, `knowledgeSections`, `canvasCards`, and `canvasConnections` arrays. Desktop entries have `{ id, label, icon, position:{x,y}, window:{title,summary,href?,external} }`; canvas cards have `{ id,title,kicker,body,x,y,width,height,visible,accent,href? }`.
+- Produces: immutable `bootLines`, `desktopEntries`, `knowledgeSections`, `canvasCards`, and `canvasConnections` arrays. Desktop entries have `{ id, label, icon:'folder'|'file'|'terminal'|'world', position:{x,y}, window:{title,summary,href?,external} }`; canvas cards have `{ id,title,kicker,body,x,y,width,height,visible,accent,href? }`.
 - Consumes: only literal public routes from Global Constraints; no DOM/browser globals.
 
 - [ ] **Step 1: Write the failing router/content contract**
@@ -114,16 +114,16 @@ const entry = (id, label, icon, x, y, title, summary, href, external = false) =>
   Object.freeze({ id, label, icon, position: Object.freeze({ x, y }), window: Object.freeze({ title, summary, href, external }) })
 
 export const desktopEntries = Object.freeze([
-  entry('llm-wiki', 'LLM Wiki', '/os-icons/folder.svg', 80, 84, 'LLM Wiki', 'AI、Agent 与知识工程的结构化知识库。', '/wiki/'),
-  entry('finance-wiki', 'Finance Wiki', '/os-icons/folder.svg', 176, 84, 'Finance Wiki', '金融、量化与市场结构知识库。', '/finance/'),
-  entry('ask', '知识问答', '/os-icons/terminal.svg', 80, 176, '知识问答', '基于 LLM Wiki 检索结果回答问题。', '/ask/'),
-  entry('skill', 'llm-wiki Skill', '/os-icons/document.svg', 176, 176, 'llm-wiki Skill', '公开的知识库构建方法、流程与安装指南。', '/llm-wiki/'),
-  entry('experiments', 'AI 实验', '/os-icons/folder.svg', 80, 268, 'AI 实验', '个人 AI 工具、Agent 与工作流实验。'),
-  entry('projects', '项目档案', '/os-icons/folder.svg', 176, 268, '项目档案', 'MES 与工业数字化项目实践。'),
-  entry('about', '关于我', '/os-icons/document.svg', 80, 360, '关于我', 'JuZX 的角色、关注方向与当前实践。', '/about'),
-  entry('contact', '联系方式', '/os-icons/terminal.svg', 176, 360, '联系方式', 'GitHub: ketitongxue'),
-  entry('github', 'GitHub', '/os-icons/globe.svg', 80, 452, 'GitHub', '查看公开项目与提交记录。', 'https://github.com/ketitongxue', true),
-  entry('changelog', '网站更新记录', '/os-icons/document.svg', 176, 452, '网站更新记录', 'AI 纪元的内容与系统更新。', '/notes/sustainable-ai-workflow'),
+  entry('llm-wiki', 'LLM Wiki', 'folder', 80, 84, 'LLM Wiki', 'AI、Agent 与知识工程的结构化知识库。', '/wiki/'),
+  entry('finance-wiki', 'Finance Wiki', 'folder', 176, 84, 'Finance Wiki', '金融、量化与市场结构知识库。', '/finance/'),
+  entry('ask', '知识问答', 'terminal', 80, 176, '知识问答', '基于 LLM Wiki 检索结果回答问题。', '/ask/'),
+  entry('skill', 'llm-wiki Skill', 'file', 176, 176, 'llm-wiki Skill', '公开的知识库构建方法、流程与安装指南。', '/llm-wiki/'),
+  entry('experiments', 'AI 实验', 'folder', 80, 268, 'AI 实验', '个人 AI 工具、Agent 与工作流实验。'),
+  entry('projects', '项目档案', 'folder', 176, 268, '项目档案', 'MES 与工业数字化项目实践。'),
+  entry('about', '关于我', 'file', 80, 360, '关于我', 'JuZX 的角色、关注方向与当前实践。', '/about'),
+  entry('contact', '联系方式', 'terminal', 176, 360, '联系方式', 'GitHub: ketitongxue'),
+  entry('github', 'GitHub', 'world', 80, 452, 'GitHub', '查看公开项目与提交记录。', 'https://github.com/ketitongxue', true),
+  entry('changelog', '网站更新记录', 'file', 176, 452, '网站更新记录', 'AI 纪元的内容与系统更新。', '/notes/sustainable-ai-workflow'),
 ])
 ```
 
@@ -270,13 +270,11 @@ Expected: focused tests and SSR build pass; build emits no `window is not define
 
 ---
 
-### Task 3: Desktop Icons, Local SVG Assets, and Window Manager
+### Task 3: Tabler Desktop Icons and Window Manager
 
 **Files:**
-- Create: `docs/public/os-icons/folder.svg`
-- Create: `docs/public/os-icons/document.svg`
-- Create: `docs/public/os-icons/terminal.svg`
-- Create: `docs/public/os-icons/globe.svg`
+- Modify: `package.json`
+- Modify: `package-lock.json`
 - Create: `docs/.vitepress/theme/components/desktopGeometry.mjs`
 - Create: `docs/.vitepress/theme/components/windowManagerState.mjs`
 - Create: `docs/.vitepress/theme/components/DesktopSurface.vue`
@@ -352,13 +350,27 @@ export function resizeWindow(state, id, size, bounds) {
 
 Every function returns a new state and new changed window object; no function mutates input. Cascade origin is `{x:96,y:72}` and wraps after five windows.
 
-- [ ] **Step 4: Add the four complete local SVGs**
+- [ ] **Step 4: Install the local icon dependency**
 
-Use `viewBox="0 0 48 48"`, `role="img"`, and one `<title>` in each file. Folder is a yellow tabbed folder, document a white sheet with a blue `.md` badge, terminal a dark rounded square with `>_`, and globe a white rounded square containing blue longitude/latitude paths. Each file uses only `#F4D758`, `#FFFDF7`, `#192232`, and `#2B7FD8` and has no script, external reference, animation, or embedded bitmap.
+Run `npm install @tabler/icons-vue --save`.
+
+Expected: `package.json` and `package-lock.json` record `@tabler/icons-vue`; installation completes without adding a second Vue runtime or changing the Node.js 22/Wrangler versions.
 
 - [ ] **Step 5: Implement desktop/icon/window interaction**
 
-`DesktopIcon.vue` renders a native `<button>` with `<img :src="entry.icon" alt="">` plus visible label. Pointer capture records start/current positions; more than 4px emits `move`; pointer-up without drag emits `open` on touch; desktop uses `dblclick`; Enter/Space emits `open`. An image error hides the image while the visible label remains.
+`DesktopIcon.vue` imports `IconFolder`, `IconFileText`, `IconTerminal2`, and `IconWorld` from `@tabler/icons-vue` and uses this explicit mapping:
+
+```js
+const iconComponents = Object.freeze({
+  folder: IconFolder,
+  file: IconFileText,
+  terminal: IconTerminal2,
+  world: IconWorld,
+})
+const iconComponent = computed(() => iconComponents[props.entry.icon] ?? IconFileText)
+```
+
+Render `<component :is="iconComponent" aria-hidden="true" />` inside a native `<button>` plus the visible label. Pointer capture records start/current positions; more than 4px emits `move`; pointer-up without drag emits `open` on touch; desktop uses `dblclick`; Enter/Space emits `open`. The visible text label remains the accessible fallback for an unknown icon key. No icon is fetched remotely and no handwritten SVG is added to the repository.
 
 `WindowManager.vue` renders native close and external-open controls with exact accessible names `关闭 ${title}` and `在新页面打开 ${title}`. Titlebar drag and bottom-right resize use pointer capture; iframe pointer suppression is represented by `.is-manipulating`; local previews use text and native links, never iframes. Pointer-down focuses. Resize/drag use `requestAnimationFrame`, cancel on pointer-up/unmount, and call the pure reducer.
 
@@ -370,7 +382,7 @@ Use `viewBox="0 0 48 48"`, `role="img"`, and one `<title>` in each file. Folder 
 node --test scripts/personal-os-core.test.mjs
 npm run test:factory
 npm run docs:build
-git add docs/public/os-icons docs/.vitepress/theme/components scripts/personal-os-core.test.mjs
+git add package.json package-lock.json docs/.vitepress/theme/components scripts/personal-os-core.test.mjs
 git commit -m "feat: add interactive juzx desktop"
 ```
 
@@ -579,11 +591,12 @@ At 767px: 68px icon slots/42px art, two right-side columns, hidden nonessential 
 node --test scripts/theme-validator.test.mjs
 node --test scripts/site-design.test.mjs
 npm run test:factory
-rg -n "star|sparkle|particle|illustration|hiesther|https://hiesther" docs/.vitepress/theme docs/public/os-icons
+rg -n "star|sparkle|particle|illustration|hiesther|https://hiesther" docs/.vitepress/theme
+rg -n "<svg|\.svg|https?://.*(?:icon|svg)" docs/.vitepress/theme/components/DesktopIcon.vue docs/.vitepress/theme/components/personalOsContent.mjs
 git diff --check
 ```
 
-Expected: tests pass; `rg` returns exit 1 with no matches; diff check prints nothing.
+Expected: tests pass; both `rg` commands return exit 1 with no matches; diff check prints nothing.
 
 - [ ] **Step 5: Commit**
 
