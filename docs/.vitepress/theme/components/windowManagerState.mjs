@@ -45,3 +45,19 @@ export function resizeWindow(state, id, size, bounds) {
       : item),
   }
 }
+
+export function resizeWindowByKey(state, id, key, shiftKey, bounds) {
+  const item = state.windows.find((window) => window.id === id)
+  const direction = {
+    ArrowLeft: { width: -1, height: 0 },
+    ArrowRight: { width: 1, height: 0 },
+    ArrowUp: { width: 0, height: -1 },
+    ArrowDown: { width: 0, height: 1 },
+  }[key]
+  if (!item || !direction) return state
+  const step = shiftKey ? 32 : 8
+  return resizeWindow(state, id, {
+    width: item.width + direction.width * step,
+    height: item.height + direction.height * step,
+  }, bounds)
+}

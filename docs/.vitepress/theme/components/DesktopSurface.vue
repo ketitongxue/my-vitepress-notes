@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import DesktopIcon from './DesktopIcon.vue'
 import WindowManager from './WindowManager.vue'
+import { constrainIconPosition } from './desktopGeometry.mjs'
 import { desktopEntries } from './personalOsContent.mjs'
 import {
   createWindowState,
@@ -10,9 +11,6 @@ import {
 } from './windowManagerState.mjs'
 
 const MENU_HEIGHT = 30
-const ICON_WIDTH = 88
-const ICON_HEIGHT = 76
-
 const surface = ref(null)
 const iconPositions = ref(createIconPositions())
 const windowState = ref(createWindowState())
@@ -22,28 +20,34 @@ let resizeObserver
 let clockTimer
 
 function createIconPositions() {
-  return Object.fromEntries(desktopEntries.map((entry) => [entry.id, { ...entry.position }]))
+  return Object.fromEntries(desktopEntries.map((entry) => [entry.id, {
+    anchor: 'right',
+    ...entry.position,
+  }]))
 }
 
 function iconStyle(position) {
-  return {
-    right: `${position.x}px`,
-    top: `${position.y}px`,
-  }
+  if (position.anchor === 'right') return { right: `${position.x}px`, top: `${position.y}px` }
+  return { left: `${position.x}px`, top: `${position.y}px` }
 }
 
 function resetIconPositions() {
   iconPositions.value = createIconPositions()
+  constrainIconPositions(bounds.value)
 }
 
 function updateIconPosition({ id, position }) {
   iconPositions.value = {
     ...iconPositions.value,
-    [id]: {
-      x: Math.max(0, Math.min(position.x, Math.max(0, bounds.value.width - ICON_WIDTH))),
-      y: Math.max(0, Math.min(position.y, Math.max(0, bounds.value.height - ICON_HEIGHT))),
-    },
+    [id]: constrainIconPosition(position, bounds.value),
   }
+}
+
+function constrainIconPositions(nextBounds) {
+  iconPositions.value = Object.fromEntries(Object.entries(iconPositions.value).map(([id, position]) => [
+    id,
+    constrainIconPosition(position, nextBounds),
+  ]))
 }
 
 function openEntry(entry) {
@@ -65,6 +69,7 @@ function measureSurface() {
     height: Math.max(0, surface.value.clientHeight - MENU_HEIGHT),
   }
   bounds.value = nextBounds
+  constrainIconPositions(nextBounds)
   constrainOpenWindows(nextBounds)
 }
 
@@ -106,6 +111,7 @@ onBeforeUnmount(() => {
         :key="entry.id"
         :entry="entry"
         :position="iconPositions[entry.id]"
+        :bounds="bounds"
         :style="iconStyle(iconPositions[entry.id])"
         @move="updateIconPosition"
         @open="openEntry"
@@ -120,7 +126,7 @@ onBeforeUnmount(() => {
   position: relative;
   min-height: 100dvh;
   overflow: hidden;
-  background: linear-gradient(145deg, #263b58, #111b2b 68%);
+  background: #2B7FD8;
   color: #f6f7fb;
   font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
 }

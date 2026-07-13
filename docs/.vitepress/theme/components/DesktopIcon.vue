@@ -1,11 +1,18 @@
 <script setup>
 import { computed } from 'vue'
 import { IconFileText, IconFolder, IconTerminal2, IconWorld } from '@tabler/icons-vue'
-import { isDragDistance } from './desktopGeometry.mjs'
+import {
+  consumeIconDoubleClick,
+  createIconActivationState,
+  finishIconPointer,
+  isDragDistance,
+  resolveIconPosition,
+} from './desktopGeometry.mjs'
 
 const props = defineProps({
   entry: { type: Object, required: true },
   position: { type: Object, required: true },
+  bounds: { type: Object, required: true },
 })
 
 const emit = defineEmits(['move', 'open'])
@@ -19,6 +26,7 @@ const iconComponents = Object.freeze({
 const iconComponent = computed(() => iconComponents[props.entry.icon] ?? IconFileText)
 
 let gesture = null
+let activationState = createIconActivationState()
 
 function pointFrom(event) {
   return { x: event.clientX, y: event.clientY }
@@ -32,7 +40,7 @@ function handlePointerDown(event) {
     pointerType: event.pointerType,
     start,
     current: start,
-    origin: { ...props.position },
+    origin: resolveIconPosition(props.position, props.bounds),
     dragged: false,
   }
   event.currentTarget.setPointerCapture(event.pointerId)
@@ -50,7 +58,8 @@ function moveGesture() {
   emit('move', {
     id: props.entry.id,
     position: {
-      x: gesture.origin.x - (gesture.current.x - gesture.start.x),
+      anchor: 'left',
+      x: gesture.origin.x + (gesture.current.x - gesture.start.x),
       y: gesture.origin.y + (gesture.current.y - gesture.start.y),
     },
   })
@@ -64,11 +73,16 @@ function handlePointerUp(event) {
   if (!gesture || event.pointerId !== gesture.pointerId) return
   gesture.current = pointFrom(event)
   const dragged = gesture.dragged || isDragDistance(gesture.start, gesture.current)
-  const shouldOpen = gesture.pointerType === 'touch' && !dragged
+  const activation = finishIconPointer(activationState, {
+    dragged,
+    pointerType: gesture.pointerType,
+    timeStamp: event.timeStamp,
+  })
+  activationState = activation.state
   if (dragged && !gesture.dragged) moveGesture()
   releaseCapture(event.currentTarget, gesture.pointerId)
   gesture = null
-  if (shouldOpen) open()
+  if (activation.openTouch) open()
 }
 
 function handlePointerCancel(event) {
@@ -79,6 +93,12 @@ function handlePointerCancel(event) {
 
 function open() {
   emit('open', props.entry)
+}
+
+function handleDoubleClick(event) {
+  const activation = consumeIconDoubleClick(activationState, event.timeStamp)
+  activationState = activation.state
+  if (activation.open) open()
 }
 
 function handleKeydown(event) {
@@ -92,7 +112,7 @@ function handleKeydown(event) {
   <button
     type="button"
     class="desktop-icon"
-    @dblclick="open"
+    @dblclick="handleDoubleClick"
     @keydown="handleKeydown"
     @pointerdown="handlePointerDown"
     @pointermove="handlePointerMove"

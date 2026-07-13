@@ -7,9 +7,12 @@ import {
   computeCoverTransform, createMacbookBootRuntime, getSessionStorage, MACBOOK_INTERACTIVE_SELECTOR, progressCells,
   shouldActivateMacbookFromEnter, shouldSkipMacbookBoot, transitionMacbookBoot, writeAccessed,
 } from '../docs/.vitepress/theme/components/macbookBootState.mjs'
-import { constrainWindow, distance, isDragDistance } from '../docs/.vitepress/theme/components/desktopGeometry.mjs'
 import {
-  closeWindow, createWindowState, moveWindow, openWindow, resizeWindow,
+  consumeIconDoubleClick, constrainIconPosition, constrainWindow, createIconActivationState, distance,
+  finishIconPointer, isDragDistance, resolveIconPosition,
+} from '../docs/.vitepress/theme/components/desktopGeometry.mjs'
+import {
+  closeWindow, createWindowState, moveWindow, openWindow, resizeWindow, resizeWindowByKey,
 } from '../docs/.vitepress/theme/components/windowManagerState.mjs'
 
 const readComponent = (name) => readFileSync(
@@ -159,6 +162,64 @@ test('desktop geometry distinguishes clicks from drags and constrains windows', 
   )
 })
 
+test('desktop icon activation suppresses drag and synthetic touch double-clicks', () => {
+  let state = createIconActivationState()
+  let pointer = finishIconPointer(state, {
+    dragged: true,
+    pointerType: 'mouse',
+    timeStamp: 100,
+  })
+  assert.equal(pointer.openTouch, false)
+
+  state = pointer.state
+  pointer = finishIconPointer(state, {
+    dragged: false,
+    pointerType: 'mouse',
+    timeStamp: 180,
+  })
+  let doubleClick = consumeIconDoubleClick(pointer.state, 200)
+  assert.equal(doubleClick.open, false)
+  assert.deepEqual(doubleClick.state, createIconActivationState())
+
+  pointer = finishIconPointer(doubleClick.state, {
+    dragged: false,
+    pointerType: 'mouse',
+    timeStamp: 1000,
+  })
+  doubleClick = consumeIconDoubleClick(pointer.state, 1100)
+  assert.equal(doubleClick.open, true)
+
+  pointer = finishIconPointer(doubleClick.state, {
+    dragged: false,
+    pointerType: 'touch',
+    timeStamp: 2000,
+  })
+  assert.equal(pointer.openTouch, true)
+  doubleClick = consumeIconDoubleClick(pointer.state, 2100)
+  assert.equal(doubleClick.open, false)
+})
+
+test('dragged desktop icons convert to left coordinates and survive a narrower surface', () => {
+  const iconSize = { width: 88, height: 76 }
+  const wideBounds = { width: 1200, height: 700 }
+  const initial = { anchor: 'right', x: 80, y: 84 }
+  assert.deepEqual(resolveIconPosition(initial, wideBounds, iconSize), { x: 1032, y: 84 })
+
+  const dragged = constrainIconPosition(
+    { anchor: 'left', x: 900, y: 500 },
+    wideBounds,
+    iconSize,
+  )
+  assert.deepEqual(dragged, { anchor: 'left', x: 900, y: 500 })
+
+  const narrowed = constrainIconPosition(dragged, { width: 500, height: 400 }, iconSize)
+  assert.deepEqual(narrowed, { anchor: 'left', x: 412, y: 324 })
+  assert.deepEqual(
+    resolveIconPosition(narrowed, { width: 500, height: 400 }, iconSize),
+    { x: 412, y: 324 },
+  )
+})
+
 test('desktop window reducer keeps singleton windows within viewport bounds', () => {
   const bounds = { width: 800, height: 600 }
   const entry = desktopEntries[0]
@@ -200,6 +261,28 @@ test('desktop window reducer keeps singleton windows within viewport bounds', ()
   assert.equal(resized.windows.length, 1)
 })
 
+test('desktop window resize control supports arrow keys and Shift steps', () => {
+  const bounds = { width: 800, height: 600 }
+  const entry = desktopEntries[0]
+  const opened = openWindow(createWindowState(), entry, bounds)
+
+  const wider = resizeWindowByKey(opened, entry.id, 'ArrowRight', false, bounds)
+  assert.equal(wider.windows[0].width, 428)
+  assert.equal(wider.windows[0].height, 300)
+
+  const taller = resizeWindowByKey(wider, entry.id, 'ArrowDown', true, bounds)
+  assert.equal(taller.windows[0].width, 428)
+  assert.equal(taller.windows[0].height, 332)
+
+  const minimum = resizeWindow(opened, entry.id, { width: 280, height: 200 }, bounds)
+  const constrained = resizeWindowByKey(minimum, entry.id, 'ArrowLeft', true, bounds)
+  assert.deepEqual(
+    { width: constrained.windows[0].width, height: constrained.windows[0].height },
+    { width: 280, height: 200 },
+  )
+  assert.equal(resizeWindowByKey(opened, entry.id, 'Enter', false, bounds), opened)
+})
+
 test('desktop components use local Tabler icons and native pointer interactions', () => {
   const icon = readComponent('DesktopIcon.vue')
   const manager = readComponent('WindowManager.vue')
@@ -217,7 +300,7 @@ test('desktop components use local Tabler icons and native pointer interactions'
   assert.match(icon, /<component :is="iconComponent" aria-hidden="true"/)
   assert.match(icon, /setPointerCapture/)
   assert.match(icon, /isDragDistance/)
-  assert.match(icon, /@dblclick="open"/)
+  assert.match(icon, /@dblclick="handleDoubleClick"/)
   assert.match(icon, /@keydown="handleKeydown"/)
   assert.match(icon, /if \(dragged && !gesture\.dragged\) moveGesture\(\)/)
 
@@ -231,6 +314,7 @@ test('desktop components use local Tabler icons and native pointer interactions'
   assert.match(manager, /`关闭 \$\{title\}`/)
   assert.match(manager, /`在新页面打开 \$\{title\}`/)
   assert.match(manager, /@pointerdown\.stop="focus\(item\.id\)"/)
+  assert.match(manager, /@keydown="handleResizeKey\(item, \$event\)"/)
 
   assert.match(surface, /desktopEntries/)
   assert.match(surface, /createWindowState/)
@@ -239,6 +323,11 @@ test('desktop components use local Tabler icons and native pointer interactions'
   assert.match(surface, /重置桌面位置/)
   assert.match(surface, /height: 30px/)
   assert.match(surface, /right: `\$\{position\.x\}px`/)
+  assert.match(surface, /left: `\$\{position\.x\}px`/)
+  assert.match(surface, /constrainIconPositions\(nextBounds\)/)
+  assert.match(surface, /function resetIconPositions\(\)[\s\S]*?constrainIconPositions\(bounds\.value\)/)
+  assert.match(surface, /background: #2B7FD8;/)
+  assert.equal(surface.toLowerCase().includes('gradient'), false)
 
   for (const source of [icon, manager, surface]) {
     assert.doesNotMatch(source, /<iframe\b/i)

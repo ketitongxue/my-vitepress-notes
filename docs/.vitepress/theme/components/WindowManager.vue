@@ -5,6 +5,7 @@ import {
   focusWindow,
   moveWindow,
   resizeWindow,
+  resizeWindowByKey,
 } from './windowManagerState.mjs'
 
 const props = defineProps({
@@ -35,6 +36,19 @@ function focus(id) {
 
 function close(id) {
   updateState(closeWindow(props.state, id))
+}
+
+function handleResizeKey(item, event) {
+  const nextState = resizeWindowByKey(
+    props.state,
+    item.id,
+    event.key,
+    event.shiftKey,
+    props.bounds,
+  )
+  if (nextState === props.state) return
+  event.preventDefault()
+  updateState(nextState)
 }
 
 function beginManipulation(kind, item, event) {
@@ -182,11 +196,13 @@ onBeforeUnmount(() => {
       <button
         type="button"
         class="window-manager__resize"
-        :aria-label="`调整 ${titleFor(item)} 窗口大小`"
+        :aria-label="`调整 ${titleFor(item)} 窗口大小，使用方向键`"
+        aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight"
         @pointerdown="beginManipulation('resize', item, $event)"
         @pointermove="queueManipulation"
         @pointerup="endManipulation"
         @pointercancel="cancelManipulation"
+        @keydown="handleResizeKey(item, $event)"
       >调整大小</button>
     </article>
   </div>
