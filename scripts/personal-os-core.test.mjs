@@ -18,6 +18,12 @@ import {
   canvasWheelTransform, clampScale, connectionEndpoints, fitWorldBounds, resolveTouchOwner,
   screenToWorld, touchGesture, zoomAtPoint,
 } from '../docs/.vitepress/theme/components/canvasGeometry.mjs'
+import {
+  CANVAS_LAYOUT_KEY, loadCanvasLayout, parseCanvasLayout, saveCanvasLayout, serializeCanvasLayout,
+} from '../docs/.vitepress/theme/components/canvasPersistence.mjs'
+import {
+  createHistory, pushHistory, resetHistory, undoHistory,
+} from '../docs/.vitepress/theme/components/canvasHistory.mjs'
 
 const readComponent = (name) => readFileSync(
   new URL(`../docs/.vitepress/theme/components/${name}`, import.meta.url),
@@ -440,6 +446,139 @@ test('canvas wheel zoom remains pointer centered over an interactive target', ()
   assert.deepEqual(cardWheelEvent, { deltaY: -200, target: { kind: 'canvas-card' } })
 })
 
+const trustedCanvasDefaults = () => ({
+  cards: canvasCards.map((card) => ({ ...card })),
+  transform: { scale: 1, panX: 24, panY: -18 },
+})
+
+test('canvas persistence round trips only trusted geometry and visibility', () => {
+  assert.equal(CANVAS_LAYOUT_KEY, 'juzx-personal-os-layout-v1')
+  const defaults = trustedCanvasDefaults()
+  const layout = {
+    cards: defaults.cards.map((card, index) => ({
+      ...card,
+      x: card.x + index,
+      visible: index !== 3,
+      arbitrary: 'untrusted',
+    })),
+    transform: { scale: 1.5, panX: -220, panY: 84 },
+    arbitrary: 'untrusted',
+  }
+  const raw = serializeCanvasLayout(layout)
+  const envelope = JSON.parse(raw)
+  assert.deepEqual(Object.keys(envelope), ['version', 'transform', 'cards'])
+  assert.deepEqual(Object.keys(envelope.transform), ['scale', 'panX', 'panY'])
+  assert.deepEqual(Object.keys(envelope.cards[0]), ['id', 'x', 'y', 'width', 'height', 'visible'])
+  for (const forbidden of ['title', 'body', 'href', 'accent', 'arbitrary']) {
+    assert.equal(raw.includes(`\"${forbidden}\"`), false)
+  }
+
+  const reversed = JSON.stringify({ ...envelope, cards: [...envelope.cards].reverse() })
+  const defaultsSnapshot = structuredClone(defaults)
+  const parsed = parseCanvasLayout(reversed, defaults)
+  assert.deepEqual(parsed.cards.map(({ id }) => id), defaults.cards.map(({ id }) => id))
+  assert.equal(parsed.cards[0].title, defaults.cards[0].title)
+  assert.equal(parsed.cards[0].body, defaults.cards[0].body)
+  assert.equal(parsed.cards[5].href, defaults.cards[5].href)
+  assert.equal(parsed.cards[0].accent, defaults.cards[0].accent)
+  assert.equal(parsed.cards[3].visible, false)
+  assert.equal(parsed.cards[8].x, defaults.cards[8].x + 8)
+  assert.deepEqual(defaults, defaultsSnapshot)
+  assert.notEqual(parsed, defaults)
+  assert.notEqual(parsed.cards[0], defaults.cards[0])
+})
+
+test('canvas persistence strictly rejects malformed and untrusted layouts', () => {
+  const defaults = trustedCanvasDefaults()
+  const valid = JSON.parse(serializeCanvasLayout(defaults))
+  const parse = (mutate, trusted = defaults) => {
+    const candidate = structuredClone(valid)
+    mutate(candidate)
+    return parseCanvasLayout(JSON.stringify(candidate), trusted)
+  }
+
+  for (const raw of ['{', 'null', '[]', '42', JSON.stringify({ version: 1 })]) {
+    assert.equal(parseCanvasLayout(raw, defaults), null)
+  }
+  assert.equal(parse((candidate) => { candidate.version = 2 }), null)
+  assert.equal(parse((candidate) => { candidate.cards.pop() }), null)
+  assert.equal(parse((candidate) => { candidate.cards.push({ ...candidate.cards[0] }) }), null)
+  assert.equal(parse((candidate) => { candidate.cards[0].id = 'unknown' }), null)
+  assert.equal(parse((candidate) => { candidate.cards.push({ ...candidate.cards[0], id: 'extra' }) }), null)
+  for (const field of ['x', 'y', 'width', 'height', 'visible']) {
+    assert.equal(parse((candidate) => { delete candidate.cards[0][field] }), null, field)
+  }
+  for (const value of [null, '1', Number.NaN, Number.POSITIVE_INFINITY]) {
+    assert.equal(parse((candidate) => { candidate.transform.panX = value }), null)
+    assert.equal(parse((candidate) => { candidate.cards[0].x = value }), null)
+  }
+  assert.equal(parse((candidate) => { candidate.cards[0].visible = 1 }), null)
+  assert.equal(parse((candidate) => { candidate.cards[0].width = 0 }), null)
+  assert.equal(parse((candidate) => { candidate.cards[0].height = -1 }), null)
+  assert.equal(parse((candidate) => { candidate.transform.scale = 9 }), null)
+  assert.equal(parse((candidate) => { candidate.transform.scale = 0.14 }), null)
+  assert.equal(parseCanvasLayout(JSON.stringify(valid), { cards: [], transform: defaults.transform }), null)
+  assert.equal(parseCanvasLayout(JSON.stringify(valid), { cards: defaults.cards, transform: { scale: null, panX: 0, panY: 0 } }), null)
+})
+
+test('canvas storage uses one key and silently fails closed', () => {
+  const defaults = trustedCanvasDefaults()
+  const calls = []
+  const storage = {
+    getItem(key) { calls.push(['get', key]); return serializeCanvasLayout(defaults) },
+    setItem(key, value) { calls.push(['set', key, value]) },
+  }
+  assert.deepEqual(loadCanvasLayout(storage, defaults), defaults)
+  assert.equal(saveCanvasLayout(storage, defaults), true)
+  assert.deepEqual(calls.map(([operation, key]) => [operation, key]), [
+    ['get', CANVAS_LAYOUT_KEY], ['set', CANVAS_LAYOUT_KEY],
+  ])
+  assert.equal(loadCanvasLayout(undefined, defaults), null)
+  assert.equal(saveCanvasLayout(undefined, defaults), false)
+  assert.equal(loadCanvasLayout({ getItem() { throw new Error('denied') } }, defaults), null)
+  assert.equal(saveCanvasLayout({ setItem() { throw new Error('quota') } }, defaults), false)
+  assert.equal(saveCanvasLayout(storage, { cards: [], transform: defaults.transform }), false)
+})
+
+test('canvas history is immutable, bounded, undoable, and resettable', () => {
+  const defaults = trustedCanvasDefaults()
+  const created = createHistory(defaults)
+  assert.deepEqual(created.past, [])
+  assert.deepEqual(created.future, [])
+  assert.deepEqual(created.present, defaults)
+  assert.notEqual(created.present, defaults)
+
+  const duplicate = pushHistory(created, structuredClone(defaults))
+  assert.deepEqual(duplicate, created)
+  assert.deepEqual(duplicate.past, [])
+
+  let history = created
+  for (let index = 1; index <= 55; index += 1) {
+    history = pushHistory(history, {
+      ...defaults,
+      transform: { ...defaults.transform, panX: index },
+    })
+  }
+  assert.equal(history.past.length, 50)
+  assert.equal(history.past[0].transform.panX, 5)
+  assert.equal(history.present.transform.panX, 55)
+
+  const beforeUndo = structuredClone(history)
+  const undone = undoHistory(history)
+  assert.equal(undone.present.transform.panX, 54)
+  assert.equal(undone.future[0].transform.panX, 55)
+  assert.deepEqual(history, beforeUndo)
+  const repushed = pushHistory(undone, { ...undone.present, transform: { ...undone.present.transform, panY: 99 } })
+  assert.deepEqual(repushed.future, [])
+
+  const reset = resetHistory(repushed, defaults)
+  assert.deepEqual(reset.past, [])
+  assert.deepEqual(reset.future, [])
+  assert.deepEqual(reset.present, defaults)
+  assert.notEqual(reset.present, defaults)
+  assert.deepEqual(undoHistory(created), created)
+})
+
 test('infinite canvas components preserve interaction and source contracts', () => {
   const canvas = readComponent('InfiniteCanvas.vue')
   const card = readComponent('CanvasCard.vue')
@@ -500,5 +639,78 @@ test('infinite canvas components preserve interaction and source contracts', () 
   for (const source of [canvas, card, connections]) {
     assert.doesNotMatch(source, /contenteditable|v-html|<iframe\b|<object\b|<embed\b/i)
     assert.doesNotMatch(source, /https?:\/\/|sparkle|particle|illustration|create-card|delete-card/i)
+  }
+})
+
+test('canvas chrome wires layers, minimap, controls, persistence, and bounded history', () => {
+  const canvas = readComponent('InfiniteCanvas.vue')
+  const layers = readComponent('CanvasLayers.vue')
+  const minimap = readComponent('CanvasMinimap.vue')
+  const controls = readComponent('CanvasControls.vue')
+
+  for (const name of ['CanvasLayers', 'CanvasMinimap', 'CanvasControls']) {
+    assert.match(canvas, new RegExp(`import ${name} from './${name}\\.vue'`))
+    assert.match(canvas, new RegExp(`<${name}\\b`))
+  }
+  assert.match(canvas, /from '\.\/canvasPersistence\.mjs'/)
+  assert.match(canvas, /from '\.\/canvasHistory\.mjs'/)
+  assert.match(canvas, /@focus="focusCard"/)
+  assert.match(canvas, /@visibility="changeVisibility"/)
+  assert.match(canvas, /@navigate="navigateToPoint"/)
+  for (const [event, handler] of [
+    ['zoom-in', 'zoomIn'], ['zoom-out', 'zoomOut'], ['fit', 'fitCanvas'],
+    ['undo', 'undoCanvas'], ['save', 'saveNow'], ['reset', 'restoreDefaults'],
+  ]) assert.match(canvas, new RegExp(`@${event}="${handler}"`))
+  assert.match(canvas, /const SAVE_DELAY = 250/)
+  assert.match(canvas, /window\.localStorage/)
+  assert.match(canvas, /loadCanvasLayout\(storage, defaultLayout\)/)
+  assert.match(canvas, /saveCanvasLayout\(storage, currentLayout\(\)\)/)
+  assert.match(canvas, /clearTimeout\(saveTimer\)/)
+  assert.match(canvas, /:can-undo="history\.past\.length > 0"/)
+  assert.match(canvas, /@gesture-complete="completeCardGesture"/)
+  assert.match(canvas, /function completeCardGesture[\s\S]*?pushHistory/)
+  assert.match(canvas, /function changeVisibility[\s\S]*?pushHistory/)
+  assert.match(canvas, /function restoreDefaults[\s\S]*?pushHistory/)
+  for (const handler of ['updateCardGeometry', 'applyTransform', 'selectCard', 'focusCard', 'navigateToPoint']) {
+    const match = canvas.match(new RegExp(`function ${handler}[^]*?(?=\\nfunction |\\nonMounted)`))
+    assert.ok(match, handler)
+    assert.doesNotMatch(match[0], /pushHistory\(/, handler)
+  }
+
+  assert.match(layers, /defineEmits\(\['focus', 'visibility'\]\)/)
+  assert.match(layers, /<aside\s+[\s\S]*?class="canvas-layers"/)
+  assert.match(layers, /v-for="card in cards"/)
+  assert.match(layers, /:key="card\.id"/)
+  assert.match(layers, /type="checkbox"/)
+  assert.match(layers, /:aria-current="selectedCardId === card\.id \? 'true' : undefined"/)
+  assert.match(layers, /:disabled="card\.visible === false"/)
+  assert.match(layers, /切换画布图层面板/)
+  assert.match(layers, /min-width: 44px/)
+  assert.match(layers, /@media \(max-width: 767px\)/)
+
+  assert.match(minimap, /defineEmits\(\['navigate'\]\)/)
+  for (const prop of ['cards', 'transform', 'viewport', 'worldBounds']) assert.match(minimap, new RegExp(`${prop}:`))
+  assert.match(minimap, /v-for="card in visibleCards"/)
+  assert.match(minimap, /:key="card\.id"/)
+  assert.match(minimap, /-props\.transform\.panX \/ props\.transform\.scale/)
+  assert.match(minimap, /getBoundingClientRect\(\)/)
+  assert.match(minimap, /props\.worldBounds\.x/)
+  assert.match(minimap, /emit\('navigate', \{ x, y \}\)/)
+  assert.match(minimap, /<svg\b/)
+  assert.match(minimap, /<rect\b/)
+
+  assert.match(controls, /defineEmits\(\['zoom-in', 'zoom-out', 'fit', 'undo', 'save', 'reset'\]\)/)
+  for (const label of ['缩小画布', '放大画布', '适应全部内容', '撤销上一步', '保存画布布局', '恢复默认布局']) {
+    assert.ok(controls.includes(`aria-label="${label}"`), label)
+  }
+  assert.match(controls, /:disabled="!canUndo"/)
+  assert.match(controls, /确认恢复默认/)
+  assert.match(controls, /取消/)
+  assert.match(controls, /emit\('reset'\)/)
+  assert.doesNotMatch(controls, /window\.confirm/)
+
+  for (const source of [canvas, layers, minimap, controls]) {
+    assert.doesNotMatch(source, /contenteditable|v-html|<iframe\b|<object\b|<embed\b|sessionStorage|window\.confirm/i)
+    assert.doesNotMatch(source, /upload|create-card|delete-card|sparkle|particle|illustration|https?:\/\//i)
   }
 })

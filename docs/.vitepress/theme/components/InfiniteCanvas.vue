@@ -2,27 +2,70 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import CanvasCard from './CanvasCard.vue'
 import CanvasConnections from './CanvasConnections.vue'
+import CanvasControls from './CanvasControls.vue'
+import CanvasLayers from './CanvasLayers.vue'
+import CanvasMinimap from './CanvasMinimap.vue'
 import {
-  canvasWheelTransform, clampScale, resolveTouchOwner, screenToWorld, touchGesture,
+  canvasWheelTransform, clampScale, fitWorldBounds, resolveTouchOwner, screenToWorld,
+  touchGesture, zoomAtPoint,
 } from './canvasGeometry.mjs'
+import { createHistory, pushHistory, undoHistory } from './canvasHistory.mjs'
+import { loadCanvasLayout, saveCanvasLayout } from './canvasPersistence.mjs'
 import { canvasCards, canvasConnections } from './personalOsContent.mjs'
 
+const SAVE_DELAY = 250
+const INITIAL_TRANSFORM = Object.freeze({ scale: 1, panX: 0, panY: 0 })
 const emit = defineEmits(['layout-change'])
 const viewport = ref(null)
 const cards = ref(canvasCards.map((card) => ({ ...card })))
-const transform = ref({ scale: 1, panX: 0, panY: 0 })
+const transform = ref({ ...INITIAL_TRANSFORM })
 const selectedCardId = ref(null)
 const stackingOrder = ref(cards.value.map((card) => card.id))
+const viewportSize = ref({ width: 1, height: 1 })
 
+const defaultLayout = {
+  cards: canvasCards.map((card) => ({ ...card })),
+  transform: { ...INITIAL_TRANSFORM },
+}
+const history = ref(createHistory(defaultLayout))
+
+function boundsFor(cardsToMeasure) {
+  const minX = Math.min(...cardsToMeasure.map((card) => card.x))
+  const minY = Math.min(...cardsToMeasure.map((card) => card.y))
+  const maxX = Math.max(...cardsToMeasure.map((card) => card.x + card.width))
+  const maxY = Math.max(...cardsToMeasure.map((card) => card.y + card.height))
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
+}
+
+const stableWorldBounds = Object.freeze(boundsFor(defaultLayout.cards))
 let pointerGesture = null
 let touchBaseline = null
 let touchOwner = null
 let pendingTransform = null
 let frameId = null
+let saveTimer = null
+let storage
+let resizeObserver
 
 const worldStyle = computed(() => ({
   transform: `translate(${transform.value.panX}px, ${transform.value.panY}px) scale(${transform.value.scale})`,
 }))
+
+function currentLayout() {
+  return {
+    cards: cards.value.map((card) => ({ ...card })),
+    transform: { ...transform.value },
+  }
+}
+
+function applyLayout(layout) {
+  cards.value = layout.cards.map((card) => ({ ...card }))
+  transform.value = { ...layout.transform }
+}
+
+function syncHistoryPresent() {
+  history.value = { ...history.value, present: currentLayout() }
+}
 
 function zIndexFor(id) {
   return stackingOrder.value.indexOf(id) + 1
@@ -32,12 +75,42 @@ function emitLayout() {
   emit('layout-change', { cards: cards.value, transform: { ...transform.value } })
 }
 
+function cancelScheduledSave() {
+  if (saveTimer === null) return
+  window.clearTimeout(saveTimer)
+  saveTimer = null
+}
+
+function scheduleSave() {
+  cancelScheduledSave()
+  saveTimer = window.setTimeout(() => {
+    saveTimer = null
+    saveCanvasLayout(storage, currentLayout())
+  }, SAVE_DELAY)
+}
+
+function saveNow() {
+  cancelScheduledSave()
+  saveCanvasLayout(storage, currentLayout())
+}
+
+function applyTransform(nextTransform, persist = true) {
+  transform.value = {
+    scale: clampScale(nextTransform.scale),
+    panX: nextTransform.panX,
+    panY: nextTransform.panY,
+  }
+  syncHistoryPresent()
+  emitLayout()
+  if (persist) scheduleSave()
+}
+
 function applyPendingTransform() {
   frameId = null
   if (!pendingTransform) return
-  transform.value = pendingTransform
+  const nextTransform = pendingTransform
   pendingTransform = null
-  emitLayout()
+  applyTransform(nextTransform, false)
 }
 
 function queueTransform(nextTransform) {
@@ -51,6 +124,8 @@ function flushTransform() {
     frameId = null
   }
   applyPendingTransform()
+  syncHistoryPresent()
+  scheduleSave()
 }
 
 function isInteractiveTarget(target) {
@@ -110,6 +185,7 @@ function handleWheel(event) {
   const point = viewportPoint(event.clientX, event.clientY)
   const currentTransform = pendingTransform ?? transform.value
   queueTransform(canvasWheelTransform(currentTransform, event, point))
+  scheduleSave()
 }
 
 function resetTouchBaseline(touches) {
@@ -223,13 +299,104 @@ function updateCardGeometry({ id, geometry }) {
   emitLayout()
 }
 
+function completeCardGesture({ changed }) {
+  if (!changed) return
+  history.value = pushHistory(history.value, currentLayout())
+  emitLayout()
+  scheduleSave()
+}
+
+function changeVisibility({ id, visible }) {
+  const card = cards.value.find((candidate) => candidate.id === id)
+  if (!card || card.visible === visible) return
+  cards.value = cards.value.map((candidate) => candidate.id === id
+    ? { ...candidate, visible }
+    : candidate)
+  if (!visible && selectedCardId.value === id) selectedCardId.value = null
+  history.value = pushHistory(history.value, currentLayout())
+  emitLayout()
+  scheduleSave()
+}
+
+function focusCard(id) {
+  const card = cards.value.find((candidate) => candidate.id === id)
+  if (!card || card.visible === false) return
+  selectCard(id)
+  applyTransform(fitWorldBounds(
+    { x: card.x, y: card.y, width: card.width, height: card.height },
+    viewportSize.value,
+    64,
+  ))
+}
+
+function navigateToPoint(worldPoint) {
+  const scale = clampScale(transform.value.scale)
+  applyTransform({
+    scale,
+    panX: viewportSize.value.width / 2 - worldPoint.x * scale,
+    panY: viewportSize.value.height / 2 - worldPoint.y * scale,
+  })
+}
+
+function zoomBy(multiplier) {
+  const point = { x: viewportSize.value.width / 2, y: viewportSize.value.height / 2 }
+  applyTransform(zoomAtPoint(transform.value, transform.value.scale * multiplier, point))
+}
+
+function zoomIn() {
+  zoomBy(1.2)
+}
+
+function zoomOut() {
+  zoomBy(1 / 1.2)
+}
+
+function fitCanvas() {
+  applyTransform(fitWorldBounds(stableWorldBounds, viewportSize.value, 64))
+}
+
+function undoCanvas() {
+  if (history.value.past.length === 0) return
+  history.value = undoHistory(history.value)
+  applyLayout(history.value.present)
+  emitLayout()
+  scheduleSave()
+}
+
+function restoreDefaults() {
+  history.value = pushHistory(history.value, defaultLayout)
+  applyLayout(history.value.present)
+  selectedCardId.value = null
+  stackingOrder.value = defaultLayout.cards.map((card) => card.id)
+  emitLayout()
+  scheduleSave()
+}
+
+function updateViewportSize() {
+  const rect = viewport.value?.getBoundingClientRect()
+  if (!rect) return
+  viewportSize.value = { width: rect.width, height: rect.height }
+}
+
 onMounted(() => {
   const target = viewport.value
+  try { storage = window.localStorage } catch { storage = undefined }
+  const loaded = loadCanvasLayout(storage, defaultLayout) ?? defaultLayout
+  history.value = createHistory(loaded)
+  applyLayout(history.value.present)
+  updateViewportSize()
+
   target.addEventListener('wheel', handleWheel, { passive: false })
   target.addEventListener('touchstart', handleTouchStart, { passive: false })
   target.addEventListener('touchmove', handleTouchMove, { passive: false })
   target.addEventListener('touchend', handleTouchEnd, { passive: false })
   target.addEventListener('touchcancel', handleTouchCancel, { passive: false })
+  if (typeof window.ResizeObserver === 'function') {
+    resizeObserver = new window.ResizeObserver(updateViewportSize)
+    resizeObserver.observe(target)
+  } else {
+    window.addEventListener('resize', updateViewportSize)
+  }
 })
 
 onBeforeUnmount(() => {
@@ -239,6 +406,9 @@ onBeforeUnmount(() => {
   target?.removeEventListener('touchmove', handleTouchMove)
   target?.removeEventListener('touchend', handleTouchEnd)
   target?.removeEventListener('touchcancel', handleTouchCancel)
+  resizeObserver?.disconnect()
+  window.removeEventListener('resize', updateViewportSize)
+  cancelScheduledSave()
   if (frameId !== null) window.cancelAnimationFrame(frameId)
   const pointerId = pointerGesture?.pointerId
   if (pointerId !== undefined && target?.hasPointerCapture?.(pointerId)) {
@@ -249,6 +419,7 @@ onBeforeUnmount(() => {
   pointerGesture = null
   touchBaseline = null
   touchOwner = null
+  storage = undefined
 })
 </script>
 
@@ -274,9 +445,34 @@ onBeforeUnmount(() => {
           :z-index="zIndexFor(card.id)"
           @select="selectCard"
           @geometry-change="updateCardGeometry"
+          @gesture-complete="completeCardGesture"
         />
       </div>
     </div>
+
+    <CanvasLayers
+      :cards="cards"
+      :selected-card-id="selectedCardId"
+      @focus="focusCard"
+      @visibility="changeVisibility"
+    />
+    <CanvasMinimap
+      :cards="cards"
+      :transform="transform"
+      :viewport="viewportSize"
+      :world-bounds="stableWorldBounds"
+      @navigate="navigateToPoint"
+    />
+    <CanvasControls
+      :scale="transform.scale"
+      :can-undo="history.past.length > 0"
+      @zoom-in="zoomIn"
+      @zoom-out="zoomOut"
+      @fit="fitCanvas"
+      @undo="undoCanvas"
+      @save="saveNow"
+      @reset="restoreDefaults"
+    />
   </section>
 </template>
 
