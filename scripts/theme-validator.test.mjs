@@ -114,6 +114,10 @@ function validTheme() {
 `
 }
 
+function appendToOs(css, extra) {
+  return css.replace('/* Personal OS end */', `${extra}\n/* Personal OS end */`)
+}
+
 assert.equal(runChecker(validTheme()).status, 0, 'complete Personal OS palettes and responsive rules must pass validation')
 
 const commented = runChecker(`/* ${validTheme()} */`)
@@ -121,7 +125,7 @@ assert.notEqual(commented.status, 0, 'commented-out declarations and selectors m
 
 const missingDark = runChecker(validTheme().replace('.dark {', '.dark-missing {'))
 assert.notEqual(missingDark.status, 0, 'missing dark palette anchors must fail validation')
-assert.match(missingDark.stderr, /custom\.css \.dark must declare --vp-c-bg/)
+assert.match(missingDark.stderr, /exactly one \.dark rule/)
 
 const missingToken = runChecker(validTheme().replace('--factory-focus: #123456;', ''))
 assert.notEqual(missingToken.status, 0, 'both palettes require every factory token')
@@ -140,14 +144,14 @@ assert.match(nonFourteenColumnCanvas.stderr, /desktop canvas must use the exact 
 
 const missingPlacement = runChecker(validTheme().replace('.factory-home .desktop-canvas__lab { grid-column: 11 / 15; grid-row: 9 / 13; }', ''))
 assert.notEqual(missingPlacement.status, 0, 'every OS card needs an explicit placement selector')
-assert.match(missingPlacement.stderr, /active \.factory-home \.desktop-canvas__lab rule/)
+assert.match(missingPlacement.stderr, /exactly one \.factory-home \.desktop-canvas__lab rule/)
 
 const misplacedMobile = runChecker(validTheme().replace(
   '@media (max-width: 767px) {\n  .factory-home .desktop-canvas { width: calc(100vw - 32px); grid-template-columns: 1fr; }\n}',
   '.factory-home .desktop-canvas { width: calc(100vw - 32px); grid-template-columns: 1fr; }',
 ))
 assert.notEqual(misplacedMobile.status, 0, 'the mobile grid declaration must be inside the 767px media query')
-assert.match(misplacedMobile.stderr, /must set \.desktop-canvas to one column/)
+assert.match(misplacedMobile.stderr, /exactly one \.factory-home \.desktop-canvas rule/)
 
 const missingStagger = runChecker(validTheme().replace(
   '.factory-home.is-entering .desktop-canvas__contact { animation-delay: 410ms; }',
@@ -165,7 +169,7 @@ const missingTopbarReduction = runChecker(validTheme().replace(
   '',
 ))
 assert.notEqual(missingTopbarReduction.status, 0, 'reduced motion must cover the fixed topbar')
-assert.match(missingTopbarReduction.stderr, /\.system-topbar/)
+assert.match(missingTopbarReduction.stderr, /exactly one \.factory-home\.is-entering \.system-topbar rule/)
 
 const nonFixedSplash = runChecker(validTheme().replace(
   '.factory-boot {\n  position: fixed;',
@@ -199,6 +203,43 @@ const strongShadow = runChecker(validTheme().replace(
 ))
 assert.notEqual(strongShadow.status, 0, 'saturated offset shadows must be rejected')
 assert.match(strongShadow.stderr, /strong or saturated box-shadow/)
+
+const laterAnimationOverride = runChecker(appendToOs(validTheme(), `
+.factory-home.is-entering .system-topbar {
+  animation: personal-os-reveal 900ms ease both;
+  animation-delay: 0ms;
+}`))
+assert.notEqual(laterAnimationOverride.status, 0, 'a later duplicate animation rule must not bypass validation')
+assert.match(laterAnimationOverride.stderr, /exactly one/)
+
+const laterPlacementOverride = runChecker(appendToOs(validTheme(), `
+.factory-home .desktop-canvas__profile { grid-column: 2 / 9; grid-row: 2 / 6; }`))
+assert.notEqual(laterPlacementOverride.status, 0, 'a later duplicate placement rule must not bypass validation')
+assert.match(laterPlacementOverride.stderr, /exactly one/)
+
+const laterMobileOverride = runChecker(appendToOs(validTheme(), `
+@media (max-width: 767px) {
+  .factory-home .desktop-canvas { width: 100vw; grid-template-columns: repeat(2, 1fr); }
+}`))
+assert.notEqual(laterMobileOverride.status, 0, 'a later duplicate mobile override must not bypass validation')
+assert.match(laterMobileOverride.stderr, /exactly one/)
+
+const laterReducedMotionOverride = runChecker(appendToOs(validTheme(), `
+@media (prefers-reduced-motion: reduce) {
+  .factory-home.is-entering .system-topbar,
+  .factory-home.is-entering .desktop-canvas > * {
+    animation: personal-os-reveal 420ms linear both;
+    transition: opacity 1s;
+    transform: scale(2);
+  }
+}`))
+assert.notEqual(laterReducedMotionOverride.status, 0, 'a later duplicate reduced-motion rule must not bypass validation')
+assert.match(laterReducedMotionOverride.stderr, /exactly one/)
+
+const laterStrongShadowOverride = runChecker(appendToOs(validTheme(), `
+.factory-home .profile-card { box-shadow: 10px 10px 0 #315EFB; }`))
+assert.notEqual(laterStrongShadowOverride.status, 0, 'a later duplicate strong shadow must not bypass validation')
+assert.match(laterStrongShadowOverride.stderr, /strong or saturated box-shadow/)
 
 for (const [label, before, after] of [
   ['duration', 'personal-os-reveal 420ms', 'personal-os-reveal 700ms'],

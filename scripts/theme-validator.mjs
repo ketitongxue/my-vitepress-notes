@@ -51,11 +51,21 @@ function parseRules(css, ancestors = []) {
   return rules
 }
 
-function findRule(rules, selector, ancestor) {
-  return rules.find((rule) =>
-    rule.selectors.includes(selector) &&
-    (ancestor === undefined || rule.ancestors.includes(ancestor))
-  )
+function matchingRules(rules, selector, ancestor) {
+  return rules.filter((rule) => {
+    if (!rule.selectors.includes(selector)) return false
+    if (ancestor === undefined) return rule.ancestors.length === 0
+    return rule.ancestors.length === 1 && rule.ancestors[0] === ancestor
+  })
+}
+
+function requireRule(rules, selector, ancestor) {
+  const matches = matchingRules(rules, selector, ancestor)
+  if (matches.length !== 1) {
+    const context = ancestor ?? 'top level'
+    throw new Error(`custom.css must contain exactly one ${selector} rule in ${context}`)
+  }
+  return matches[0]
 }
 
 function delayInMilliseconds(value) {
@@ -88,10 +98,10 @@ function isStrongShadow(value) {
 export function validateThemeCss(source) {
   const css = stripComments(source)
   const rules = parseRules(css)
-  const root = findRule(rules, ':root')
-  const rootDeclarations = root && parseDeclarations(root.body)
-  const dark = findRule(rules, '.dark')
-  const darkDeclarations = dark && parseDeclarations(dark.body)
+  const root = requireRule(rules, ':root')
+  const rootDeclarations = parseDeclarations(root.body)
+  const dark = requireRule(rules, '.dark')
+  const darkDeclarations = parseDeclarations(dark.body)
 
   for (const [property, value] of [
     ['--vp-c-bg', '#f6f3ea'],
@@ -172,18 +182,18 @@ export function validateThemeCss(source) {
     '.factory-home .desktop-canvas', '.factory-home .system-topbar',
     ...surfaceSelectors, ...scopedPlacements, '.factory-boot'
   ]) {
-    const rule = findRule(rules, selector)
+    const rule = requireRule(rules, selector)
     if (!rule || parseDeclarations(rule.body).size === 0) {
       throw new Error(`custom.css must contain an active ${selector} rule`)
     }
   }
 
-  const topbarDeclarations = parseDeclarations(findRule(rules, '.factory-home .system-topbar')?.body ?? '')
+  const topbarDeclarations = parseDeclarations(requireRule(rules, '.factory-home .system-topbar').body)
   if (topbarDeclarations.get('position') !== 'fixed' || topbarDeclarations.get('height') !== '56px') {
     throw new Error('Personal OS topbar must use fixed positioning and a 56px height')
   }
 
-  const canvasDeclarations = parseDeclarations(findRule(rules, '.factory-home .desktop-canvas')?.body ?? '')
+  const canvasDeclarations = parseDeclarations(requireRule(rules, '.factory-home .desktop-canvas').body)
   if (canvasDeclarations.get('display') !== 'grid'
     || canvasDeclarations.get('width') !== 'min(1360px, calc(100vw - 48px))'
     || canvasDeclarations.get('min-height') !== '1040px'
@@ -196,11 +206,11 @@ export function validateThemeCss(source) {
   const entranceDelays = []
   for (const [selector, column, row, delay] of placements) {
     const scopedSelector = `.factory-home ${selector}`
-    const placement = parseDeclarations(findRule(rules, scopedSelector)?.body ?? '')
+    const placement = parseDeclarations(requireRule(rules, scopedSelector).body)
     if (placement.get('grid-column') !== column || placement.get('grid-row') !== row) {
       throw new Error(`Personal OS placement ${scopedSelector} must use grid-column ${column} and grid-row ${row}`)
     }
-    const stagger = findRule(rules, `.factory-home.is-entering ${selector}`)
+    const stagger = requireRule(rules, `.factory-home.is-entering ${selector}`)
     const staggerDeclarations = parseDeclarations(stagger?.body ?? '')
     if (staggerDeclarations.get('animation-delay') !== delay) {
       throw new Error(`Personal OS entrance must stagger ${selector} at ${delay}`)
@@ -211,8 +221,8 @@ export function validateThemeCss(source) {
     || entranceDelays.some((delay, index) => index > 0 && delay <= entranceDelays[index - 1])) {
     throw new Error('Personal OS reveal delays must be distinct and strictly increasing')
   }
-  const topbarEntrance = parseDeclarations(findRule(rules, '.factory-home.is-entering .system-topbar')?.body ?? '')
-  const childrenEntrance = parseDeclarations(findRule(rules, '.factory-home.is-entering .desktop-canvas > *')?.body ?? '')
+  const topbarEntrance = parseDeclarations(requireRule(rules, '.factory-home.is-entering .system-topbar').body)
+  const childrenEntrance = parseDeclarations(requireRule(rules, '.factory-home.is-entering .desktop-canvas > *').body)
   if (topbarEntrance.get('animation') !== revealAnimation
     || childrenEntrance.get('animation') !== revealAnimation) {
     throw new Error('Personal OS reveal animation must use the exact name, duration, easing, and fill mode')
@@ -236,7 +246,7 @@ export function validateThemeCss(source) {
     throw new Error('Personal OS reveal keyframes must use only the approved opacity and transform states')
   }
 
-  const splash = findRule(rules, '.factory-boot')
+  const splash = requireRule(rules, '.factory-boot')
   const splashDeclarations = parseDeclarations(splash?.body ?? '')
   if (splashDeclarations.get('position') !== 'fixed' || splashDeclarations.get('inset') !== '0') {
     throw new Error('factory splash must use fixed positioning and inset: 0')
@@ -248,14 +258,14 @@ export function validateThemeCss(source) {
     throw new Error('factory splash must use the approved 400ms exit')
   }
 
-  const accessButton = findRule(rules, '.factory-boot__access')
+  const accessButton = requireRule(rules, '.factory-boot__access')
   const accessDeclarations = parseDeclarations(accessButton?.body ?? '')
   if (accessDeclarations.get('min-width') !== '44px' || accessDeclarations.get('min-height') !== '44px') {
     throw new Error('factory splash access button must keep a 44px hit area')
   }
 
   const mobileMedia = '@media (max-width: 767px)'
-  const mobileCanvas = findRule(rules, '.factory-home .desktop-canvas', mobileMedia)
+  const mobileCanvas = requireRule(rules, '.factory-home .desktop-canvas', mobileMedia)
   const mobileCanvasDeclarations = parseDeclarations(mobileCanvas?.body ?? '')
   if (mobileCanvasDeclarations.get('grid-template-columns') !== '1fr'
     || mobileCanvasDeclarations.get('width') !== 'calc(100vw - 32px)') {
@@ -267,7 +277,7 @@ export function validateThemeCss(source) {
     '.factory-home.is-entering .system-topbar',
     '.factory-home.is-entering .desktop-canvas > *'
   ]) {
-    const reducedFactory = findRule(rules, selector, reducedMedia)
+    const reducedFactory = requireRule(rules, selector, reducedMedia)
     const reducedDeclarations = parseDeclarations(reducedFactory?.body ?? '')
     if (reducedDeclarations.get('animation') !== 'none !important'
       || reducedDeclarations.get('transition') !== 'none !important'
@@ -275,13 +285,13 @@ export function validateThemeCss(source) {
       throw new Error(`custom.css reduced-motion media must reset animation, transition, and transform for ${selector}`)
     }
   }
-  const reducedSplash = findRule(rules, '.factory-boot', reducedMedia)
+  const reducedSplash = requireRule(rules, '.factory-boot', reducedMedia)
   const reducedSplashDeclarations = parseDeclarations(reducedSplash?.body ?? '')
   if (reducedSplashDeclarations.get('animation') !== 'none !important'
     || reducedSplashDeclarations.get('transition') !== 'none !important') {
     throw new Error('custom.css reduced-motion media must suppress splash motion')
   }
-  const reducedCursor = findRule(rules, '.factory-boot__cursor', reducedMedia)
+  const reducedCursor = requireRule(rules, '.factory-boot__cursor', reducedMedia)
   if (parseDeclarations(reducedCursor?.body ?? '').get('animation') !== 'none !important') {
     throw new Error('custom.css reduced-motion media must suppress cursor motion')
   }
