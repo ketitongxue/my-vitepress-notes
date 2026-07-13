@@ -1,8 +1,9 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { bootLines } from './personalOsContent.mjs'
 import {
   computeCoverTransform,
+  createMacbookBootRuntime,
   getReducedMotionPreference,
   getSessionStorage,
   progressCells,
@@ -12,6 +13,7 @@ import {
   writeAccessed,
 } from './macbookBootState.mjs'
 
+const props = defineProps({ disabled: { type: Boolean, default: false } })
 const emit = defineEmits(['entered'])
 const screen = ref(null)
 const launchButton = ref(null)
@@ -19,8 +21,9 @@ const visible = ref(true)
 const state = ref('typing')
 const visibleLineCount = ref(0)
 const progress = ref(0)
-const timers = new Set()
 let storage
+let runtime
+let entered = false
 
 const visibleLines = computed(() => bootLines.slice(0, visibleLineCount.value))
 const liveMessage = computed(() => {
@@ -31,12 +34,7 @@ const liveMessage = computed(() => {
 })
 
 function schedule(callback, delay) {
-  const timer = window.setTimeout(() => {
-    timers.delete(timer)
-    callback()
-  }, delay)
-  timers.add(timer)
-  return timer
+  return runtime?.schedule(callback, delay)
 }
 
 function clearPreflightFallback() {
@@ -46,6 +44,9 @@ function clearPreflightFallback() {
 }
 
 async function enterDesktop() {
+  if (entered) return
+  entered = true
+  runtime?.stop()
   state.value = 'desktop'
   writeAccessed(storage)
   visible.value = false
@@ -53,6 +54,16 @@ async function enterDesktop() {
   emit('entered')
   await nextTick()
   document.getElementById('factory-title')?.focus({ preventScroll: true })
+}
+
+function terminateBoot() {
+  runtime?.stop()
+  state.value = 'desktop'
+  visible.value = false
+  if (!entered) {
+    entered = true
+    emit('entered')
+  }
 }
 
 function beginZoom() {
@@ -104,11 +115,18 @@ function revealNextLine() {
 }
 
 onMounted(() => {
+  const disabled = props.disabled || document.documentElement.dataset.personalSiteAccess === 'fallback'
+  runtime = createMacbookBootRuntime(window, handleKeydown, disabled)
+  clearPreflightFallback()
+  if (disabled) {
+    terminateBoot()
+    return
+  }
+
   storage = getSessionStorage(window)
   const reduceMotion = getReducedMotionPreference(window)
   const skipBoot = shouldSkipMacbookBoot(storage, reduceMotion)
-  clearPreflightFallback()
-  window.addEventListener('keydown', handleKeydown)
+  runtime.listen()
 
   if (skipBoot) {
     state.value = transitionMacbookBoot(state.value, 'SKIP')
@@ -122,10 +140,12 @@ onMounted(() => {
   else schedule(revealNextLine, 220)
 })
 
+watch(() => props.disabled, (disabled) => {
+  if (disabled) terminateBoot()
+})
+
 onBeforeUnmount(() => {
-  for (const timer of timers) window.clearTimeout(timer)
-  timers.clear()
-  window.removeEventListener('keydown', handleKeydown)
+  runtime?.stop()
   clearPreflightFallback()
   if (document.documentElement.dataset.personalSiteAccess === 'pending') {
     document.documentElement.dataset.personalSiteAccess = 'fallback'

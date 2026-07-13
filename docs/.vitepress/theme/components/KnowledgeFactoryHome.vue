@@ -9,6 +9,8 @@ import { hashForOsView, normalizeOsHash } from './personalOsRouter.mjs'
 const activeView = ref('home')
 const homeEntered = ref(false)
 const hydrated = ref(false)
+const bootDisabled = ref(typeof document !== 'undefined'
+  && document.documentElement.dataset.personalSiteAccess === 'fallback')
 const systemRequested = ref(false)
 const systemError = ref(false)
 const InfiniteCanvas = shallowRef(null)
@@ -84,7 +86,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <MacbookBoot v-if="activeView === 'home'" @entered="handleHomeEntered" />
+  <MacbookBoot
+    v-if="activeView === 'home'"
+    :disabled="bootDisabled"
+    @entered="handleHomeEntered"
+  />
   <section v-show="!hydrated || (activeView === 'home' && homeEntered)" class="factory-home" data-os-view="home">
     <SystemTopBar />
     <DesktopCanvas />

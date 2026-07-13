@@ -56,6 +56,42 @@ export function shouldActivateMacbookFromEnter(event, state) {
     && !isMacbookInteractiveTarget(event.target)
 }
 
+export function createMacbookBootRuntime(browser, handleKeydown, disabled = false) {
+  const timers = new Set()
+  let stopped = Boolean(disabled)
+  let listening = false
+  const guardedKeydown = (event) => {
+    if (!stopped) handleKeydown(event)
+  }
+
+  return {
+    schedule(callback, delay) {
+      if (stopped) return undefined
+      const timer = browser.setTimeout(() => {
+        timers.delete(timer)
+        if (!stopped) callback()
+      }, delay)
+      timers.add(timer)
+      return timer
+    },
+    listen() {
+      if (stopped || listening) return false
+      browser.addEventListener('keydown', guardedKeydown)
+      listening = true
+      return true
+    },
+    stop() {
+      stopped = true
+      for (const timer of timers) browser.clearTimeout(timer)
+      timers.clear()
+      if (listening) {
+        browser.removeEventListener('keydown', guardedKeydown)
+        listening = false
+      }
+    },
+  }
+}
+
 export function writeAccessed(storage) {
   try { storage?.setItem('personal-site-accessed', 'true'); return Boolean(storage) }
   catch { return false }

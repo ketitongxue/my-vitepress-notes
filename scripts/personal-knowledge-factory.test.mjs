@@ -136,6 +136,7 @@ test('factory homepage exposes the hash-selected Personal OS shell and copy cont
   assert.match(home, /normalizeOsHash\(window\.location\.hash\)/)
   assert.match(home, /window\.location\.hash = hashForOsView\(view\)/)
   assert.match(home, /const hydrated = ref\(false\)/)
+  assert.match(home, /const bootDisabled = ref\(typeof document !== 'undefined'[\s\S]*document\.documentElement\.dataset\.personalSiteAccess === 'fallback'\)/)
   assert.match(home, /v-show="!hydrated \|\| \(activeView === 'home' && homeEntered\)"/)
   assert.match(home, /@entered="handleHomeEntered"/)
   assert.match(home, /async function handleHomeEntered[\s\S]*homeEntered\.value = true[\s\S]*await nextTick\(\)[\s\S]*window\.scrollTo\(0, 0\)/)
@@ -143,7 +144,7 @@ test('factory homepage exposes the hash-selected Personal OS shell and copy cont
   for (const view of ['home', 'knowledge', 'system']) {
     assert.match(home, new RegExp(`data-os-view="${view}"`))
   }
-  assert.match(home, /<MacbookBoot v-if="activeView === 'home'" @entered="handleHomeEntered"\s*\/>/)
+  assert.match(home, /<MacbookBoot[\s\S]*v-if="activeView === 'home'"[\s\S]*:disabled="bootDisabled"[\s\S]*@entered="handleHomeEntered"[\s\S]*\/>/)
   assert.match(home, /<SystemTopBar\s*\/>/)
   assert.match(home, /<DesktopCanvas\s*\/>/)
   assert.match(home, /<BottomOsNavigation :active-view="activeView" @select="selectView"\s*\/>/)
@@ -160,6 +161,11 @@ test('MacBook boot and bottom navigation expose the timed accessible shell contr
   ])
 
   assert.match(boot, /defineEmits\(\['entered'\]\)/)
+  assert.match(boot, /defineProps\(\{ disabled:/)
+  assert.match(boot, /const disabled = props\.disabled \|\| document\.documentElement\.dataset\.personalSiteAccess === 'fallback'/)
+  assert.match(boot, /createMacbookBootRuntime\(window, handleKeydown, disabled\)/)
+  assert.match(boot, /if \(disabled\)[\s\S]*terminateBoot\(\)[\s\S]*return/)
+  assert.match(boot, /function terminateBoot\(\)[\s\S]*runtime\?\.stop\(\)[\s\S]*state\.value = 'desktop'[\s\S]*visible\.value = false/)
   assert.match(boot, /import \{ bootLines \} from '.\/personalOsContent\.mjs'/)
   assert.match(boot, /class="macbook-boot__computer"/)
   assert.match(boot, /class="macbook-boot__screen"/)
@@ -351,7 +357,7 @@ test('MacBook boot is one exact accessible fullscreen replacement', async () => 
   assert.match(boot, /aria-label="个人系统启动页"/)
   assert.match(boot, />\s*启动 JuZX OS\s*<\/button>/)
   assert.doesNotMatch(`${boot}\n${state}`, /启动知识系统|跳过启动|Loading knowledge archives|Connecting Ask Console|ai-era:knowledge-factory:booted|localStorage/)
-  assert.match(home, /<MacbookBoot v-if="activeView === 'home'" @entered="handleHomeEntered"\s*\/>/)
+  assert.match(home, /<MacbookBoot[\s\S]*v-if="activeView === 'home'"[\s\S]*:disabled="bootDisabled"[\s\S]*@entered="handleHomeEntered"[\s\S]*\/>/)
   assert.match(boot, /v-if="visible"/)
   assert.match(boot, /defineEmits\(\['entered'\]\)/)
   assert.match(boot, /schedule\(\(\) => void enterDesktop\(\), 80\)/)

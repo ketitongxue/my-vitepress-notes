@@ -3,7 +3,7 @@ import test from 'node:test'
 import { hashForOsView, normalizeOsHash, OS_VIEWS } from '../docs/.vitepress/theme/components/personalOsRouter.mjs'
 import { bootLines, canvasCards, canvasConnections, desktopEntries, knowledgeSections } from '../docs/.vitepress/theme/components/personalOsContent.mjs'
 import {
-  computeCoverTransform, getSessionStorage, MACBOOK_INTERACTIVE_SELECTOR, progressCells,
+  computeCoverTransform, createMacbookBootRuntime, getSessionStorage, MACBOOK_INTERACTIVE_SELECTOR, progressCells,
   shouldActivateMacbookFromEnter, shouldSkipMacbookBoot, transitionMacbookBoot, writeAccessed,
 } from '../docs/.vitepress/theme/components/macbookBootState.mjs'
 
@@ -94,4 +94,44 @@ test('MacBook Enter activation excludes every interactive target', () => {
   assert.equal(shouldActivateMacbookFromEnter({ key: 'Enter', repeat: true, target: plainTarget }, 'ready'), false)
   assert.equal(shouldActivateMacbookFromEnter({ key: 'Enter', isComposing: true, target: plainTarget }, 'ready'), false)
   assert.equal(shouldActivateMacbookFromEnter({ key: 'Enter', target: plainTarget }, 'typing'), false)
+})
+
+test('fallback stops late MacBook hydration timers and global Enter', () => {
+  const callbacks = {}
+  const events = []
+  const browser = {
+    setTimeout(callback, delay) {
+      callbacks.timer = callback
+      events.push(['setTimeout', delay])
+      return 41
+    },
+    clearTimeout(id) { events.push(['clearTimeout', id]) },
+    addEventListener(type, callback) {
+      callbacks.keydown = callback
+      events.push(['addEventListener', type])
+    },
+    removeEventListener(type, callback) {
+      assert.equal(callback, callbacks.keydown)
+      events.push(['removeEventListener', type])
+    },
+  }
+
+  const lateHydration = createMacbookBootRuntime(browser, () => events.push('enter'), true)
+  assert.equal(lateHydration.listen(), false)
+  assert.equal(lateHydration.schedule(() => events.push('typing'), 220), undefined)
+  assert.equal(callbacks.timer, undefined)
+  assert.equal(callbacks.keydown, undefined)
+
+  const active = createMacbookBootRuntime(browser, () => events.push('enter'))
+  assert.equal(active.listen(), true)
+  assert.equal(active.schedule(() => events.push('typing'), 220), 41)
+  active.stop()
+  callbacks.timer()
+  callbacks.keydown({ key: 'Enter' })
+  assert.equal(events.includes('typing'), false)
+  assert.equal(events.includes('enter'), false)
+  assert.ok(events.some(([name, value]) => name === 'clearTimeout' && value === 41))
+  assert.ok(events.some(([name, value]) => name === 'removeEventListener' && value === 'keydown'))
+  assert.equal(active.listen(), false)
+  assert.equal(active.schedule(() => events.push('typing'), 220), undefined)
 })
