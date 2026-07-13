@@ -68,6 +68,15 @@ function requireRule(rules, selector, ancestor) {
   return matches[0]
 }
 
+function assertAllowedAncestorContexts(rules, selector, allowedAncestors) {
+  for (const rule of rules.filter((candidate) => candidate.selectors.includes(selector))) {
+    const ancestor = rule.ancestors.length === 0 ? 'top level' : rule.ancestors.join(' > ')
+    if (!allowedAncestors.includes(ancestor)) {
+      throw new Error(`Personal OS contract selector ${selector} uses unexpected ancestor context ${ancestor}`)
+    }
+  }
+}
+
 function delayInMilliseconds(value) {
   const match = value?.match(/^(\d+(?:\.\d+)?)(ms|s)$/)
   if (!match) return undefined
@@ -75,6 +84,10 @@ function delayInMilliseconds(value) {
 }
 
 const revealAnimation = 'personal-os-reveal 420ms cubic-bezier(0.16, 1, 0.3, 1) both'
+const topLevel = 'top level'
+const mobileMedia = '@media (max-width: 767px)'
+const reducedMedia = '@media (prefers-reduced-motion: reduce)'
+const splashWideMedia = '@media (min-width: 640px)'
 
 function isHomepageScoped(selector) {
   return /^(?:\.factory-home|\.knowledge-factory-page)(?:$|[\s.:#\[])/.test(selector)
@@ -98,6 +111,8 @@ function isStrongShadow(value) {
 export function validateThemeCss(source) {
   const css = stripComments(source)
   const rules = parseRules(css)
+  assertAllowedAncestorContexts(rules, ':root', [topLevel])
+  assertAllowedAncestorContexts(rules, '.dark', [topLevel])
   const root = requireRule(rules, ':root')
   const rootDeclarations = parseDeclarations(root.body)
   const dark = requireRule(rules, '.dark')
@@ -178,6 +193,24 @@ export function validateThemeCss(source) {
     ['.desktop-canvas__controls', '12 / 15', '14 / 15', '470ms']
   ]
   const scopedPlacements = placements.map(([selector]) => `.factory-home ${selector}`)
+  for (const selector of [
+    '.factory-home .desktop-canvas', '.factory-home .system-topbar',
+    ...surfaceSelectors, ...scopedPlacements
+  ]) {
+    assertAllowedAncestorContexts(rules, selector, [topLevel, mobileMedia])
+  }
+  for (const selector of [
+    '.factory-home.is-entering .system-topbar',
+    '.factory-home.is-entering .desktop-canvas > *'
+  ]) {
+    assertAllowedAncestorContexts(rules, selector, [topLevel, reducedMedia])
+  }
+  for (const [selector] of placements) {
+    assertAllowedAncestorContexts(rules, `.factory-home.is-entering ${selector}`, [topLevel])
+  }
+  assertAllowedAncestorContexts(rules, '.factory-boot', [topLevel, splashWideMedia, reducedMedia])
+  assertAllowedAncestorContexts(rules, '.factory-boot__access', [topLevel, splashWideMedia])
+  assertAllowedAncestorContexts(rules, '.factory-boot__cursor', [topLevel, reducedMedia])
   for (const selector of [
     '.factory-home .desktop-canvas', '.factory-home .system-topbar',
     ...surfaceSelectors, ...scopedPlacements, '.factory-boot'
@@ -264,7 +297,6 @@ export function validateThemeCss(source) {
     throw new Error('factory splash access button must keep a 44px hit area')
   }
 
-  const mobileMedia = '@media (max-width: 767px)'
   const mobileCanvas = requireRule(rules, '.factory-home .desktop-canvas', mobileMedia)
   const mobileCanvasDeclarations = parseDeclarations(mobileCanvas?.body ?? '')
   if (mobileCanvasDeclarations.get('grid-template-columns') !== '1fr'
@@ -272,7 +304,6 @@ export function validateThemeCss(source) {
     throw new Error(`custom.css ${mobileMedia} must set .desktop-canvas to one column`)
   }
 
-  const reducedMedia = '@media (prefers-reduced-motion: reduce)'
   for (const selector of [
     '.factory-home.is-entering .system-topbar',
     '.factory-home.is-entering .desktop-canvas > *'

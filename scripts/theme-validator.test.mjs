@@ -93,6 +93,7 @@ function validTheme() {
   }
 }
 .factory-home .profile-card::before { transform: rotate(1deg); }
+@media (min-width: 900px) { .unrelated-widget { display: block; transform: rotate(2deg); } }
 /* Personal OS end */
 .other-page { animation: other-reveal 2s ease both; transform: rotate(4deg); }
 @keyframes other-reveal { from { opacity: 0; transform: skew(2deg); } to { opacity: 1; } }
@@ -240,6 +241,29 @@ const laterStrongShadowOverride = runChecker(appendToOs(validTheme(), `
 .factory-home .profile-card { box-shadow: 10px 10px 0 #315EFB; }`))
 assert.notEqual(laterStrongShadowOverride.status, 0, 'a later duplicate strong shadow must not bypass validation')
 assert.match(laterStrongShadowOverride.stderr, /strong or saturated box-shadow/)
+
+const unexpectedAnimationMedia = runChecker(appendToOs(validTheme(), `
+@media (min-width: 900px) {
+  .factory-home.is-entering .system-topbar {
+    animation: personal-os-reveal 900ms ease both;
+  }
+}`))
+assert.notEqual(unexpectedAnimationMedia.status, 0, 'unexpected media must not override topbar animation')
+assert.match(unexpectedAnimationMedia.stderr, /unexpected ancestor context/)
+
+const unexpectedPlacementMedia = runChecker(appendToOs(validTheme(), `
+@media (min-width: 900px) {
+  .factory-home .desktop-canvas__profile { grid-column: 2 / 9; grid-row: 2 / 6; }
+}`))
+assert.notEqual(unexpectedPlacementMedia.status, 0, 'unexpected media must not override a placement')
+assert.match(unexpectedPlacementMedia.stderr, /unexpected ancestor context/)
+
+const unexpectedCanvasMedia = runChecker(appendToOs(validTheme(), `
+@media (min-width: 900px) {
+  .factory-home .desktop-canvas { grid-template-columns: repeat(2, 1fr); width: 100vw; }
+}`))
+assert.notEqual(unexpectedCanvasMedia.status, 0, 'unexpected media must not override the desktop canvas')
+assert.match(unexpectedCanvasMedia.stderr, /unexpected ancestor context/)
 
 for (const [label, before, after] of [
   ['duration', 'personal-os-reveal 420ms', 'personal-os-reveal 700ms'],
