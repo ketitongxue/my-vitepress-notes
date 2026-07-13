@@ -806,10 +806,10 @@ Expected: this commit is created only if verification required an actual scoped 
 Run:
 
 ```bash
-npm run docs:dev -- --host 127.0.0.1
+npm run docs:dev -- --host localhost
 ```
 
-Expected: VitePress prints a local URL on `http://127.0.0.1:5173/` (or the next reported free port) and remains running without console build errors. Use the reported port for every browser check below.
+Expected: VitePress prints a local URL on `http://localhost:5173/` (or the next reported free port) and remains running without console build errors. Use the reported port for every browser check below.
 
 - [ ] **Step 3: Verify fresh-session desktop behavior at 1440 px**
 

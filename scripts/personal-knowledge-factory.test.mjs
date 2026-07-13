@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
+import { runInNewContext } from 'node:vm'
 import {
   BOOT_STORAGE_KEY, BOOT_STORAGE_VALUE, getReducedMotionPreference, getSessionStorage, isInteractiveTarget,
   readInitialBootState, shouldActivateFromEnter, transitionBoot, writeAccessed,
@@ -79,7 +80,47 @@ test('VitePress head preflight is homepage-only, synchronous, exact, and bounded
     "window.setTimeout", '2500', "window['__personalSiteAccessFallback']",
   ]) assert.match(config, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
   assert.match(config, /head:\s*\[\s*\['script',\s*\{\},\s*personalSiteAccessPreflight\]\s*\]/)
+  assert.match(config, /window\.setTimeout\(function \(\) \{[\s\S]*delete window\['__personalSiteAccessFallback'\][\s\S]*\}, 2500\)/)
   assert.doesNotMatch(config, /type:\s*['"]module['"]/)
+})
+
+test('head watchdog fails open and releases its pending timer id', async () => {
+  const config = await read('docs/.vitepress/config.mts')
+  const preflight = config.match(/const personalSiteAccessPreflight = String\.raw`([\s\S]*?)`\n\nexport default/)?.[1]
+  assert.ok(preflight, 'preflight source must be extractable')
+
+  function runPreflight() {
+    let watchdog
+    const root = { dataset: {} }
+    const browser = {
+      matchMedia: () => ({ matches: false }),
+      sessionStorage: { getItem: () => null },
+      setTimeout(callback, delay) {
+        assert.equal(delay, 2500)
+        watchdog = callback
+        return 42
+      },
+    }
+    runInNewContext(preflight, {
+      document: { documentElement: root },
+      location: { pathname: '/' },
+      window: browser,
+    })
+    return { browser, root, watchdog }
+  }
+
+  const { browser, root, watchdog } = runPreflight()
+  assert.equal(root.dataset.personalSiteAccess, 'pending')
+  assert.equal(browser['__personalSiteAccessFallback'], 42)
+  watchdog()
+  assert.equal(root.dataset.personalSiteAccess, 'fallback')
+  assert.equal(Object.hasOwn(browser, '__personalSiteAccessFallback'), false)
+
+  const claimed = runPreflight()
+  claimed.root.dataset.personalSiteAccess = 'returning'
+  claimed.watchdog()
+  assert.equal(claimed.root.dataset.personalSiteAccess, 'returning')
+  assert.equal(Object.hasOwn(claimed.browser, '__personalSiteAccessFallback'), false)
 })
 
 test('factory boot stays inline, optional, and cleans up browser effects', async () => {

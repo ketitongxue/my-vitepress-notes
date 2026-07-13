@@ -13,6 +13,7 @@ const personalSiteAccessPreflight = String.raw`(function () {
     if (root.dataset.personalSiteAccess === 'pending') {
       window['__personalSiteAccessFallback'] = window.setTimeout(function () {
         if (root.dataset.personalSiteAccess === 'pending') root.dataset.personalSiteAccess = 'fallback'
+        delete window['__personalSiteAccessFallback']
       }, 2500)
     }
   } catch (error) {
