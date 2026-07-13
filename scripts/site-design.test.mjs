@@ -92,11 +92,14 @@ test('theme styles balance the factory, knowledge, and QA surfaces', async () =>
   assert.doesNotMatch(css, /\.wiki-ask__conversation[\s\S]{0,400}min-height:\s*190px/)
 })
 
-test('fullscreen splash replaces the inline boot without changing homepage discovery', async () => {
+test('MacBook splash and hash shell preserve homepage discovery', async () => {
   const home = await read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue')
-  const hero = home.match(/<section class="factory-hero"[\s\S]*?<\/section>/)?.[0] ?? ''
-  assert.doesNotMatch(hero, /FactoryBoot/)
-  assert.match(home, /<FactoryBoot @reveal="handleReveal"\s*\/>\s*<main/)
+  assert.doesNotMatch(home, /FactoryBoot/)
+  assert.match(home, /<MacbookBoot v-if="activeView === 'home'" @entered="homeEntered = true"\s*\/>/)
+  assert.deepEqual([...home.matchAll(/data-os-view="(home|knowledge|system)"/g)].map((match) => match[1]), [
+    'home', 'knowledge', 'system',
+  ])
+  assert.match(home, /<BottomOsNavigation :active-view="activeView" @select="selectView"\s*\/>/)
   assert.match(home, /<SystemTopBar\s*\/>/)
   assert.match(home, /<DesktopCanvas\s*\/>/)
 })
