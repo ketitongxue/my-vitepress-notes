@@ -5,16 +5,19 @@ import DesktopSurface from './DesktopSurface.vue'
 import KnowledgePortfolio from './KnowledgePortfolio.vue'
 import MacbookBoot from './MacbookBoot.vue'
 import MacbookExit from './MacbookExit.vue'
-import { hashForOsView, normalizeOsHash } from './personalOsRouter.mjs'
+import {
+  hasCompletedHomeEntry, hashForOsView, initialOsView, normalizeOsHash,
+} from './personalOsRouter.mjs'
 import { loadSystemCanvasModule } from './systemCanvasLoader.mjs'
 
-const activeView = ref('home')
+const claimedView = typeof document === 'undefined'
+  ? 'home'
+  : document.documentElement.dataset.personalOsView
+const activeView = ref(initialOsView(claimedView))
 const homeEntered = ref(false)
 const hydrated = ref(false)
 const bootDisabled = ref(typeof document !== 'undefined'
-  && (document.documentElement.dataset.personalSiteAccess === 'fallback'
-    || document.documentElement.dataset.personalOsView === 'knowledge'
-    || document.documentElement.dataset.personalOsView === 'system'))
+  && document.documentElement.dataset.personalSiteAccess === 'fallback')
 const systemLoadState = ref('idle')
 const InfiniteCanvas = shallowRef(null)
 const systemImporters = Object.freeze({
@@ -95,11 +98,7 @@ function retrySystem() {
 
 onMounted(() => {
   const accessState = document.documentElement.dataset.personalSiteAccess
-  const claimedView = document.documentElement.dataset.personalOsView
-  homeEntered.value = accessState === 'returning'
-    || accessState === 'fallback'
-    || claimedView === 'knowledge'
-    || claimedView === 'system'
+  homeEntered.value = hasCompletedHomeEntry(accessState)
   hydrated.value = true
   void applyHash({ scroll: false })
   window.addEventListener('hashchange', handleHashChange)
@@ -114,6 +113,7 @@ onBeforeUnmount(() => {
 <template>
   <MacbookBoot
     v-if="!hydrated || (activeView === 'home' && !homeEntered)"
+    :active="activeView === 'home'"
     :disabled="bootDisabled"
     @entered="handleHomeEntered"
   />
@@ -155,7 +155,7 @@ onBeforeUnmount(() => {
       <p v-else role="status">准备加载我的 OS…</p>
     </section>
     <BottomOsNavigation
-      v-show="hydrated && (activeView !== 'home' || homeEntered)"
+      v-show="!hydrated || activeView !== 'home' || homeEntered"
       :active-view="activeView"
       @select="selectView"
     />

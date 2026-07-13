@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { hashForOsView, normalizeOsHash, OS_VIEWS } from '../docs/.vitepress/theme/components/personalOsRouter.mjs'
+import {
+  hasCompletedHomeEntry, hashForOsView, initialOsView, normalizeOsHash, OS_VIEWS,
+} from '../docs/.vitepress/theme/components/personalOsRouter.mjs'
 import { bootLines, canvasCards, canvasConnections, desktopEntries, knowledgeSections } from '../docs/.vitepress/theme/components/personalOsContent.mjs'
 import {
   computeCoverTransform, createMacbookBootRuntime, getSessionStorage, MACBOOK_INTERACTIVE_SELECTOR, progressCells,
@@ -45,6 +47,16 @@ test('OS hashes normalize without browser globals', () => {
   assert.equal(normalizeOsHash('#unknown'), 'home')
   assert.equal(hashForOsView('system'), '#system')
   assert.equal(hashForOsView('unknown'), '#home')
+})
+
+test('a direct non-home claim does not consume the first home boot', () => {
+  for (const view of ['knowledge', 'system']) {
+    assert.equal(initialOsView(view), view)
+    assert.equal(hasCompletedHomeEntry('claimed'), false)
+  }
+  assert.equal(hasCompletedHomeEntry('returning'), true)
+  assert.equal(hasCompletedHomeEntry('fallback'), true)
+  assert.equal(initialOsView('unknown'), 'home')
 })
 
 test('Personal OS content is complete and internally referential', () => {

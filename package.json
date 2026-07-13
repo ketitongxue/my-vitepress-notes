@@ -14,7 +14,7 @@
     "qa:security": "node scripts/wiki-qa/security-scan.mjs",
     "build": "npm run qa:index && npm run docs:build",
     "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs",
+    "docs:build": "vitepress build docs && node scripts/personal-os-ssr-check.mjs",
     "docs:preview": "vitepress preview docs",
     "worker:dev": "npm run qa:index && wrangler dev",
     "deploy": "npm run build && wrangler deploy",

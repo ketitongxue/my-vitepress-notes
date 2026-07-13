@@ -8,3 +8,11 @@ export function normalizeOsHash(hash = '') {
 export function hashForOsView(view) {
   return `#${OS_VIEWS.includes(view) ? view : 'home'}`
 }
+
+export function initialOsView(claimedView) {
+  return OS_VIEWS.includes(claimedView) ? claimedView : 'home'
+}
+
+export function hasCompletedHomeEntry(accessState) {
+  return accessState === 'returning' || accessState === 'fallback'
+}

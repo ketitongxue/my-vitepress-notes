@@ -457,6 +457,10 @@ html[data-personal-site-access="pending"] .macbook-boot {
   display: grid !important;
 }
 
+html[data-personal-site-access="pending"] .bottom-os-navigation {
+  display: none !important;
+}
+
 html[data-personal-site-access="pending"] .factory-home {
   visibility: hidden;
   opacity: 0;
@@ -473,6 +477,20 @@ html[data-personal-os-view="knowledge"] .factory-home [data-os-view="system"],
 html[data-personal-os-view="system"] .factory-home [data-os-view="home"],
 html[data-personal-os-view="system"] .factory-home [data-os-view="knowledge"] {
   display: none !important;
+}
+
+html[data-personal-os-view] .factory-home .bottom-os-navigation button {
+  border: 0 !important;
+  background: transparent !important;
+  color: #1E2430 !important;
+}
+
+html[data-personal-os-view="home"] .factory-home [data-os-nav-target="home"],
+html[data-personal-os-view="knowledge"] .factory-home [data-os-nav-target="knowledge"],
+html[data-personal-os-view="system"] .factory-home [data-os-nav-target="system"] {
+  border: 1px solid #1E2430 !important;
+  background: #2B7FD8 !important;
+  color: #FFFDF7 !important;
 }
 
 .knowledge-hub__stats,

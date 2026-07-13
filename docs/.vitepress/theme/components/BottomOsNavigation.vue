@@ -7,6 +7,7 @@ const emit = defineEmits(['select'])
   <nav class="bottom-os-navigation" aria-label="个人系统视图">
     <button
       type="button"
+      data-os-nav-target="home"
       :class="{ 'is-active': activeView === 'home' }"
       :aria-current="activeView === 'home' ? 'page' : undefined"
       @click="emit('select', 'home')"
@@ -15,6 +16,7 @@ const emit = defineEmits(['select'])
     </button>
     <button
       type="button"
+      data-os-nav-target="knowledge"
       :class="{ 'is-active': activeView === 'knowledge' }"
       :aria-current="activeView === 'knowledge' ? 'page' : undefined"
       @click="emit('select', 'knowledge')"
@@ -23,6 +25,7 @@ const emit = defineEmits(['select'])
     </button>
     <button
       type="button"
+      data-os-nav-target="system"
       :class="{ 'is-active': activeView === 'system' }"
       :aria-current="activeView === 'system' ? 'page' : undefined"
       @click="emit('select', 'system')"

@@ -6,8 +6,21 @@ const personalSiteAccessPreflight = String.raw`(function () {
   if (!isHomepage) return
   var view = location.hash === '#knowledge' ? 'knowledge' : location.hash === '#system' ? 'system' : 'home'
   root.dataset.personalOsView = view
+  function syncNavigationClaim() {
+    var buttons = document.querySelectorAll('[data-os-nav-target]')
+    for (var index = 0; index < buttons.length; index += 1) {
+      var button = buttons[index]
+      if (button.dataset.osNavTarget === view) button.setAttribute('aria-current', 'page')
+      else button.removeAttribute('aria-current')
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', syncNavigationClaim, { once: true })
+  } else {
+    syncNavigationClaim()
+  }
   if (view !== 'home') {
-    root.dataset.personalSiteAccess = 'entered'
+    root.dataset.personalSiteAccess = 'claimed'
     return
   }
   try {

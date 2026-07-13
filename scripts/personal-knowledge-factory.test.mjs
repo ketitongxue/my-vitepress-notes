@@ -62,9 +62,9 @@ test('Personal OS view components expose exact navigation and desktop menu label
   assert.match(home, /normalizeOsHash\(window\.location\.hash\)/)
   assert.match(home, /window\.location\.hash = hashForOsView\(view\)/)
   assert.match(home, /const hydrated = ref\(false\)/)
-  assert.match(home, /const bootDisabled = ref\(typeof document !== 'undefined'[\s\S]*document\.documentElement\.dataset\.personalSiteAccess === 'fallback'/)
-  assert.match(home, /document\.documentElement\.dataset\.personalOsView === 'knowledge'/)
-  assert.match(home, /document\.documentElement\.dataset\.personalOsView === 'system'/)
+  assert.match(home, /const activeView = ref\(initialOsView\(claimedView\)\)/)
+  assert.match(home, /const bootDisabled = ref\(typeof document !== 'undefined'[\s\S]*document\.documentElement\.dataset\.personalSiteAccess === 'fallback'\)/)
+  assert.doesNotMatch(home, /bootDisabled[\s\S]{0,300}personalOsView === '(?:knowledge|system)'/)
   assert.match(home, /v-show="!hydrated \|\| \(activeView === 'home' && homeEntered\)"/)
   assert.match(home, /v-show="!hydrated \|\| activeView === 'knowledge'"/)
   assert.match(home, /v-show="!hydrated \|\| activeView === 'system'"/)
@@ -74,7 +74,7 @@ test('Personal OS view components expose exact navigation and desktop menu label
   for (const view of ['home', 'knowledge', 'system']) {
     assert.match(home, new RegExp(`data-os-view="${view}"`))
   }
-  assert.match(home, /<MacbookBoot[\s\S]*v-if="!hydrated \|\| \(activeView === 'home' && !homeEntered\)"[\s\S]*:disabled="bootDisabled"[\s\S]*@entered="handleHomeEntered"[\s\S]*\/>/)
+  assert.match(home, /<MacbookBoot[\s\S]*v-if="!hydrated \|\| \(activeView === 'home' && !homeEntered\)"[\s\S]*:active="activeView === 'home'"[\s\S]*:disabled="bootDisabled"[\s\S]*@entered="handleHomeEntered"[\s\S]*\/>/)
   assert.match(home, /<DesktopSurface\s*\/>[\s\S]*<MacbookExit\s*\/>/)
   assert.match(home, /<KnowledgePortfolio\s*\/>/)
   assert.match(home, /<BottomOsNavigation[\s\S]*:active-view="activeView"[\s\S]*@select="selectView"[\s\S]*\/>/)
@@ -87,9 +87,10 @@ test('Personal OS view components expose exact navigation and desktop menu label
 })
 
 test('final shell integrates exit, portfolio, and retryable lazy system view', async () => {
-  const [home, exit] = await Promise.all([
+  const [home, exit, navigation] = await Promise.all([
     read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue'),
     read('docs/.vitepress/theme/components/MacbookExit.vue'),
+    read('docs/.vitepress/theme/components/BottomOsNavigation.vue'),
   ])
 
   for (const component of ['MacbookBoot', 'DesktopSurface', 'MacbookExit', 'KnowledgePortfolio', 'BottomOsNavigation']) {
@@ -113,7 +114,10 @@ test('final shell integrates exit, portfolio, and retryable lazy system view', a
   assert.match(home, /id="personal-os-home"[\s\S]*tabindex="-1"[\s\S]*aria-label="JuZX OS 主页"/)
   assert.match(home, /document\.getElementById\('personal-os-home'\)\?\.focus/)
   assert.equal([...home.matchAll(/<BottomOsNavigation\b/g)].length, 1)
-  assert.match(home, /v-show="hydrated && \(activeView !== 'home' \|\| homeEntered\)"/)
+  assert.match(home, /v-show="!hydrated \|\| activeView !== 'home' \|\| homeEntered"/)
+  assert.match(navigation, /data-os-nav-target="home"/)
+  assert.match(navigation, /data-os-nav-target="knowledge"/)
+  assert.match(navigation, /data-os-nav-target="system"/)
 
   assert.match(exit, /import \{ exitFrame, normalizeExitProgress \} from '.\/homeExitState\.mjs'/)
   assert.match(exit, /window\.addEventListener\('scroll', scheduleFrame, \{ passive: true \}\)/)
@@ -196,7 +200,7 @@ test('MacBook boot and bottom navigation expose the timed accessible shell contr
   ])
 
   assert.match(boot, /defineEmits\(\['entered'\]\)/)
-  assert.match(boot, /defineProps\(\{ disabled:/)
+  assert.match(boot, /defineProps\(\{[\s\S]*active:[\s\S]*disabled:/)
   assert.match(boot, /const disabled = props\.disabled \|\| document\.documentElement\.dataset\.personalSiteAccess === 'fallback'/)
   assert.match(boot, /createMacbookBootRuntime\(window, handleKeydown, disabled\)/)
   assert.match(boot, /if \(disabled\)[\s\S]*terminateBoot\(\)[\s\S]*return/)
@@ -228,7 +232,8 @@ test('VitePress head preflight is homepage-only, synchronous, exact, and bounded
   for (const source of [
     "location.pathname === '/'", "location.pathname === '/index.html'",
     "location.hash === '#knowledge'", "location.hash === '#system'",
-    "dataset.personalOsView", "dataset.personalSiteAccess = 'entered'",
+    "dataset.personalOsView", "dataset.personalSiteAccess = 'claimed'",
+    "querySelectorAll('[data-os-nav-target]')", "addEventListener('DOMContentLoaded'",
     "sessionStorage.getItem('personal-site-accessed')", "stored === 'true'",
     "matchMedia('(prefers-reduced-motion: reduce)')", "dataset.personalSiteAccess = 'pending'",
     "dataset.personalSiteAccess = 'returning'", "dataset.personalSiteAccess = 'fallback'",
@@ -247,7 +252,26 @@ test('head watchdog fails open and releases its pending timer id', async () => {
 
   function runPreflight(hash = '') {
     let watchdog
+    let ready
     const root = { dataset: {} }
+    const buttons = ['home', 'knowledge', 'system'].map((target) => {
+      const attributes = new Map()
+      return {
+        dataset: { osNavTarget: target },
+        getAttribute: (name) => attributes.get(name),
+        setAttribute: (name, value) => attributes.set(name, value),
+        removeAttribute: (name) => attributes.delete(name),
+      }
+    })
+    const document = {
+      documentElement: root,
+      readyState: 'loading',
+      querySelectorAll: () => buttons,
+      addEventListener(type, callback) {
+        assert.equal(type, 'DOMContentLoaded')
+        ready = callback
+      },
+    }
     const browser = {
       matchMedia: () => ({ matches: false }),
       sessionStorage: { getItem: () => null },
@@ -258,11 +282,11 @@ test('head watchdog fails open and releases its pending timer id', async () => {
       },
     }
     runInNewContext(preflight, {
-      document: { documentElement: root },
+      document,
       location: { pathname: '/', hash },
       window: browser,
     })
-    return { browser, root, watchdog }
+    return { browser, buttons, ready, root, watchdog }
   }
 
   const { browser, root, watchdog } = runPreflight()
@@ -281,10 +305,19 @@ test('head watchdog fails open and releases its pending timer id', async () => {
   for (const [hash, view] of [['#knowledge', 'knowledge'], ['#system', 'system']]) {
     const direct = runPreflight(hash)
     assert.equal(direct.root.dataset.personalOsView, view)
-    assert.equal(direct.root.dataset.personalSiteAccess, 'entered')
+    assert.equal(direct.root.dataset.personalSiteAccess, 'claimed')
     assert.equal(direct.watchdog, undefined)
     assert.equal(Object.hasOwn(direct.browser, '__personalSiteAccessFallback'), false)
+    direct.ready()
+    for (const button of direct.buttons) {
+      assert.equal(button.getAttribute('aria-current'), button.dataset.osNavTarget === view ? 'page' : undefined)
+    }
   }
+})
+
+test('the production build audits SSR landmarks and navigation visibility', async () => {
+  const packageJson = JSON.parse(await read('package.json'))
+  assert.match(packageJson.scripts['docs:build'], /node scripts\/personal-os-ssr-check\.mjs/)
 })
 
 test('MacBook boot is one exact accessible fullscreen replacement', async () => {
@@ -297,7 +330,9 @@ test('MacBook boot is one exact accessible fullscreen replacement', async () => 
   assert.match(boot, /aria-label="个人系统启动页"/)
   assert.match(boot, />\s*启动 JuZX OS\s*<\/button>/)
   assert.doesNotMatch(`${boot}\n${state}`, /启动知识系统|跳过启动|Loading knowledge archives|Connecting Ask Console|ai-era:knowledge-factory:booted|localStorage/)
-  assert.match(home, /<MacbookBoot[\s\S]*v-if="!hydrated \|\| \(activeView === 'home' && !homeEntered\)"[\s\S]*:disabled="bootDisabled"[\s\S]*@entered="handleHomeEntered"[\s\S]*\/>/)
+  assert.match(home, /<MacbookBoot[\s\S]*v-if="!hydrated \|\| \(activeView === 'home' && !homeEntered\)"[\s\S]*:active="activeView === 'home'"[\s\S]*:disabled="bootDisabled"[\s\S]*@entered="handleHomeEntered"[\s\S]*\/>/)
+  assert.match(boot, /active:\s*\{ type: Boolean, default: true \}/)
+  assert.match(boot, /if \(started \|\| !props\.active\) return/)
   assert.match(boot, /v-if="visible"/)
   assert.match(boot, /defineEmits\(\['entered'\]\)/)
   assert.match(boot, /schedule\(\(\) => void enterDesktop\(\), 80\)/)
@@ -319,6 +354,9 @@ test('MacBook visual, mobile, reduced-motion, and fail-open rules are exact', as
   assert.match(boot, /transition:\s*transform 500ms cubic-bezier\(0\.16, 1, 0\.3, 1\)/)
   assert.match(css, /\.macbook-boot\s*\{\s*display:\s*none !important;/)
   assert.match(css, /html\[data-personal-site-access="pending"\] \.macbook-boot\s*\{\s*display:\s*grid !important;/)
+  assert.match(css, /html\[data-personal-site-access="pending"\] \.bottom-os-navigation\s*\{\s*display:\s*none !important;/)
+  assert.match(css, /html\[data-personal-os-view="knowledge"\][\s\S]*\[data-os-nav-target="knowledge"\]/)
+  assert.match(css, /html\[data-personal-os-view="system"\][\s\S]*\[data-os-nav-target="system"\]/)
   assert.match(css, /html:not\(\[data-personal-site-access="pending"\]\) \.factory-home/)
   assert.match(css, /html\[data-personal-os-view="home"\][\s\S]*\[data-os-view="knowledge"\]/)
   assert.match(css, /html\[data-personal-os-view="knowledge"\][\s\S]*\[data-os-view="home"\]/)

@@ -13,7 +13,10 @@ import {
   writeAccessed,
 } from './macbookBootState.mjs'
 
-const props = defineProps({ disabled: { type: Boolean, default: false } })
+const props = defineProps({
+  active: { type: Boolean, default: true },
+  disabled: { type: Boolean, default: false },
+})
 const emit = defineEmits(['entered'])
 const screen = ref(null)
 const launchButton = ref(null)
@@ -24,6 +27,7 @@ const progress = ref(0)
 let storage
 let runtime
 let entered = false
+let started = false
 
 const visibleLines = computed(() => bootLines.slice(0, visibleLineCount.value))
 const liveMessage = computed(() => {
@@ -114,7 +118,9 @@ function revealNextLine() {
   void nextTick(() => launchButton.value?.focus({ preventScroll: true }))
 }
 
-onMounted(() => {
+function startBoot() {
+  if (started || !props.active) return
+  started = true
   const disabled = props.disabled || document.documentElement.dataset.personalSiteAccess === 'fallback'
   runtime = createMacbookBootRuntime(window, handleKeydown, disabled)
   clearPreflightFallback()
@@ -138,10 +144,18 @@ onMounted(() => {
   visibleLineCount.value = 1
   if (bootLines.length === 1) state.value = transitionMacbookBoot(state.value, 'TYPING_COMPLETE')
   else schedule(revealNextLine, 220)
+}
+
+onMounted(startBoot)
+
+watch(() => props.active, (active) => {
+  if (active) startBoot()
 })
 
 watch(() => props.disabled, (disabled) => {
-  if (disabled) terminateBoot()
+  if (!disabled || !props.active) return
+  if (!started) startBoot()
+  else terminateBoot()
 })
 
 onBeforeUnmount(() => {
