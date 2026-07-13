@@ -6,7 +6,7 @@ const root = new URL('../', import.meta.url)
 const read = (path) => readFile(new URL(path, root), 'utf8')
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const task7Components = [
-  'MacbookBoot', 'BottomOsNavigation', 'DesktopSurface', 'DesktopIcon', 'WindowManager',
+  'MacbookBoot', 'MacbookExit', 'BottomOsNavigation', 'DesktopSurface', 'DesktopIcon', 'WindowManager',
   'KnowledgePortfolio', 'InfiniteCanvas', 'CanvasCard', 'CanvasConnections', 'CanvasLayers',
   'CanvasMinimap', 'CanvasControls',
 ]
@@ -142,14 +142,15 @@ test('every required mobile Personal OS target keeps a 44 by 44 hit area', async
 
 test('MacBook splash and hash shell preserve homepage discovery', async () => {
   const home = await read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue')
-  assert.doesNotMatch(home, /FactoryBoot/)
-  assert.match(home, /<MacbookBoot[\s\S]*v-if="activeView === 'home'"[\s\S]*:disabled="bootDisabled"[\s\S]*@entered="handleHomeEntered"[\s\S]*\/>/)
+  assert.match(home, /<MacbookBoot[\s\S]*v-if="activeView === 'home' && !homeEntered"[\s\S]*:disabled="bootDisabled"[\s\S]*@entered="handleHomeEntered"[\s\S]*\/>/)
   assert.deepEqual([...home.matchAll(/data-os-view="(home|knowledge|system)"/g)].map((match) => match[1]), [
     'home', 'knowledge', 'system',
   ])
-  assert.match(home, /<BottomOsNavigation :active-view="activeView" @select="selectView"\s*\/>/)
-  assert.match(home, /<SystemTopBar\s*\/>/)
-  assert.match(home, /<DesktopCanvas\s*\/>/)
+  assert.match(home, /<BottomOsNavigation[\s\S]*:active-view="activeView"[\s\S]*@select="selectView"[\s\S]*\/>/)
+  assert.match(home, /<DesktopSurface\s*\/>[\s\S]*<MacbookExit\s*\/>/)
+  assert.match(home, /<KnowledgePortfolio\s*\/>/)
+  assert.match(home, /import\('\.\/InfiniteCanvas\.vue'\)/)
+  assert.doesNotMatch(home, /@vite-ignore/)
 })
 
 test('knowledge portfolio is semantic document flow without copied visual effects', async () => {

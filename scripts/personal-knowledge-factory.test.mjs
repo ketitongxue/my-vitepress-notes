@@ -2,10 +2,6 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { runInNewContext } from 'node:vm'
-import {
-  beginAccess, BOOT_STORAGE_KEY, BOOT_STORAGE_VALUE, getReducedMotionPreference, getSessionStorage,
-  isInteractiveTarget, readInitialBootState, shouldActivateFromEnter, shouldContainTab, transitionBoot, writeAccessed,
-} from '../docs/.vitepress/theme/components/factoryBootState.mjs'
 
 const root = new URL('../', import.meta.url)
 const read = (path) => readFile(new URL(path, root), 'utf8')
@@ -67,21 +63,67 @@ test('Personal OS view components expose exact navigation and desktop menu label
   assert.match(home, /window\.location\.hash = hashForOsView\(view\)/)
   assert.match(home, /const hydrated = ref\(false\)/)
   assert.match(home, /const bootDisabled = ref\(typeof document !== 'undefined'[\s\S]*document\.documentElement\.dataset\.personalSiteAccess === 'fallback'\)/)
-  assert.match(home, /v-show="!hydrated \|\| \(activeView === 'home' && homeEntered\)"/)
+  assert.match(home, /v-show="hydrated && activeView === 'home' && homeEntered"/)
   assert.match(home, /@entered="handleHomeEntered"/)
   assert.match(home, /async function handleHomeEntered[\s\S]*homeEntered\.value = true[\s\S]*await nextTick\(\)[\s\S]*window\.scrollTo\(0, 0\)/)
   assert.equal([...home.matchAll(/data-os-view="(home|knowledge|system)"/g)].length, 3)
   for (const view of ['home', 'knowledge', 'system']) {
     assert.match(home, new RegExp(`data-os-view="${view}"`))
   }
-  assert.match(home, /<MacbookBoot[\s\S]*v-if="activeView === 'home'"[\s\S]*:disabled="bootDisabled"[\s\S]*@entered="handleHomeEntered"[\s\S]*\/>/)
-  assert.match(home, /<BottomOsNavigation :active-view="activeView" @select="selectView"\s*\/>/)
+  assert.match(home, /<MacbookBoot[\s\S]*v-if="activeView === 'home' && !homeEntered"[\s\S]*:disabled="bootDisabled"[\s\S]*@entered="handleHomeEntered"[\s\S]*\/>/)
+  assert.match(home, /<DesktopSurface\s*\/>[\s\S]*<MacbookExit\s*\/>/)
+  assert.match(home, /<KnowledgePortfolio\s*\/>/)
+  assert.match(home, /<BottomOsNavigation[\s\S]*:active-view="activeView"[\s\S]*@select="selectView"[\s\S]*\/>/)
   for (const label of ['JuZX OS', 'About', 'Knowledge', 'Now']) assert.match(desktop, new RegExp(`>${label}<`))
   assert.match(desktop, /<time :datetime="clock">\{\{ clock \}\}<\/time>/)
   assert.match(desktop, />重置桌面位置<\/button>/)
   assert.deepEqual([...navigation.matchAll(/>\s*(0[1-3] (?:主页|知识库|我的 OS))\s*<\/button>/g)].map((match) => match[1]), [
     '01 主页', '02 知识库', '03 我的 OS',
   ])
+})
+
+test('final shell integrates exit, portfolio, and retryable lazy system view', async () => {
+  const [home, exit] = await Promise.all([
+    read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue'),
+    read('docs/.vitepress/theme/components/MacbookExit.vue'),
+  ])
+
+  for (const component of ['MacbookBoot', 'DesktopSurface', 'MacbookExit', 'KnowledgePortfolio', 'BottomOsNavigation']) {
+    assert.match(home, new RegExp(`import ${component} from './${component}\\.vue'`))
+  }
+  assert.equal([...home.matchAll(/<DesktopSurface\s*\/>/g)].length, 1)
+  assert.equal([...home.matchAll(/<MacbookExit\s*\/>/g)].length, 1)
+  assert.equal([...home.matchAll(/<KnowledgePortfolio\s*\/>/g)].length, 1)
+  assert.match(home, /<DesktopSurface\s*\/>[\s\S]*<MacbookExit\s*\/>/)
+  assert.match(home, /import\('\.\/InfiniteCanvas\.vue'\)/)
+  assert.doesNotMatch(home, /@vite-ignore|infiniteCanvasUrl|<iframe|<object|<embed/i)
+  assert.match(home, /const systemLoadState = ref\('idle'\)/)
+  assert.match(home, /const currentRequest = \+\+requestId/)
+  assert.match(home, /currentRequest !== requestId/)
+  assert.match(home, /systemLoadState\.value = 'loading'/)
+  assert.match(home, /systemLoadState\.value = 'loaded'/)
+  assert.match(home, /systemLoadState\.value = 'error'/)
+  assert.match(home, />\s*重新加载我的 OS\s*<\/button>/)
+  assert.match(home, /aria-label="我的 OS 系统视图"/)
+  assert.match(home, /id="personal-os-home"[\s\S]*tabindex="-1"[\s\S]*aria-label="JuZX OS 主页"/)
+  assert.match(home, /document\.getElementById\('personal-os-home'\)\?\.focus/)
+  assert.equal([...home.matchAll(/<BottomOsNavigation\b/g)].length, 1)
+
+  assert.match(exit, /import \{ exitFrame, normalizeExitProgress \} from '.\/homeExitState\.mjs'/)
+  assert.match(exit, /window\.addEventListener\('scroll', scheduleFrame, \{ passive: true \}\)/)
+  assert.match(exit, /requestAnimationFrame/)
+  assert.match(exit, /cancelAnimationFrame/)
+  assert.match(exit, /window\.removeEventListener\('scroll', scheduleFrame\)/)
+  assert.match(exit, /window\.removeEventListener\('resize', scheduleFrame\)/)
+  for (const variable of ['--exit-panel-scale', '--exit-computer-opacity', '--exit-terminal-opacity']) {
+    assert.match(exit, new RegExp(variable))
+  }
+  for (const line of ['JuZX@digital-factory ~ zsh', '$ logout', 'Session complete.']) {
+    assert.match(exit, new RegExp(line.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+  }
+  assert.match(exit, /@media \(prefers-reduced-motion: reduce\)/)
+  assert.match(exit, /min-height:\s*100vh;[\s\S]*min-height:\s*100dvh;/)
+  assert.doesNotMatch(exit, /linear-gradient|radial-gradient|backdrop-filter|\bstars?\b|sparkle|particle|illustration|<svg|<img/i)
 })
 
 test('knowledge portfolio preserves the six-section content and navigation contract', async () => {
@@ -166,7 +208,6 @@ test('MacBook boot and bottom navigation expose the timed accessible shell contr
   assert.match(boot, /shouldActivateMacbookFromEnter\(event, state\.value\)/)
   assert.match(boot, /shouldSkipMacbookBoot\(storage, reduceMotion\)/)
   assert.match(boot, /if \(skipBoot\)[\s\S]*schedule\(\(\) => void enterDesktop\(\), 80\)/)
-  assert.match(boot, /document\.getElementById\('factory-title'\)\?\.focus/)
   assert.match(boot, /onBeforeUnmount/)
 
   assert.match(navigation, /defineProps\(\{ activeView:/)
@@ -174,110 +215,6 @@ test('MacBook boot and bottom navigation expose the timed accessible shell contr
   assert.deepEqual([...navigation.matchAll(/@click="emit\('select', '(home|knowledge|system)'\)"/g)].map((match) => match[1]), [
     'home', 'knowledge', 'system',
   ])
-})
-
-test('Personal OS clock, navigation, semantics, and contact links are real', async () => {
-  const { formatLocalTime, startLocalClock } = await import('../docs/.vitepress/theme/components/SystemTopBar.mjs')
-  const [topbar, profile, featured, contact] = await Promise.all([
-    read('docs/.vitepress/theme/components/SystemTopBar.vue'),
-    read('docs/.vitepress/theme/components/ProfileCard.vue'),
-    read('docs/.vitepress/theme/components/FeaturedProjectCard.vue'),
-    read('docs/.vitepress/theme/components/ContactTerminal.vue'),
-  ])
-
-  assert.equal(formatLocalTime(new Date(2026, 6, 13, 9, 5)), '09:05')
-  const intervalId = Symbol('local-clock-interval')
-  const events = []
-  const stopClock = startLocalClock(
-    () => events.push('update'),
-    (callback, delay) => {
-      events.push(['schedule', callback, delay])
-      return intervalId
-    },
-    (id) => events.push(['clear', id]),
-  )
-  assert.equal(events[0], 'update', 'clock must update immediately before scheduling')
-  assert.equal(events[1][2], 60000)
-  assert.equal(typeof events[1][1], 'function')
-  events[1][1]()
-  assert.equal(events[2], 'update', 'scheduled clock callback must update again')
-  stopClock()
-  assert.deepEqual(events[3], ['clear', intervalId])
-  assert.match(topbar, /onMounted\(\(\)\s*=>\s*\{[\s\S]*stopClock\s*=\s*startLocalClock\(/)
-  assert.match(topbar, /onBeforeUnmount\(\(\)\s*=>\s*\{?[\s\S]*stopClock\(\)/)
-  assert.match(topbar, /<time(?:\s|>)/)
-  assert.match(profile, /<h1 id="factory-title" tabindex="-1">/)
-
-  const hrefs = (source) => [...source.matchAll(/href=["']([^"']+)["']/g)].map((match) => match[1])
-  assert.match(topbar, /<nav(?:\s|>)/)
-  assert.deepEqual(hrefs(topbar), ['/', '#projects', '#notes', '/about'])
-  assert.deepEqual(hrefs(profile), ['/about', '#projects'])
-  assert.deepEqual(hrefs(featured), ['#projects'])
-  assert.deepEqual(hrefs(contact), ['https://github.com/ketitongxue'])
-  assert.match(profile, /<a class="profile-card__projects" href="#projects">VIEW PROJECTS<\/a>/)
-  assert.deepEqual(
-    [...await Promise.all([
-      'DesktopCanvas', 'CurrentStatusCard', 'ProjectFolder', 'NotesLauncher', 'LabLauncher', 'CanvasControls',
-    ].map((name) => read(`docs/.vitepress/theme/components/${name}.vue`)))].flatMap(hrefs),
-    [],
-    'non-actionable project, note, lab, and control surfaces must not expose fake links',
-  )
-})
-
-test('splash state uses the exact session contract and fails open', () => {
-  const values = new Map()
-  const storage = { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) }
-  assert.equal(BOOT_STORAGE_KEY, 'personal-site-accessed')
-  assert.equal(BOOT_STORAGE_VALUE, 'true')
-  assert.equal(readInitialBootState(storage, false, 'pending'), 'ready')
-  assert.equal(writeAccessed(storage), true)
-  assert.equal(values.get('personal-site-accessed'), 'true')
-  assert.equal(readInitialBootState(storage, false, 'pending'), 'skipped')
-  assert.equal(readInitialBootState(storage, true, 'pending'), 'skipped')
-  assert.equal(readInitialBootState(storage, false, 'returning'), 'skipped')
-  assert.equal(readInitialBootState(storage, false, 'none'), 'skipped')
-  assert.equal(readInitialBootState(undefined, false, 'pending'), 'skipped')
-  assert.equal(readInitialBootState({ getItem() { throw new Error('denied') } }, false, 'pending'), 'skipped')
-  assert.equal(writeAccessed({ setItem() { throw new Error('denied') } }), false)
-})
-
-test('browser capability accessors fail open without module-level globals', () => {
-  const deniedWindow = Object.defineProperty({}, 'sessionStorage', {
-    get() { throw new DOMException('denied', 'SecurityError') },
-  })
-  assert.equal(getSessionStorage(deniedWindow), undefined)
-  assert.equal(getReducedMotionPreference({ matchMedia: () => ({ matches: true }) }), true)
-  assert.equal(getReducedMotionPreference({ matchMedia() { throw new Error('unavailable') } }), true)
-  assert.equal(getReducedMotionPreference({}), true)
-})
-
-test('splash transitions accept one activation and no repeated input', () => {
-  assert.equal(transitionBoot('ready', 'ACTIVATE'), 'leaving')
-  assert.equal(transitionBoot('leaving', 'ACTIVATE'), 'leaving')
-  assert.equal(transitionBoot('leaving', 'EXIT_COMPLETE'), 'complete')
-  assert.equal(transitionBoot('complete', 'ACTIVATE'), 'complete')
-  assert.equal(transitionBoot('ready', 'BYPASS'), 'skipped')
-  assert.equal(isInteractiveTarget({ closest: () => ({ tagName: 'BUTTON' }) }), true)
-  assert.equal(shouldActivateFromEnter({ key: 'Enter', target: { closest: () => null } }, 'ready'), true)
-  assert.equal(shouldActivateFromEnter({ key: 'Enter', repeat: true, target: { closest: () => null } }, 'ready'), false)
-  assert.equal(shouldActivateFromEnter({ key: 'Enter', isComposing: true, target: { closest: () => null } }, 'ready'), false)
-  assert.equal(shouldActivateFromEnter({ key: 'Enter', target: { closest: () => ({}) } }, 'ready'), false)
-  assert.equal(shouldActivateFromEnter({ key: 'Enter', target: { closest: () => null } }, 'leaving'), false)
-})
-
-test('activation behavior contains exit input and fails open when persistence fails', () => {
-  let writes = 0
-  const storage = { setItem() { writes += 1 } }
-  assert.equal(beginAccess('ready', storage), 'leaving')
-  assert.equal(writes, 1)
-  assert.equal(beginAccess('leaving', storage), 'leaving')
-  assert.equal(writes, 1, 'repeated exit clicks must not write or restart activation')
-  assert.equal(beginAccess('ready', undefined), 'skipped')
-  assert.equal(beginAccess('ready', { setItem() { throw new Error('denied') } }), 'skipped')
-  assert.equal(shouldContainTab({ key: 'Tab' }, 'ready'), true)
-  assert.equal(shouldContainTab({ key: 'Tab', shiftKey: true }, 'leaving'), true)
-  assert.equal(shouldContainTab({ key: 'Tab' }, 'complete'), false)
-  assert.equal(shouldContainTab({ key: 'Enter' }, 'leaving'), false)
 })
 
 test('VitePress head preflight is homepage-only, synchronous, exact, and bounded', async () => {
@@ -344,7 +281,7 @@ test('MacBook boot is one exact accessible fullscreen replacement', async () => 
   assert.match(boot, /aria-label="个人系统启动页"/)
   assert.match(boot, />\s*启动 JuZX OS\s*<\/button>/)
   assert.doesNotMatch(`${boot}\n${state}`, /启动知识系统|跳过启动|Loading knowledge archives|Connecting Ask Console|ai-era:knowledge-factory:booted|localStorage/)
-  assert.match(home, /<MacbookBoot[\s\S]*v-if="activeView === 'home'"[\s\S]*:disabled="bootDisabled"[\s\S]*@entered="handleHomeEntered"[\s\S]*\/>/)
+  assert.match(home, /<MacbookBoot[\s\S]*v-if="activeView === 'home' && !homeEntered"[\s\S]*:disabled="bootDisabled"[\s\S]*@entered="handleHomeEntered"[\s\S]*\/>/)
   assert.match(boot, /v-if="visible"/)
   assert.match(boot, /defineEmits\(\['entered'\]\)/)
   assert.match(boot, /schedule\(\(\) => void enterDesktop\(\), 80\)/)
@@ -364,32 +301,10 @@ test('MacBook visual, mobile, reduced-motion, and fail-open rules are exact', as
   ]) assert.match(`${css}\n${boot}`, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
   assert.match(boot, /min-height:\s*100vh;[\s\S]*min-height:\s*100dvh;/)
   assert.match(boot, /transition:\s*transform 500ms cubic-bezier\(0\.16, 1, 0\.3, 1\)/)
-  assert.match(css, /html\[data-personal-site-access="pending"\] \.factory-boot/)
   assert.match(css, /\.macbook-boot\s*\{\s*display:\s*none !important;/)
   assert.match(css, /html\[data-personal-site-access="pending"\] \.macbook-boot\s*\{\s*display:\s*grid !important;/)
-  assert.match(css, /html:not\(\[data-personal-site-access="pending"\]\):not\(\[data-personal-site-access="leaving"\]\) \.factory-home/)
+  assert.match(css, /html:not\(\[data-personal-site-access="pending"\]\) \.factory-home/)
   const os = css.match(/\/\* Personal OS start \*\/([\s\S]*?)\/\* Personal OS end \*\//)?.[1] ?? ''
   assert.match(os, /@media \(prefers-reduced-motion: reduce\)[\s\S]*animation:\s*none !important;[\s\S]*transition:\s*none !important;/)
-  assert.doesNotMatch(css, /\.dark[\s\S]{0,240}\.factory-boot/)
-})
-
-test('input lock, preflight claim, cleanup, and focus handoff are explicit', async () => {
-  const [boot, css] = await Promise.all([
-    read('docs/.vitepress/theme/components/FactoryBoot.vue'),
-    read('docs/.vitepress/theme/custom.css'),
-  ])
-  for (const source of [
-    "state.value !== 'ready'", 'beginAccess(state.value, getSessionStorage(window))', "nextState === 'skipped'",
-    "document.documentElement.dataset.personalSiteAccess = 'leaving'", "delete window['__personalSiteAccessFallback']",
-    "window.removeEventListener('keydown', handleKeydown)", "document.getElementById('factory-title')",
-    'shouldContainTab(event, state.value)', 'event.preventDefault()', '@click.stop="activate"', '@click="handleOverlayClick"',
-  ]) assert.match(boot, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
-  const activate = boot.match(/function activate\(\)[\s\S]*?\n\}\n\nfunction handleOverlayClick/)?.[0] ?? ''
-  assert.doesNotMatch(activate, /removeKeydown/)
-  assert.match(activate, /nextState === 'skipped'[\s\S]*failOpen\(\)[\s\S]*return[\s\S]*window\.setTimeout\(finishExit, 400\)/)
-  assert.match(boot, /async function finishExit[\s\S]*await nextTick\(\)[\s\S]*removeKeydown\(\)[\s\S]*getElementById\('factory-title'\)/)
-  assert.match(boot, /async function failOpen[\s\S]*dataset\.personalSiteAccess = 'fallback'[\s\S]*visible\.value = false[\s\S]*await nextTick\(\)[\s\S]*removeKeydown\(\)[\s\S]*getElementById\('factory-title'\)/)
-  const leavingRule = css.match(/\.factory-boot\[data-state="leaving"\]\s*\{([\s\S]*?)\}/)?.[1] ?? ''
-  assert.ok(leavingRule, 'leaving splash rule must exist')
-  assert.doesNotMatch(leavingRule, /pointer-events:\s*none/)
+  assert.doesNotMatch(css, /\.factory-boot/)
 })
