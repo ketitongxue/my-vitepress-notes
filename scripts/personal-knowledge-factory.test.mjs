@@ -173,6 +173,8 @@ test('knowledge portfolio preserves the six-section content and navigation contr
   assert.match(portfolio, /<main class="knowledge-portfolio" aria-labelledby="knowledge-portfolio-title">/)
   assert.equal([...portfolio.matchAll(/<h1\b/g)].length, 1)
   assert.match(portfolio, /<h1 id="knowledge-portfolio-title">/)
+  const introHeading = portfolio.match(/<template v-if="section\.id === 'intro'">([\s\S]*?)<\/template>/)?.[1] ?? ''
+  assert.match(introHeading, /\{\{ section\.title \}\}/, 'intro must render its source title beside the page identity')
   assert.equal([...portfolio.matchAll(/<section\b/g)].length, 1, 'one source section template must render all six records')
   assert.match(portfolio, /<section[\s\S]*v-for="section in knowledgeSections"[\s\S]*:key="section\.id"[\s\S]*:data-knowledge-section="section\.id"/)
   assert.match(portfolio, /<h2[\s\S]*\{\{ section\.title \}\}[\s\S]*<\/h2>/)
@@ -191,6 +193,14 @@ test('knowledge portfolio preserves the six-section content and navigation contr
   }
   assert.match(portfolio, /<ul class="knowledge-portfolio__recent-list">/)
   assert.equal([...portfolio.matchAll(/<time datetime="\d{4}-\d{2}-\d{2}">/g)].length, 3)
+  for (const [date, href, title] of [
+    ['2026-07-01', '/notes/product-validation-loop', '产品验证循环'],
+    ['2026-06-30', '/notes/static-site-delivery', '静态网站交付'],
+    ['2026-07-02', '/notes/sustainable-ai-workflow', '可持续的 AI 工作流'],
+  ]) {
+    const item = `<li><time datetime="${date}">${date}</time><a href="${href}">${title}</a></li>`
+    assert.match(portfolio, new RegExp(item), `${href} metadata must match its frontmatter`)
+  }
 
   for (const href of requiredHrefs) {
     const pattern = new RegExp(`href="${href.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`, 'g')

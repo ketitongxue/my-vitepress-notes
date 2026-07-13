@@ -16,6 +16,7 @@ import { knowledgeSections } from './personalOsContent.mjs'
         <p class="knowledge-portfolio__eyebrow">{{ section.label }}</p>
         <template v-if="section.id === 'intro'">
           <h1 id="knowledge-portfolio-title">JuZX / AI 纪元</h1>
+          <p class="knowledge-portfolio__intro-title">{{ section.title }}</p>
         </template>
         <template v-else>
           <h2 :id="`knowledge-${section.id}-title`">{{ section.title }}</h2>
@@ -60,9 +61,9 @@ import { knowledgeSections } from './personalOsContent.mjs'
 
       <div v-else-if="section.id === 'recent'" class="knowledge-portfolio__updates">
         <ul class="knowledge-portfolio__recent-list">
-          <li><time datetime="2026-07-09">2026-07-09</time><a href="/notes/product-validation-loop">产品验证闭环</a></li>
-          <li><time datetime="2026-07-08">2026-07-08</time><a href="/notes/static-site-delivery">静态网站交付实践</a></li>
-          <li><time datetime="2026-07-07">2026-07-07</time><a href="/notes/sustainable-ai-workflow">可持续的 AI 工作流</a></li>
+          <li><time datetime="2026-07-01">2026-07-01</time><a href="/notes/product-validation-loop">产品验证循环</a></li>
+          <li><time datetime="2026-06-30">2026-06-30</time><a href="/notes/static-site-delivery">静态网站交付</a></li>
+          <li><time datetime="2026-07-02">2026-07-02</time><a href="/notes/sustainable-ai-workflow">可持续的 AI 工作流</a></li>
         </ul>
       </div>
     </section>
