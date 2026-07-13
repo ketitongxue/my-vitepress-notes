@@ -27,5 +27,8 @@
     "markdown-it": "^14.3.0",
     "vitepress": "latest",
     "wrangler": "4.107.0"
+  },
+  "dependencies": {
+    "@tabler/icons-vue": "^3.44.0"
   }
 }

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { hashForOsView, normalizeOsHash, OS_VIEWS } from '../docs/.vitepress/theme/components/personalOsRouter.mjs'
 import { bootLines, canvasCards, canvasConnections, desktopEntries, knowledgeSections } from '../docs/.vitepress/theme/components/personalOsContent.mjs'
@@ -6,6 +7,15 @@ import {
   computeCoverTransform, createMacbookBootRuntime, getSessionStorage, MACBOOK_INTERACTIVE_SELECTOR, progressCells,
   shouldActivateMacbookFromEnter, shouldSkipMacbookBoot, transitionMacbookBoot, writeAccessed,
 } from '../docs/.vitepress/theme/components/macbookBootState.mjs'
+import { constrainWindow, distance, isDragDistance } from '../docs/.vitepress/theme/components/desktopGeometry.mjs'
+import {
+  closeWindow, createWindowState, moveWindow, openWindow, resizeWindow,
+} from '../docs/.vitepress/theme/components/windowManagerState.mjs'
+
+const readComponent = (name) => readFileSync(
+  new URL(`../docs/.vitepress/theme/components/${name}`, import.meta.url),
+  'utf8',
+)
 
 test('OS hashes normalize without browser globals', () => {
   assert.deepEqual(OS_VIEWS, ['home', 'knowledge', 'system'])
@@ -134,4 +144,105 @@ test('fallback stops late MacBook hydration timers and global Enter', () => {
   assert.ok(events.some(([name, value]) => name === 'removeEventListener' && value === 'keydown'))
   assert.equal(active.listen(), false)
   assert.equal(active.schedule(() => events.push('typing'), 220), undefined)
+})
+
+test('desktop geometry distinguishes clicks from drags and constrains windows', () => {
+  assert.equal(distance({ x: 0, y: 0 }, { x: 3, y: 4 }), 5)
+  assert.equal(isDragDistance({ x: 0, y: 0 }, { x: 4, y: 0 }), false)
+  assert.equal(isDragDistance({ x: 0, y: 0 }, { x: 4.01, y: 0 }), true)
+  assert.deepEqual(
+    constrainWindow(
+      { x: -20, y: 5, width: 900, height: 700 },
+      { width: 800, height: 600 },
+    ),
+    { x: 0, y: 5, width: 800, height: 595 },
+  )
+})
+
+test('desktop window reducer keeps singleton windows within viewport bounds', () => {
+  const bounds = { width: 800, height: 600 }
+  const entry = desktopEntries[0]
+  const initial = createWindowState()
+  const opened = openWindow(initial, entry, bounds)
+
+  assert.equal(opened.windows.length, 1)
+  assert.equal(initial.windows.length, 0)
+  assert.deepEqual(opened.windows[0], {
+    id: entry.id,
+    entry,
+    x: 96,
+    y: 72,
+    width: 420,
+    height: 300,
+    z: 11,
+  })
+
+  const reopened = openWindow(opened, entry, bounds)
+  assert.equal(reopened.windows.length, 1)
+  assert.ok(reopened.windows[0].z > opened.windows[0].z)
+  assert.notEqual(reopened.windows[0], opened.windows[0])
+
+  const moved = moveWindow(reopened, entry.id, { x: 900, y: 700 }, bounds)
+  assert.deepEqual(
+    { x: moved.windows[0].x, y: moved.windows[0].y },
+    { x: 520, y: 400 },
+  )
+
+  const resized = resizeWindow(moved, entry.id, { width: 20, height: 10 }, bounds)
+  assert.deepEqual(
+    { width: resized.windows[0].width, height: resized.windows[0].height },
+    { width: 280, height: 200 },
+  )
+  assert.notEqual(resized.windows[0], moved.windows[0])
+
+  const closed = closeWindow(resized, entry.id)
+  assert.equal(closed.windows.length, 0)
+  assert.equal(resized.windows.length, 1)
+})
+
+test('desktop components use local Tabler icons and native pointer interactions', () => {
+  const icon = readComponent('DesktopIcon.vue')
+  const manager = readComponent('WindowManager.vue')
+  const surface = readComponent('DesktopSurface.vue')
+
+  for (const name of ['IconFolder', 'IconFileText', 'IconTerminal2', 'IconWorld']) {
+    assert.match(icon, new RegExp(`\\b${name}\\b`))
+  }
+  assert.match(icon, /from '@tabler\/icons-vue'/)
+  assert.match(icon, /folder: IconFolder/)
+  assert.match(icon, /file: IconFileText/)
+  assert.match(icon, /terminal: IconTerminal2/)
+  assert.match(icon, /world: IconWorld/)
+  assert.match(icon, /<button\b/)
+  assert.match(icon, /<component :is="iconComponent" aria-hidden="true"/)
+  assert.match(icon, /setPointerCapture/)
+  assert.match(icon, /isDragDistance/)
+  assert.match(icon, /@dblclick="open"/)
+  assert.match(icon, /@keydown="handleKeydown"/)
+  assert.match(icon, /if \(dragged && !gesture\.dragged\) moveGesture\(\)/)
+
+  assert.match(manager, /focusWindow/)
+  assert.match(manager, /moveWindow/)
+  assert.match(manager, /resizeWindow/)
+  assert.match(manager, /requestAnimationFrame/)
+  assert.match(manager, /cancelAnimationFrame/)
+  assert.match(manager, /setPointerCapture/)
+  assert.match(manager, /\.is-manipulating/)
+  assert.match(manager, /`关闭 \$\{title\}`/)
+  assert.match(manager, /`在新页面打开 \$\{title\}`/)
+  assert.match(manager, /@pointerdown\.stop="focus\(item\.id\)"/)
+
+  assert.match(surface, /desktopEntries/)
+  assert.match(surface, /createWindowState/)
+  assert.match(surface, /openWindow/)
+  assert.match(surface, /ResizeObserver/)
+  assert.match(surface, /重置桌面位置/)
+  assert.match(surface, /height: 30px/)
+  assert.match(surface, /right: `\$\{position\.x\}px`/)
+
+  for (const source of [icon, manager, surface]) {
+    assert.doesNotMatch(source, /<iframe\b/i)
+    assert.doesNotMatch(source, /<svg\b/i)
+    assert.doesNotMatch(source, /https?:\/\//i)
+  }
 })
