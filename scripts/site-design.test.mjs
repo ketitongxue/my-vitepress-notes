@@ -4,17 +4,21 @@ import test from 'node:test'
 
 const root = new URL('../', import.meta.url)
 const read = (path) => readFile(new URL(path, root), 'utf8')
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-test('homepage delegates current module and update discovery to the factory component', async () => {
-  const [page, home] = await Promise.all([
+test('homepage delegates its Personal OS shell to focused components', async () => {
+  const [page, home, canvas] = await Promise.all([
     read('docs/index.md'),
     read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue'),
+    read('docs/.vitepress/theme/components/DesktopCanvas.vue'),
   ])
   assert.match(page, /<KnowledgeFactoryHome\s*\/>/)
-  assert.match(home, /action:\s*'浏览 AI 知识'[\s\S]*href:\s*'\/wiki\/'/)
-  assert.match(home, /action:\s*'向知识库提问'[\s\S]*href:\s*'\/ask\/'/)
-  assert.match(home, /url:\s*'\/wiki\/'[\s\S]*date:\s*'2026-07-12'/)
-  assert.match(home, /url:\s*'\/finance\/'[\s\S]*date:\s*'2026-07-08'/)
+  assert.match(home, /<SystemTopBar\s*\/>/)
+  assert.match(home, /<DesktopCanvas\s*\/>/)
+  for (const name of [
+    'ProfileCard', 'CurrentStatusCard', 'FeaturedProjectCard', 'ProjectFolder',
+    'NotesLauncher', 'LabLauncher', 'ContactTerminal', 'CanvasControls',
+  ]) assert.match(canvas, new RegExp(`<${name}\\s*/>`))
 })
 
 test('knowledge pages are generated as compact accessible hubs', async () => {
@@ -34,22 +38,21 @@ test('Q&A clearly limits retrieval to the AI knowledge base', async () => {
   assert.doesNotMatch(component, /金融知识库/)
 })
 
-test('factory homepage discovery labels and entries are actionable in Chinese', async () => {
-  const home = await read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue')
-  assert.match(home, /KNOWLEDGE MODULES/)
-  assert.match(home, /知识模块/)
-  assert.match(home, /RECENT LOG/)
-  assert.match(home, /最近更新/)
-  const entries = new Map([
-    ['/wiki/', 'docs/wiki/index.md'],
-    ['/finance/', 'docs/finance/index.md'],
-    ['/ask/', 'docs/ask/index.md'],
-    ['/llm-wiki/', 'docs/llm-wiki/index.md'],
+test('factory homepage links and local anchors resolve after the OS component split', async () => {
+  const [topbar, canvas, profile, featured] = await Promise.all([
+    read('docs/.vitepress/theme/components/SystemTopBar.vue'),
+    read('docs/.vitepress/theme/components/DesktopCanvas.vue'),
+    read('docs/.vitepress/theme/components/ProfileCard.vue'),
+    read('docs/.vitepress/theme/components/FeaturedProjectCard.vue'),
   ])
-  for (const [href, path] of entries) {
-    assert.match(home, new RegExp(`(?:href|url):\\s*["']${href.replaceAll('/', '\\\/')}["']`))
-    await assert.doesNotReject(access(new URL(path, root)), `${href} must resolve to ${path}`)
-  }
+  assert.match(topbar, /href="#projects"/)
+  assert.match(topbar, /href="#notes"/)
+  assert.match(profile, /href="\/about"/)
+  assert.match(profile, /href="#projects"/)
+  assert.match(featured, /href="#projects"/)
+  assert.match(canvas, /<ProjectFolder\s*\/>/)
+  assert.match(canvas, /<NotesLauncher\s*\/>/)
+  await assert.doesNotReject(access(new URL('docs/about.md', root)), '/about must resolve')
 })
 
 test('Q&A and local search expose Chinese interface labels', async () => {
@@ -70,9 +73,21 @@ test('theme styles balance the factory, knowledge, and QA surfaces', async () =>
   assert.match(css, /\.VPHero \.text[\s\S]*text-wrap:\s*balance/)
   assert.match(css, /\.knowledge-hub__featured/)
   assert.match(css, /\.knowledge-hub__all/)
-  assert.match(css, /\.factory-status\s*\{[\s\S]*?display:\s*flex;/)
-  assert.match(css, /\.factory-modules__grid\s*\{[\s\S]*?display:\s*grid;/)
-  assert.match(css, /\.factory-module a:focus-visible/)
+  for (const selector of [
+    '.system-topbar', '.desktop-canvas', '.profile-card', '.project-folder',
+    '.notes-launcher', '.lab-launcher', '.contact-terminal', '.canvas-controls',
+  ]) assert.match(css, new RegExp(`\\.factory-home ${selector.replace('.', '\\.')}(?:\\s|,|\\{|:)`))
+  assert.match(css, /\.factory-home a:focus-visible\s*\{[^}]*outline:\s*2px solid #315EFB/)
+  assert.match(css, /\.factory-home \.desktop-canvas\s*\{[^}]*grid-template-columns:\s*repeat\(14, minmax\(0, 1fr\)\)/)
+  assert.match(css, /@media \(max-width: 767px\)[\s\S]*?\.factory-home \.desktop-canvas\s*\{[^}]*grid-template-columns:\s*1fr/)
+  assert.match(css, /\.factory-home\s*\{[^}]*font-family:\s*var\(--vp-font-family-base\)/)
+  assert.match(css, /\.factory-home \.system-topbar\s*\{[^}]*font-family:\s*"JetBrains Mono", "Fira Code", Consolas, monospace/)
+  for (const selector of [
+    '.profile-card__summary', '.current-status-card dd', '.featured-project-card h2 + p',
+    '.notes-launcher li', '.lab-launcher li',
+  ]) {
+    assert.match(css, new RegExp(`\\.factory-home ${escapeRegex(selector)}(?:\\s|,)[\\s\\S]*?\\{[^}]*font-family:\\s*var\\(--vp-font-family-base\\)`))
+  }
   assert.doesNotMatch(css, /\.garden-/)
   assert.doesNotMatch(css, /\.wiki-ask__conversation[\s\S]{0,400}min-height:\s*190px/)
 })
@@ -82,5 +97,6 @@ test('fullscreen splash replaces the inline boot without changing homepage disco
   const hero = home.match(/<section class="factory-hero"[\s\S]*?<\/section>/)?.[0] ?? ''
   assert.doesNotMatch(hero, /FactoryBoot/)
   assert.match(home, /<FactoryBoot @reveal="handleReveal"\s*\/>\s*<main/)
-  for (const route of ['/wiki/', '/finance/', '/ask/', '/llm-wiki/']) assert.match(home, new RegExp(route.replaceAll('/', '\\/')))
+  assert.match(home, /<SystemTopBar\s*\/>/)
+  assert.match(home, /<DesktopCanvas\s*\/>/)
 })

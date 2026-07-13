@@ -13,20 +13,178 @@ const read = (path) => readFile(new URL(path, root), 'utf8')
 test('homepage mounts the dedicated factory component', async () => {
   const page = await read('docs/index.md')
   assert.match(page, /layout:\s*page/)
+  assert.match(page, /navbar:\s*false/)
   assert.match(page, /sidebar:\s*false/)
   assert.match(page, /outline:\s*false/)
   assert.match(page, /<KnowledgeFactoryHome\s*\/>/)
 })
 
-test('factory homepage exposes the real brand, actions, and exactly four modules', async () => {
-  const home = await read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue')
-  for (const copy of ['AI 纪元', 'PERSONAL KNOWLEDGE FACTORY', '个人知识工厂', '向知识库提问', '浏览知识模块']) {
-    assert.match(home, new RegExp(copy))
+test('Personal OS visual contract is exact, scoped, static, and responsive', async () => {
+  const css = await read('docs/.vitepress/theme/custom.css')
+  const os = css.match(/\/\* Personal OS start \*\/([\s\S]*?)\/\* Personal OS end \*\//)?.[1] ?? ''
+  assert.ok(os, 'homepage OS styles must have an auditable scoped block')
+
+  for (const color of [
+    '#F7F4EC', '#FFFDF7', '#1E2430', '#69707D', '#315EFB',
+    '#F2C94C', '#EF7B45', '#3FAE78', '#192232',
+  ]) assert.match(os, new RegExp(color, 'i'))
+
+  for (const source of [
+    'overflow-x: clip',
+    'width: min(1360px, calc(100vw - 48px))',
+    'min-height: 1040px',
+    'grid-template-columns: repeat(14, minmax(0, 1fr))',
+    'grid-template-rows: repeat(14, minmax(0, 1fr))',
+    '@media (max-width: 767px)',
+    'grid-template-columns: 1fr',
+    'min-width: 0',
+    'overflow-wrap: anywhere',
+    '@media (prefers-reduced-motion: reduce)',
+    'outline: 2px solid #315EFB',
+  ]) assert.match(os, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'))
+
+  const placements = new Map([
+    ['profile', ['1 / 8', '1 / 5']],
+    ['status', ['9 / 13', '1 / 4']],
+    ['projects', ['11 / 15', '4 / 8']],
+    ['featured', ['4 / 11', '5 / 10']],
+    ['notes', ['1 / 4', '6 / 10']],
+    ['lab', ['11 / 15', '9 / 13']],
+    ['contact', ['3 / 10', '11 / 15']],
+    ['controls', ['12 / 15', '14 / 15']],
+  ])
+  for (const [name, [column, row]] of placements) {
+    const rule = os.match(new RegExp(`\\.desktop-canvas__${name}\\s*\\{([\\s\\S]*?)\\}`))?.[1] ?? ''
+    assert.match(rule, new RegExp(`grid-column:\\s*${column.replace('/', '\\/')}`))
+    assert.match(rule, new RegExp(`grid-row:\\s*${row.replace('/', '\\/')}`))
   }
-  const routes = [...home.matchAll(/href:\s*['"](\/(?:wiki|finance|ask|llm-wiki)\/?)['"]/g)].map((match) => match[1])
-  assert.deepEqual(routes.sort(), ['/ask/', '/finance/', '/llm-wiki/', '/wiki/'])
-  assert.match(home, /href="#knowledge-modules"/)
-  assert.doesNotMatch(home, /MES|项目档案|媒体库|实验室|infinite.canvas|draggable/i)
+
+  const osSelectors = [...os.matchAll(/(?:^|\})\s*([^@][^{]+)\{/g)]
+    .flatMap((match) => match[1].split(',').map((selector) => selector.trim()))
+  const homepageClasses = [
+    'system-topbar', 'desktop-canvas', 'profile-card', 'current-status-card',
+    'featured-project-card', 'project-folder', 'notes-launcher', 'lab-launcher',
+    'contact-terminal', 'canvas-controls',
+  ]
+  for (const selector of osSelectors.filter((candidate) =>
+    homepageClasses.some((name) => candidate.includes(`.${name}`)))) {
+    assert.match(selector, /^(?:\.factory-home|\.knowledge-factory-page)(?:$|[\s.:#\[])/)
+  }
+
+  assert.doesNotMatch(os, /box-shadow:\s*(?:[^;]*(?:#315EFB|#F2C94C|#EF7B45|#3FAE78)|[^;]*\b(?:[4-9]|\d{2,})px)/i)
+  assert.match(os, /@keyframes personal-os-reveal\s*\{[\s\S]*?from\s*\{\s*opacity:\s*0;\s*transform:\s*translateY\(8px\) scale\(\.995\);\s*\}[\s\S]*?to\s*\{\s*opacity:\s*1;\s*transform:\s*none;\s*\}/)
+  assert.match(os, /\.factory-home\s*\{[^}]*font-family:\s*var\(--vp-font-family-base\)/)
+  assert.match(os, /\.factory-home \.system-topbar\s*\{[^}]*font-family:\s*"JetBrains Mono", "Fira Code", Consolas, monospace/)
+  assert.doesNotMatch(os, /\.factory-home\s*\{[^}]*font-family:\s*"JetBrains Mono"/)
+  assert.doesNotMatch(os, /linear-gradient|backdrop-filter|cursor\s*:\s*(?:grab|grabbing|zoom-in|zoom-out)|touch-action\s*:\s*none/i)
+})
+
+test('factory homepage exposes the static Personal OS component and copy contract', async () => {
+  const home = await read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue')
+  const components = [
+    'SystemTopBar', 'DesktopCanvas', 'ProfileCard', 'CurrentStatusCard',
+    'FeaturedProjectCard', 'ProjectFolder', 'NotesLauncher', 'LabLauncher',
+    'ContactTerminal', 'CanvasControls',
+  ]
+  const componentSources = new Map()
+  for (const name of components) {
+    const path = `docs/.vitepress/theme/components/${name}.vue`
+    await assert.doesNotReject(read(path))
+    componentSources.set(name, await read(path))
+  }
+  const allComponentSources = `${home}\n${[...componentSources.values()].join('\n')}`
+  const canvas = componentSources.get('DesktopCanvas')
+  for (const name of [
+    'ProfileCard', 'CurrentStatusCard', 'FeaturedProjectCard', 'ProjectFolder',
+    'NotesLauncher', 'LabLauncher', 'ContactTerminal', 'CanvasControls',
+  ]) {
+    assert.ok(canvas.includes(`import ${name} from './${name}.vue'`))
+    assert.match(canvas, new RegExp(`<${name}\\s*/>`))
+  }
+  const copyByComponent = new Map([
+    ['SystemTopBar', ['JuZX OS', '01 HOME', '02 PROJECTS', '03 NOTES', '04 ABOUT', 'SYSTEM ONLINE', 'v1.0']],
+    ['ProfileCard', [
+      "HELLO, I'M JuZX", 'JuZX', 'MES Product Manager', 'Industrial Digitalization Explorer',
+      '关注工业数字化、智能制造，', '以及 AI 在个人工作流中的实践。', 'ABOUT ME', 'VIEW PROJECTS',
+    ]],
+    ['CurrentStatusCard', [
+      'CURRENT STATUS', 'Working', 'MES 产品设计与项目实践',
+      'Learning', 'Rust / AI Agent / Web Development', 'Building', 'Personal Digital Factory',
+    ]],
+    ['FeaturedProjectCard', [
+      'FEATURED PROJECT / 001', '核电制造 MES 系统', '生产、物资、质量、焊接和设备业务',
+      '全过程数字化管理。', 'ROLE', 'Product Manager', 'STATUS', 'Delivered', 'OPEN ARCHIVE', '→',
+    ]],
+    ['ProjectFolder', ['PROJECTS/', 'MES System', 'Digital Dashboard', 'Product Design', 'AI Experiments']],
+    ['NotesLauncher', [
+      'NOTES/', 'Rust 学习笔记.md', 'AI Agent 实践.md', '产品经理复盘.md', '工业数字化.md',
+    ]],
+    ['LabLauncher', ['LAB/', '互联网黑话翻译器', '飞书群问答机器人', '个人知识库', 'MES 数据助手']],
+    ['ContactTerminal', [
+      'JuZX@digital-factory ~ zsh', '$ cat contact.md', 'Email', 'Available on request',
+      'GitHub', 'ketitongxue', 'Social Media', 'JuZX', '$ echo "Let\'s build something useful."', 'Ready.', '_',
+    ]],
+  ])
+  for (const [name, copies] of copyByComponent) {
+    for (const copy of copies) {
+      assert.match(componentSources.get(name), new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    }
+  }
+  assert.match(home, /<FactoryBoot @reveal="handleReveal"\s*\/>/)
+  assert.match(home, /<SystemTopBar\s*\/>/)
+  assert.match(home, /<DesktopCanvas\s*\/>/)
+  assert.doesNotMatch(
+    allComponentSources,
+    /(?:@|v-on:)(?:mouse[a-z]+|touch[a-z]+|pointer[a-z]+|wheel|drag[a-z]*|drop)\b|addEventListener\(\s*["'](?:mouse[a-z]+|touch[a-z]+|pointer[a-z]+|wheel|drag[a-z]*|drop)["']|\bon(?:mouse[a-z]+|touch[a-z]+|pointer[a-z]+|wheel|drag[a-z]*|drop)\b|\b(?:draggable|startDrag|handleDrag|isDragging|dragging|zoomIn|zoomOut|handleZoom|zoomLevel|startPan|isPanning|panning)\b/i,
+  )
+})
+
+test('Personal OS clock, navigation, semantics, and contact links are real', async () => {
+  const { formatLocalTime, startLocalClock } = await import('../docs/.vitepress/theme/components/SystemTopBar.mjs')
+  const [topbar, profile, featured, contact] = await Promise.all([
+    read('docs/.vitepress/theme/components/SystemTopBar.vue'),
+    read('docs/.vitepress/theme/components/ProfileCard.vue'),
+    read('docs/.vitepress/theme/components/FeaturedProjectCard.vue'),
+    read('docs/.vitepress/theme/components/ContactTerminal.vue'),
+  ])
+
+  assert.equal(formatLocalTime(new Date(2026, 6, 13, 9, 5)), '09:05')
+  const intervalId = Symbol('local-clock-interval')
+  const events = []
+  const stopClock = startLocalClock(
+    () => events.push('update'),
+    (callback, delay) => {
+      events.push(['schedule', callback, delay])
+      return intervalId
+    },
+    (id) => events.push(['clear', id]),
+  )
+  assert.equal(events[0], 'update', 'clock must update immediately before scheduling')
+  assert.equal(events[1][2], 60000)
+  assert.equal(typeof events[1][1], 'function')
+  events[1][1]()
+  assert.equal(events[2], 'update', 'scheduled clock callback must update again')
+  stopClock()
+  assert.deepEqual(events[3], ['clear', intervalId])
+  assert.match(topbar, /onMounted\(\(\)\s*=>\s*\{[\s\S]*stopClock\s*=\s*startLocalClock\(/)
+  assert.match(topbar, /onBeforeUnmount\(\(\)\s*=>\s*\{?[\s\S]*stopClock\(\)/)
+  assert.match(topbar, /<time(?:\s|>)/)
+  assert.match(profile, /<h1 id="factory-title" tabindex="-1">/)
+
+  const hrefs = (source) => [...source.matchAll(/href=["']([^"']+)["']/g)].map((match) => match[1])
+  assert.match(topbar, /<nav(?:\s|>)/)
+  assert.deepEqual(hrefs(topbar), ['/', '#projects', '#notes', '/about'])
+  assert.deepEqual(hrefs(profile), ['/about', '#projects'])
+  assert.deepEqual(hrefs(featured), ['#projects'])
+  assert.deepEqual(hrefs(contact), ['https://github.com/ketitongxue'])
+  assert.match(profile, /<a class="profile-card__projects" href="#projects">VIEW PROJECTS<\/a>/)
+  assert.deepEqual(
+    [...await Promise.all([
+      'DesktopCanvas', 'CurrentStatusCard', 'ProjectFolder', 'NotesLauncher', 'LabLauncher', 'CanvasControls',
+    ].map((name) => read(`docs/.vitepress/theme/components/${name}.vue`)))].flatMap(hrefs),
+    [],
+    'non-actionable project, note, lab, and control surfaces must not expose fake links',
+  )
 })
 
 test('splash state uses the exact session contract and fails open', () => {
