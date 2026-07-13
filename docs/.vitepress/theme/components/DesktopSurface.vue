@@ -99,8 +99,12 @@ onBeforeUnmount(() => {
 <template>
   <section ref="surface" class="desktop-surface" aria-label="JuZX OS 桌面">
     <header class="desktop-surface__menu">
-      <strong>JuZX OS</strong>
-      <span>桌面</span>
+      <a class="desktop-surface__brand" href="#home">JuZX OS</a>
+      <nav aria-label="JuZX OS 菜单">
+        <a href="/about">About</a>
+        <a href="#knowledge">Knowledge</a>
+        <a href="#system">Now</a>
+      </nav>
       <button type="button" @click="resetIconPositions">重置桌面位置</button>
       <time :datetime="clock">{{ clock }}</time>
     </header>
@@ -143,6 +147,26 @@ onBeforeUnmount(() => {
   background: rgb(9 17 30 / 88%);
   border-bottom: 1px solid rgb(255 255 255 / 18%);
   font-size: 12px;
+}
+
+.desktop-surface__menu nav {
+  display: flex;
+  gap: 14px;
+}
+
+.desktop-surface__menu a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.desktop-surface__menu a:focus-visible {
+  outline: 2px solid #f2c94c;
+  outline-offset: 2px;
+}
+
+.desktop-surface__menu .desktop-surface__brand {
+  color: #F4D758;
+  font-weight: 700;
 }
 
 .desktop-surface__menu button {

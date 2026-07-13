@@ -276,10 +276,13 @@ test('desktop window resize control supports arrow keys and Shift steps', () => 
 
   const minimum = resizeWindow(opened, entry.id, { width: 280, height: 200 }, bounds)
   const constrained = resizeWindowByKey(minimum, entry.id, 'ArrowLeft', true, bounds)
-  assert.deepEqual(
-    { width: constrained.windows[0].width, height: constrained.windows[0].height },
-    { width: 280, height: 200 },
-  )
+  assert.equal(constrained.windows[0].width, 280)
+  assert.equal(constrained.windows[0].height, 200)
+
+  const atBoundary = moveWindow(opened, entry.id, { x: 520, y: 400 }, bounds)
+  const beyondBoundary = resizeWindowByKey(atBoundary, entry.id, 'ArrowRight', true, bounds)
+  assert.equal(beyondBoundary.windows[0].width, 280)
+  assert.equal(beyondBoundary.windows[0].height, 200)
   assert.equal(resizeWindowByKey(opened, entry.id, 'Enter', false, bounds), opened)
 })
 
@@ -322,6 +325,12 @@ test('desktop components use local Tabler icons and native pointer interactions'
   assert.match(surface, /ResizeObserver/)
   assert.match(surface, /重置桌面位置/)
   assert.match(surface, /height: 30px/)
+  assert.ok(surface.includes('<a class="desktop-surface__brand" href="#home">JuZX OS</a>'))
+  assert.ok(surface.includes('<a href="/about">About</a>'))
+  assert.ok(surface.includes('<a href="#knowledge">Knowledge</a>'))
+  assert.ok(surface.includes('<a href="#system">Now</a>'))
+  assert.equal(surface.includes('<span>桌面</span>'), false)
+  assert.match(surface, /<time :datetime="clock">\{\{ clock \}\}<\/time>/)
   assert.match(surface, /right: `\$\{position\.x\}px`/)
   assert.match(surface, /left: `\$\{position\.x\}px`/)
   assert.match(surface, /constrainIconPositions\(nextBounds\)/)
