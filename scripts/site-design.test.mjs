@@ -70,6 +70,7 @@ test('theme styles balance the factory, knowledge, and QA surfaces', async () =>
     '.system-topbar', '.desktop-canvas', '.profile-card', '.project-folder',
     '.notes-launcher', '.lab-launcher', '.contact-terminal', '.canvas-controls',
   ]) assert.match(css, new RegExp(`${selector.replace('.', '\\.')}(?:\\s|,|\\{|:)`))
+  assert.match(css, /\.factory-home a:focus-visible\s*\{[^}]*outline:/)
   assert.doesNotMatch(css, /\.garden-/)
   assert.doesNotMatch(css, /\.wiki-ask__conversation[\s\S]{0,400}min-height:\s*190px/)
 })

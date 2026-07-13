@@ -25,27 +25,44 @@ test('factory homepage exposes the static Personal OS component and copy contrac
     'FeaturedProjectCard', 'ProjectFolder', 'NotesLauncher', 'LabLauncher',
     'ContactTerminal', 'CanvasControls',
   ]
-  const componentSources = []
+  const componentSources = new Map()
   for (const name of components) {
     const path = `docs/.vitepress/theme/components/${name}.vue`
     await assert.doesNotReject(read(path))
-    componentSources.push(await read(path))
+    componentSources.set(name, await read(path))
   }
-  const allComponentSources = `${home}\n${componentSources.join('\n')}`
-  for (const copy of [
-    'JuZX OS', '01 HOME', '02 PROJECTS', '03 NOTES', '04 ABOUT', 'SYSTEM ONLINE', 'v1.0',
-    "HELLO, I'M JuZX", 'MES Product Manager', 'Industrial Digitalization Explorer',
-    'CURRENT STATUS', 'FEATURED PROJECT / 001', '核电制造 MES 系统', 'PROJECTS/',
-    'NOTES/', 'LAB/', 'JuZX@digital-factory ~ zsh', '$ cat contact.md', 'Ready.',
-  ]) assert.match(allComponentSources, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+  const allComponentSources = `${home}\n${[...componentSources.values()].join('\n')}`
+  const canvas = componentSources.get('DesktopCanvas')
+  for (const name of [
+    'ProfileCard', 'CurrentStatusCard', 'FeaturedProjectCard', 'ProjectFolder',
+    'NotesLauncher', 'LabLauncher', 'ContactTerminal', 'CanvasControls',
+  ]) {
+    assert.match(canvas, new RegExp(`import\\s+${name}\\s+from\\s+["']\\./${name}\\.vue["']`))
+    assert.match(canvas, new RegExp(`<${name}\\s*/>`))
+  }
+  const copyByComponent = new Map([
+    ['SystemTopBar', ['JuZX OS', '01 HOME', '02 PROJECTS', '03 NOTES', '04 ABOUT', 'SYSTEM ONLINE', 'v1.0']],
+    ['ProfileCard', ["HELLO, I'M JuZX", 'MES Product Manager', 'Industrial Digitalization Explorer']],
+    ['CurrentStatusCard', ['CURRENT STATUS']],
+    ['FeaturedProjectCard', ['FEATURED PROJECT / 001', '核电制造 MES 系统']],
+    ['ProjectFolder', ['PROJECTS/']],
+    ['NotesLauncher', ['NOTES/']],
+    ['LabLauncher', ['LAB/']],
+    ['ContactTerminal', ['JuZX@digital-factory ~ zsh', '$ cat contact.md', 'Ready.']],
+  ])
+  for (const [name, copies] of copyByComponent) {
+    for (const copy of copies) {
+      assert.match(componentSources.get(name), new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    }
+  }
   assert.match(home, /<FactoryBoot @reveal="handleReveal"\s*\/>/)
   assert.match(home, /<SystemTopBar\s*\/>/)
   assert.match(home, /<DesktopCanvas\s*\/>/)
-  assert.doesNotMatch(allComponentSources, /pointerdown|pointermove|wheel|scale\(|translate3d|drag|zoom/i)
+  assert.doesNotMatch(allComponentSources, /@(?:pointerdown|pointermove|wheel)|addEventListener\(\s*["'](?:pointerdown|pointermove|wheel)["']|\bdraggable\b/i)
 })
 
 test('Personal OS clock, navigation, semantics, and contact links are real', async () => {
-  const { formatLocalTime } = await import('../docs/.vitepress/theme/components/SystemTopBar.mjs')
+  const { formatLocalTime, startLocalClock } = await import('../docs/.vitepress/theme/components/SystemTopBar.mjs')
   const [topbar, profile, featured, contact] = await Promise.all([
     read('docs/.vitepress/theme/components/SystemTopBar.vue'),
     read('docs/.vitepress/theme/components/ProfileCard.vue'),
@@ -54,22 +71,32 @@ test('Personal OS clock, navigation, semantics, and contact links are real', asy
   ])
 
   assert.equal(formatLocalTime(new Date(2026, 6, 13, 9, 5)), '09:05')
-  assert.match(topbar, /onMounted/)
-  assert.match(topbar, /onBeforeUnmount/)
-  assert.match(topbar, /setInterval\([\s\S]*?,\s*60000\s*\)/)
+  const intervalId = Symbol('local-clock-interval')
+  const events = []
+  const stopClock = startLocalClock(
+    () => events.push('update'),
+    (callback, delay) => {
+      events.push(['schedule', callback, delay])
+      return intervalId
+    },
+    (id) => events.push(['clear', id]),
+  )
+  assert.equal(events[0], 'update', 'clock must update immediately before scheduling')
+  assert.equal(events[1][2], 60000)
+  assert.equal(typeof events[1][1], 'function')
+  stopClock()
+  assert.deepEqual(events[2], ['clear', intervalId])
+  assert.match(topbar, /onMounted\(\(\)\s*=>\s*\{[\s\S]*stopClock\s*=\s*startLocalClock\(/)
+  assert.match(topbar, /onBeforeUnmount\(\(\)\s*=>\s*\{?[\s\S]*stopClock\(\)/)
   assert.match(topbar, /<time(?:\s|>)/)
   assert.match(profile, /<h1 id="factory-title" tabindex="-1">/)
 
-  const topNavigation = topbar.match(/<nav[\s\S]*?<\/nav>/)?.[0] ?? ''
-  const topNavigationHrefs = [...topNavigation.matchAll(/href=["']([^"']+)["']/g)].map((match) => match[1])
-  assert.deepEqual(topNavigationHrefs, ['/', '#projects', '#notes', '/about'])
-  assert.match(profile, /href=["']\/about["']/)
-  assert.match(featured, /href=["']#projects["']/)
-
-  const externalContactLinks = [...contact.matchAll(/href=["'](https?:\/\/[^"']+)["']/g)].map((match) => match[1])
-  assert.equal(externalContactLinks.length, 1)
-  assert.match(externalContactLinks[0], /^https:\/\/(?:www\.)?github\.com\//)
-  assert.doesNotMatch(`${topbar}\n${profile}\n${featured}\n${contact}`, /href=["']#["']/)
+  const hrefs = (source) => [...source.matchAll(/href=["']([^"']+)["']/g)].map((match) => match[1])
+  assert.match(topbar, /<nav(?:\s|>)/)
+  assert.deepEqual(hrefs(topbar), ['/', '#projects', '#notes', '/about'])
+  assert.deepEqual(hrefs(profile), ['/about'])
+  assert.deepEqual(hrefs(featured), ['#projects'])
+  assert.deepEqual(hrefs(contact), ['https://github.com/ketitongxue'])
 })
 
 test('splash state uses the exact session contract and fails open', () => {

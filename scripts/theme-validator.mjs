@@ -58,6 +58,12 @@ function findRule(rules, selector, ancestor) {
   )
 }
 
+function delayInMilliseconds(value) {
+  const match = value?.match(/^(\d+(?:\.\d+)?)(ms|s)$/)
+  if (!match) return undefined
+  return Number(match[1]) * (match[2] === 's' ? 1000 : 1)
+}
+
 export function validateThemeCss(source) {
   const css = stripComments(source)
   const rules = parseRules(css)
@@ -119,14 +125,21 @@ export function validateThemeCss(source) {
     throw new Error('Personal OS desktop canvas must use a 14-column grid')
   }
 
+  const entranceDelays = []
   for (const selector of placementSelectors) {
     if (!parseDeclarations(findRule(rules, selector)?.body ?? '').get('grid-column')) {
       throw new Error(`Personal OS placement ${selector} must declare grid-column`)
     }
     const stagger = findRule(rules, `.factory-home.is-entering ${selector}`)
-    if (!parseDeclarations(stagger?.body ?? '').get('animation-delay')) {
+    const delay = parseDeclarations(stagger?.body ?? '').get('animation-delay')
+    if (!delay) {
       throw new Error(`Personal OS entrance must stagger ${selector}`)
     }
+    entranceDelays.push(delayInMilliseconds(delay))
+  }
+  if (entranceDelays.some((delay) => delay === undefined)
+    || entranceDelays.some((delay, index) => index > 0 && delay <= entranceDelays[index - 1])) {
+    throw new Error('Personal OS entrance delays must be distinct and strictly increasing')
   }
 
   const splash = findRule(rules, '.factory-boot')
@@ -154,10 +167,17 @@ export function validateThemeCss(source) {
   }
 
   const reducedMedia = '@media (prefers-reduced-motion: reduce)'
-  const reducedFactory = findRule(rules, '.factory-home.is-entering .desktop-canvas > *', reducedMedia)
-  const reducedDeclarations = parseDeclarations(reducedFactory?.body ?? '')
-  if (reducedDeclarations.get('animation') !== 'none !important' || reducedDeclarations.get('transition') !== 'none !important') {
-    throw new Error('custom.css reduced-motion media must suppress Personal OS animation and transition')
+  for (const selector of [
+    '.factory-home.is-entering .system-topbar',
+    '.factory-home.is-entering .desktop-canvas > *'
+  ]) {
+    const reducedFactory = findRule(rules, selector, reducedMedia)
+    const reducedDeclarations = parseDeclarations(reducedFactory?.body ?? '')
+    if (reducedDeclarations.get('animation') !== 'none !important'
+      || reducedDeclarations.get('transition') !== 'none !important'
+      || reducedDeclarations.get('transform') !== 'none !important') {
+      throw new Error(`custom.css reduced-motion media must reset animation, transition, and transform for ${selector}`)
+    }
   }
   const reducedSplash = findRule(rules, '.factory-boot', reducedMedia)
   const reducedSplashDeclarations = parseDeclarations(reducedSplash?.body ?? '')
@@ -170,7 +190,7 @@ export function validateThemeCss(source) {
     throw new Error('custom.css reduced-motion media must suppress cursor motion')
   }
 
-  if (/cursor\s*:\s*(?:grab|grabbing)|touch-action\s*:\s*none|scale\s*\(|translate3d\s*\(/i.test(css)) {
+  if (/cursor\s*:\s*(?:grab|grabbing)|touch-action\s*:\s*none|\b(?:pointerdown|pointermove|wheel)\b/i.test(css)) {
     throw new Error('custom.css must not enable drag or zoom behavior')
   }
 }

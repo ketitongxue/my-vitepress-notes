@@ -63,7 +63,12 @@ function validTheme() {
 .factory-boot__cursor { animation: factory-cursor-blink 800ms step-end infinite; }
 @media (max-width: 767px) { .desktop-canvas { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) {
-  .factory-home.is-entering .desktop-canvas > * { animation: none !important; transition: none !important; }
+  .factory-home.is-entering .system-topbar,
+  .factory-home.is-entering .desktop-canvas > * {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
   .factory-boot { animation: none !important; transition: none !important; }
   .factory-boot__cursor { animation: none !important; }
 }
@@ -71,6 +76,17 @@ function validTheme() {
 }
 
 assert.equal(runChecker(validTheme()).status, 0, 'complete Personal OS palettes and responsive rules must pass validation')
+
+const visualTransforms = runChecker(validTheme()
+  .replace(
+    '.desktop-canvas { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); }',
+    '.desktop-canvas { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); transform: scale(.995) translateY(4px); }',
+  )
+  .replace(
+    'transition: opacity 400ms cubic-bezier(0.16, 1, 0.3, 1);',
+    'transition: opacity 400ms cubic-bezier(0.16, 1, 0.3, 1); transform: scale(.995) translateY(4px);',
+  ))
+assert.equal(visualTransforms.status, 0, 'non-interactive splash and OS scale/translate effects must remain valid')
 
 const commented = runChecker(`/* ${validTheme()} */`)
 assert.notEqual(commented.status, 0, 'commented-out declarations and selectors must fail validation')
@@ -112,9 +128,23 @@ const missingStagger = runChecker(validTheme().replace(
 assert.notEqual(missingStagger.status, 0, 'OS cards need explicit stagger delays')
 assert.match(missingStagger.stderr, /entrance must stagger \.contact-terminal/)
 
-const missingReducedMotion = runChecker(validTheme().replace('transition: none !important;', 'transition: transform 200ms;'))
-assert.notEqual(missingReducedMotion.status, 0, 'OS motion must be suppressed for reduced-motion users')
-assert.match(missingReducedMotion.stderr, /must suppress Personal OS animation and transition/)
+const unorderedStagger = runChecker(validTheme().replace(
+  '.factory-home.is-entering .contact-terminal { animation-delay: 280ms; }',
+  '.factory-home.is-entering .contact-terminal { animation-delay: 200ms; }',
+))
+assert.notEqual(unorderedStagger.status, 0, 'OS stagger delays must be unique and ordered')
+assert.match(unorderedStagger.stderr, /delays must be distinct and strictly increasing/)
+
+const missingReducedMotion = runChecker(validTheme().replace('transform: none !important;', 'transform: scale(.995);'))
+assert.notEqual(missingReducedMotion.status, 0, 'OS motion and transforms must be reset for reduced-motion users')
+assert.match(missingReducedMotion.stderr, /must reset animation, transition, and transform/)
+
+const missingTopbarReduction = runChecker(validTheme().replace(
+  '  .factory-home.is-entering .system-topbar,\n',
+  '',
+))
+assert.notEqual(missingTopbarReduction.status, 0, 'reduced motion must cover the fixed topbar')
+assert.match(missingTopbarReduction.stderr, /\.system-topbar/)
 
 const nonFixedSplash = runChecker(validTheme().replace(
   '.factory-boot {\n  position: fixed;',
@@ -134,7 +164,7 @@ const missingSplashReduction = runChecker(validTheme().replace(
 assert.notEqual(missingSplashReduction.status, 0, 'reduced motion must cover the splash')
 assert.match(missingSplashReduction.stderr, /reduced-motion media must suppress splash motion/)
 
-const forbiddenDrag = runChecker(`${validTheme()}\n.desktop-canvas { cursor: grab; }`)
+const forbiddenDrag = runChecker(`${validTheme()}\n.desktop-canvas { cursor: grab; touch-action: none; }`)
 assert.notEqual(forbiddenDrag.status, 0, 'static OS CSS must not advertise drag or zoom behavior')
 assert.match(forbiddenDrag.stderr, /must not enable drag or zoom behavior/)
 
