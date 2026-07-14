@@ -67,9 +67,75 @@ test('Personal OS content is complete and internally referential', () => {
   ])
   assert.deepEqual(desktopEntries.slice(0, 4).map(({ window }) => window.href), ['/wiki/', '/finance/', '/ask/', '/llm-wiki/'])
   assert.equal(knowledgeSections.length, 6)
-  assert.ok(canvasCards.length >= 8)
+})
+
+test('growth-axis content has eleven immutable trusted nodes', () => {
+  assert.deepEqual(canvasCards.map(({ id, type }) => [id, type]), [
+    ['identity', 'identity'],
+    ['growth-field', 'timeline'],
+    ['growth-product', 'timeline'],
+    ['growth-system', 'timeline'],
+    ['growth-ai', 'timeline'],
+    ['core-story', 'principle'],
+    ['capabilities', 'skills'],
+    ['project-archive', 'project'],
+    ['knowledge-products', 'knowledge'],
+    ['current-build', 'status'],
+    ['next-direction', 'next'],
+  ])
+  assert.deepEqual(canvasCards.map(({ id, x, y, width, height }) =>
+    [id, x, y, width, height]), [
+    ['identity', 120, 360, 360, 260],
+    ['growth-field', 560, 340, 240, 160],
+    ['growth-product', 860, 280, 240, 160],
+    ['growth-system', 1160, 340, 260, 170],
+    ['growth-ai', 1500, 270, 260, 170],
+    ['core-story', 780, 570, 340, 190],
+    ['capabilities', 1180, 600, 380, 180],
+    ['project-archive', 1190, 850, 340, 190],
+    ['knowledge-products', 1830, 500, 400, 260],
+    ['current-build', 1740, 850, 320, 170],
+    ['next-direction', 1900, 240, 300, 150],
+  ])
+  assert.equal(Object.isFrozen(canvasCards), true)
+  const capabilities = canvasCards.find(({ id }) => id === 'capabilities')
+  assert.equal(Object.isFrozen(capabilities), true)
+  assert.equal(Object.isFrozen(capabilities.items), true)
+  for (const item of capabilities.items) assert.equal(Object.isFrozen(item), true)
+
+  const knowledge = canvasCards.find(({ id }) => id === 'knowledge-products')
+  assert.equal(Object.isFrozen(knowledge), true)
+  assert.equal(Object.isFrozen(knowledge.links), true)
+  for (const link of knowledge.links) assert.equal(Object.isFrozen(link), true)
+
+  assert.equal(Object.isFrozen(canvasConnections), true)
+  for (const connection of canvasConnections) assert.equal(Object.isFrozen(connection), true)
+})
+
+test('growth-axis relationships and native destinations are exact', () => {
+  assert.deepEqual(canvasConnections.map(({ from, to }) => [from, to]), [
+    ['identity', 'growth-field'],
+    ['growth-field', 'growth-product'],
+    ['growth-product', 'growth-system'],
+    ['growth-system', 'growth-ai'],
+    ['growth-product', 'core-story'],
+    ['growth-system', 'core-story'],
+    ['growth-system', 'capabilities'],
+    ['growth-ai', 'capabilities'],
+    ['growth-system', 'project-archive'],
+    ['growth-ai', 'knowledge-products'],
+    ['growth-ai', 'current-build'],
+    ['growth-ai', 'next-direction'],
+  ])
+  const knowledge = canvasCards.find(({ id }) => id === 'knowledge-products')
+  assert.deepEqual(knowledge.links, [
+    { label: 'LLM Wiki', href: '/wiki/' },
+    { label: 'Finance Wiki', href: '/finance/' },
+    { label: '知识问答', href: '/ask/' },
+    { label: 'llm-wiki Skill', href: '/llm-wiki/' },
+  ])
   const ids = new Set(canvasCards.map(({ id }) => id))
-  assert.equal(ids.size, canvasCards.length)
+  assert.equal(ids.size, 11)
   for (const edge of canvasConnections) {
     assert.ok(ids.has(edge.from), edge.from)
     assert.ok(ids.has(edge.to), edge.to)
@@ -580,17 +646,23 @@ test('canvas persistence round trips only trusted geometry and visibility', () =
   assert.deepEqual(Object.keys(envelope), ['version', 'transform', 'cards'])
   assert.deepEqual(Object.keys(envelope.transform), ['scale', 'panX', 'panY'])
   assert.deepEqual(Object.keys(envelope.cards[0]), ['id', 'x', 'y', 'width', 'height', 'visible'])
-  for (const forbidden of ['title', 'body', 'href', 'accent', 'arbitrary']) {
+  for (const forbidden of ['title', 'body', 'href', 'links', 'accent', 'arbitrary']) {
     assert.equal(raw.includes(`\"${forbidden}\"`), false)
   }
 
+  envelope.cards.find(({ id }) => id === 'knowledge-products').links = [
+    { label: 'Untrusted', href: 'https://example.com/' },
+  ]
   const reversed = JSON.stringify({ ...envelope, cards: [...envelope.cards].reverse() })
   const defaultsSnapshot = structuredClone(defaults)
   const parsed = parseCanvasLayout(reversed, defaults)
   assert.deepEqual(parsed.cards.map(({ id }) => id), defaults.cards.map(({ id }) => id))
   assert.equal(parsed.cards[0].title, defaults.cards[0].title)
   assert.equal(parsed.cards[0].body, defaults.cards[0].body)
-  assert.equal(parsed.cards[5].href, defaults.cards[5].href)
+  assert.deepEqual(
+    parsed.cards.find(({ id }) => id === 'knowledge-products').links,
+    defaults.cards.find(({ id }) => id === 'knowledge-products').links,
+  )
   assert.equal(parsed.cards[0].accent, defaults.cards[0].accent)
   assert.equal(parsed.cards[3].visible, false)
   assert.equal(parsed.cards[8].x, defaults.cards[8].x + 8)
