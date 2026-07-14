@@ -23,8 +23,8 @@ import {
   loadSystemCanvasModule,
 } from '../docs/.vitepress/theme/components/systemCanvasLoader.mjs'
 import {
-  canvasWheelTransform, clampScale, connectionEndpoints, fitWorldBounds, resolveTouchOwner,
-  screenToWorld, touchGesture, zoomAtPoint,
+  canvasUsableViewport, canvasWheelTransform, clampScale, computeWorldBounds, connectionEndpoints,
+  fitWorldBounds, initialFitCards, resolveTouchOwner, screenToWorld, touchGesture, zoomAtPoint,
 } from '../docs/.vitepress/theme/components/canvasGeometry.mjs'
 import {
   CANVAS_LAYOUT_KEY, loadCanvasLayout, parseCanvasLayout, saveCanvasLayout, serializeCanvasLayout,
@@ -625,11 +625,12 @@ test('canvas wheel zoom remains pointer centered over an interactive target', ()
 
 const trustedCanvasDefaults = () => ({
   cards: canvasCards.map((card) => ({ ...card })),
+  order: canvasCards.map(({ id }) => id),
   transform: { scale: 1, panX: 24, panY: -18 },
 })
 
-test('canvas persistence round trips only trusted geometry and visibility', () => {
-  assert.equal(CANVAS_LAYOUT_KEY, 'juzx-personal-os-layout-v1')
+test('canvas persistence uses only complete trusted v2 geometry', () => {
+  assert.equal(CANVAS_LAYOUT_KEY, 'juzx-personal-os-layout-v2')
   const defaults = trustedCanvasDefaults()
   const layout = {
     cards: defaults.cards.map((card, index) => ({
@@ -638,12 +639,14 @@ test('canvas persistence round trips only trusted geometry and visibility', () =
       visible: index !== 3,
       arbitrary: 'untrusted',
     })),
+    order: [...defaults.order.slice(1), defaults.order[0]],
     transform: { scale: 1.5, panX: -220, panY: 84 },
     arbitrary: 'untrusted',
   }
   const raw = serializeCanvasLayout(layout)
   const envelope = JSON.parse(raw)
-  assert.deepEqual(Object.keys(envelope), ['version', 'transform', 'cards'])
+  assert.deepEqual(Object.keys(envelope), ['version', 'transform', 'order', 'cards'])
+  assert.equal(envelope.version, 2)
   assert.deepEqual(Object.keys(envelope.transform), ['scale', 'panX', 'panY'])
   assert.deepEqual(Object.keys(envelope.cards[0]), ['id', 'x', 'y', 'width', 'height', 'visible'])
   for (const forbidden of ['title', 'body', 'href', 'links', 'accent', 'arbitrary']) {
@@ -666,6 +669,7 @@ test('canvas persistence round trips only trusted geometry and visibility', () =
   assert.equal(parsed.cards[0].accent, defaults.cards[0].accent)
   assert.equal(parsed.cards[3].visible, false)
   assert.equal(parsed.cards[8].x, defaults.cards[8].x + 8)
+  assert.deepEqual(parsed.order, layout.order)
   assert.deepEqual(defaults, defaultsSnapshot)
   assert.notEqual(parsed, defaults)
   assert.notEqual(parsed.cards[0], defaults.cards[0])
@@ -683,11 +687,15 @@ test('canvas persistence strictly rejects malformed and untrusted layouts', () =
   for (const raw of ['{', 'null', '[]', '42', JSON.stringify({ version: 1 })]) {
     assert.equal(parseCanvasLayout(raw, defaults), null)
   }
-  assert.equal(parse((candidate) => { candidate.version = 2 }), null)
+  assert.equal(parse((candidate) => { candidate.version = 1 }), null)
+  assert.equal(parse((candidate) => { delete candidate.version }), null)
   assert.equal(parse((candidate) => { candidate.cards.pop() }), null)
   assert.equal(parse((candidate) => { candidate.cards.push({ ...candidate.cards[0] }) }), null)
   assert.equal(parse((candidate) => { candidate.cards[0].id = 'unknown' }), null)
   assert.equal(parse((candidate) => { candidate.cards.push({ ...candidate.cards[0], id: 'extra' }) }), null)
+  assert.equal(parse((candidate) => { candidate.order.pop() }), null)
+  assert.equal(parse((candidate) => { candidate.order.push(candidate.order[0]) }), null)
+  assert.equal(parse((candidate) => { candidate.order[0] = 'unknown' }), null)
   for (const field of ['x', 'y', 'width', 'height', 'visible']) {
     assert.equal(parse((candidate) => { delete candidate.cards[0][field] }), null, field)
   }
@@ -696,15 +704,68 @@ test('canvas persistence strictly rejects malformed and untrusted layouts', () =
     assert.equal(parse((candidate) => { candidate.cards[0].x = value }), null)
   }
   assert.equal(parse((candidate) => { candidate.cards[0].visible = 1 }), null)
-  assert.equal(parse((candidate) => { candidate.cards[0].width = 0 }), null)
-  assert.equal(parse((candidate) => { candidate.cards[0].height = -1 }), null)
+  assert.equal(parse((candidate) => { candidate.cards[0].width = defaults.cards[0].minWidth - 1 }), null)
+  assert.equal(parse((candidate) => { candidate.cards[0].height = defaults.cards[0].minHeight - 1 }), null)
   assert.equal(parse((candidate) => { candidate.transform.scale = 9 }), null)
   assert.equal(parse((candidate) => { candidate.transform.scale = 0.14 }), null)
-  assert.equal(parseCanvasLayout(JSON.stringify(valid), { cards: [], transform: defaults.transform }), null)
+  assert.equal(parseCanvasLayout(JSON.stringify(valid), { cards: [], order: [], transform: defaults.transform }), null)
   assert.equal(parseCanvasLayout(JSON.stringify(valid), { cards: defaults.cards, transform: { scale: null, panX: 0, panY: 0 } }), null)
 })
 
-test('canvas storage uses one key and silently fails closed', () => {
+test('canvas persistence rejects finite geometry whose derived bounds overflow', () => {
+  const defaults = trustedCanvasDefaults()
+  const valid = JSON.parse(serializeCanvasLayout(defaults))
+  const parse = (mutate) => {
+    const candidate = structuredClone(valid)
+    mutate(candidate)
+    return parseCanvasLayout(JSON.stringify(candidate), defaults)
+  }
+
+  assert.equal(parse((candidate) => {
+    candidate.cards[0].x = Number.MAX_VALUE
+    candidate.cards[0].width = Number.MAX_VALUE
+  }), null)
+  assert.equal(parse((candidate) => {
+    candidate.cards[0].y = Number.MAX_VALUE
+    candidate.cards[0].height = Number.MAX_VALUE
+  }), null)
+  assert.equal(parse((candidate) => {
+    candidate.cards[0].x = -Number.MAX_VALUE
+    candidate.cards[1].x = Number.MAX_VALUE
+  }), null)
+
+  const largeButSafe = parse((candidate) => {
+    candidate.cards[0].x = Number.MAX_VALUE / 4
+    candidate.cards[0].width = Number.MAX_VALUE / 4
+  })
+  assert.ok(largeButSafe)
+  assert.equal(Number.isFinite(largeButSafe.cards[0].x + largeButSafe.cards[0].width), true)
+})
+
+test('canvas persistence accepted at a high absolute origin remains fit-safe end to end', () => {
+  const defaults = trustedCanvasDefaults()
+  const envelope = JSON.parse(serializeCanvasLayout(defaults))
+  for (const card of envelope.cards) card.visible = false
+  envelope.cards[0].visible = true
+  envelope.cards[0].x = Number.MAX_VALUE * 0.75
+
+  const parsed = parseCanvasLayout(JSON.stringify(envelope), defaults)
+  assert.ok(parsed)
+  const bounds = computeWorldBounds(
+    parsed.cards,
+    { x: 0, y: 0, width: 2400, height: 1200 },
+    96,
+  )
+  assert.equal(Object.values(bounds).every(Number.isFinite), true)
+  const fitted = fitWorldBounds(
+    bounds,
+    canvasUsableViewport({ width: 1440, height: 900 }, false),
+    24,
+  )
+  assert.equal(Object.values(fitted).every(Number.isFinite), true)
+})
+
+test('storage denial is silent and v1 is never accessed', () => {
   const defaults = trustedCanvasDefaults()
   const calls = []
   const storage = {
@@ -720,7 +781,81 @@ test('canvas storage uses one key and silently fails closed', () => {
   assert.equal(saveCanvasLayout(undefined, defaults), false)
   assert.equal(loadCanvasLayout({ getItem() { throw new Error('denied') } }, defaults), null)
   assert.equal(saveCanvasLayout({ setItem() { throw new Error('quota') } }, defaults), false)
-  assert.equal(saveCanvasLayout(storage, { cards: [], transform: defaults.transform }), false)
+  assert.equal(saveCanvasLayout(storage, { cards: [], order: [], transform: defaults.transform }), false)
+  const deniedCalls = []
+  const denied = {
+    getItem(key) { deniedCalls.push(key); throw new Error('denied') },
+    setItem() { throw new Error('quota') },
+  }
+  assert.equal(loadCanvasLayout(denied, defaults), null)
+  assert.equal(saveCanvasLayout(denied, defaults), false)
+  assert.deepEqual(deniedCalls, ['juzx-personal-os-layout-v2'])
+})
+
+test('dynamic bounds measure visible cards and share one Fit rectangle', () => {
+  const fallback = { x: 0, y: 0, width: 1000, height: 700 }
+  const cards = [
+    { id: 'a', x: 100, y: 200, width: 200, height: 100, visible: true },
+    { id: 'b', x: 600, y: 500, width: 300, height: 200, visible: true },
+    { id: 'hidden', x: -900, y: -900, width: 50, height: 50, visible: false },
+    { id: 'bad', x: Number.NaN, y: 0, width: 20, height: 20, visible: true },
+  ]
+  assert.deepEqual(computeWorldBounds(cards, fallback, 50),
+    { x: 50, y: 150, width: 900, height: 600 })
+  assert.deepEqual(computeWorldBounds(cards.map((card) => ({ ...card, visible: false })), fallback, 50), fallback)
+  const usable = canvasUsableViewport({ width: 1440, height: 900 }, false)
+  assert.deepEqual(usable, { x: 72, y: 24, width: 1344, height: 780 })
+  assert.deepEqual(canvasUsableViewport({ width: 390, height: 844 }, true),
+    { x: 16, y: 16, width: 358, height: 668 })
+  const fitted = fitWorldBounds(computeWorldBounds(cards, fallback, 50), usable, 24)
+  assert.ok(Number.isFinite(fitted.scale) && Number.isFinite(fitted.panX) && Number.isFinite(fitted.panY))
+  assert.deepEqual(initialFitCards(canvasCards, true).map(({ id }) => id),
+    ['identity', 'growth-field', 'growth-product', 'growth-system', 'growth-ai'])
+  assert.equal(initialFitCards(canvasCards, false).length, 11)
+
+  const offsetFit = fitWorldBounds(
+    { x: 0, y: 0, width: 100, height: 100 },
+    { x: 100, y: 50, width: 500, height: 300 },
+    0,
+  )
+  assert.deepEqual(offsetFit, { scale: 3, panX: 200, panY: 50 })
+})
+
+test('dynamic bounds exclude edge overflow and fall back on aggregate overflow', () => {
+  const fallback = { x: 0, y: 0, width: 1000, height: 700 }
+  const safe = { id: 'safe', x: 10, y: 20, width: 30, height: 40, visible: true }
+  const edgeOverflow = {
+    id: 'overflow', x: Number.MAX_VALUE, y: 0,
+    width: Number.MAX_VALUE, height: 10, visible: true,
+  }
+
+  assert.deepEqual(computeWorldBounds([edgeOverflow], fallback, 0), fallback)
+  assert.deepEqual(computeWorldBounds([safe, edgeOverflow], fallback, 0),
+    { x: 10, y: 20, width: 30, height: 40 })
+  assert.deepEqual(computeWorldBounds([
+    { ...safe, id: 'left', x: -Number.MAX_VALUE },
+    { ...safe, id: 'right', x: Number.MAX_VALUE },
+  ], fallback, 0), fallback)
+
+  const safeLargeBounds = computeWorldBounds([{
+    ...safe,
+    x: Number.MAX_VALUE / 4,
+    width: Number.MAX_VALUE / 4,
+  }], fallback, 0)
+  assert.equal(Object.values(safeLargeBounds).every(Number.isFinite), true)
+})
+
+test('dynamic bounds Fit stays finite at huge origins without disabling ordinary enlargement', () => {
+  const viewport = { x: 72, y: 24, width: 1344, height: 780 }
+  const ordinary = fitWorldBounds({ x: 10, y: 20, width: 192, height: 240 }, viewport, 24)
+  assert.ok(ordinary.scale > 1)
+  assert.equal(Object.values(ordinary).every(Number.isFinite), true)
+
+  for (const x of [Number.MAX_VALUE * 0.75, -Number.MAX_VALUE * 0.75]) {
+    const fitted = fitWorldBounds({ x, y: 20, width: 192, height: 240 }, viewport, 24)
+    assert.equal(Object.values(fitted).every(Number.isFinite), true)
+    assert.ok(fitted.scale <= 1)
+  }
 })
 
 test('canvas history is immutable, bounded, undoable, and resettable', () => {
@@ -730,10 +865,18 @@ test('canvas history is immutable, bounded, undoable, and resettable', () => {
   assert.deepEqual(created.future, [])
   assert.deepEqual(created.present, defaults)
   assert.notEqual(created.present, defaults)
+  assert.notEqual(created.present.order, defaults.order)
 
   const duplicate = pushHistory(created, structuredClone(defaults))
   assert.deepEqual(duplicate, created)
   assert.deepEqual(duplicate.past, [])
+
+  const reordered = structuredClone(defaults)
+  reordered.order = [...reordered.order.slice(1), reordered.order[0]]
+  const afterReorder = pushHistory(created, reordered)
+  assert.equal(afterReorder.past.length, 1)
+  assert.deepEqual(afterReorder.present.order, reordered.order)
+  assert.notEqual(afterReorder.present.order, reordered.order)
 
   let history = created
   for (let index = 1; index <= 55; index += 1) {
@@ -837,6 +980,8 @@ test('infinite canvas components preserve interaction and source contracts', () 
   assert.match(canvas, /import CanvasCard from '\.\/CanvasCard\.vue'/)
   assert.match(canvas, /import CanvasConnections from '\.\/CanvasConnections\.vue'/)
   assert.match(canvas, /canvasCards\.map\(\(card\) => \(\{ \.\.\.card \}\)\)/)
+  assert.match(canvas, /order: canvasCards\.map\(\(\{ id \}\) => id\)/)
+  assert.match(canvas, /order: \[\.\.\.stackingOrder\.value\]/)
   assert.match(canvas, /translate\(\$\{transform\.value\.panX\}px, \$\{transform\.value\.panY\}px\) scale\(\$\{transform\.value\.scale\}\)/)
   assert.match(canvas, /transform-origin: 0 0/)
   assert.match(canvas, /const currentTransform = pendingTransform \?\? transform\.value/)
@@ -861,7 +1006,7 @@ test('infinite canvas components preserve interaction and source contracts', () 
   assert.match(canvas, /onBeforeUnmount/)
   assert.match(canvas, /@lostpointercapture="cancelPointerPan"/)
   assert.match(canvas, /:key="card\.id"/)
-  assert.match(canvas, /emit\('layout-change', \{ cards: cards\.value, transform: \{ \.\.\.transform\.value \} \}\)/)
+  assert.match(canvas, /emit\('layout-change', currentLayout\(\)\)/)
 
   assert.match(card, /data-canvas-card/)
   assert.match(card, /setPointerCapture/)
@@ -913,6 +1058,11 @@ test('canvas chrome wires layers, minimap, controls, persistence, and bounded hi
   assert.match(canvas, /window\.localStorage/)
   assert.match(canvas, /loadCanvasLayout\(storage, defaultLayout\)/)
   assert.match(canvas, /saveCanvasLayout\(storage, getCommittedLayout\(history\.value\)\)/)
+  assert.match(canvas, /const worldBounds = computed\(\(\) => computeWorldBounds\(cards\.value, canonicalBounds, 96\)\)/)
+  assert.match(canvas, /const usableViewport = computed\(\(\) => canvasUsableViewport\(viewportSize\.value, mobileViewport\.value\)\)/)
+  assert.match(canvas, /initialFitCards\(cards\.value, mobileViewport\.value\)/)
+  assert.match(canvas, /fitWorldBounds\(worldBounds\.value, usableViewport\.value, 24\)/)
+  assert.match(canvas, /:world-bounds="worldBounds"/)
   assert.match(canvas, /clearTimeout\(saveTimer\)/)
   assert.match(canvas, /:can-undo="history\.past\.length > 0"/)
   assert.match(canvas, /@gesture-complete="completeCardGesture"/)

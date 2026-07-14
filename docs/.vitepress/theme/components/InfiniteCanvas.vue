@@ -6,8 +6,8 @@ import CanvasControls from './CanvasControls.vue'
 import CanvasLayers from './CanvasLayers.vue'
 import CanvasMinimap from './CanvasMinimap.vue'
 import {
-  canvasWheelTransform, clampScale, fitWorldBounds, resolveTouchOwner, screenToWorld,
-  touchGesture, zoomAtPoint,
+  canvasUsableViewport, canvasWheelTransform, clampScale, computeWorldBounds, fitWorldBounds,
+  initialFitCards, resolveTouchOwner, screenToWorld, touchGesture, zoomAtPoint,
 } from './canvasGeometry.mjs'
 import {
   captureCardGeometry, createHistory, getCommittedLayout, pushHistory,
@@ -28,19 +28,18 @@ const viewportSize = ref({ width: 1, height: 1 })
 
 const defaultLayout = {
   cards: canvasCards.map((card) => ({ ...card })),
+  order: canvasCards.map(({ id }) => id),
   transform: { ...INITIAL_TRANSFORM },
 }
 const history = ref(createHistory(defaultLayout))
-
-function boundsFor(cardsToMeasure) {
-  const minX = Math.min(...cardsToMeasure.map((card) => card.x))
-  const minY = Math.min(...cardsToMeasure.map((card) => card.y))
-  const maxX = Math.max(...cardsToMeasure.map((card) => card.x + card.width))
-  const maxY = Math.max(...cardsToMeasure.map((card) => card.y + card.height))
-  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
-}
-
-const stableWorldBounds = Object.freeze(boundsFor(defaultLayout.cards))
+const canonicalBounds = Object.freeze(computeWorldBounds(
+  defaultLayout.cards,
+  { x: 0, y: 0, width: 2400, height: 1200 },
+  96,
+))
+const worldBounds = computed(() => computeWorldBounds(cards.value, canonicalBounds, 96))
+const mobileViewport = computed(() => viewportSize.value.width < 768)
+const usableViewport = computed(() => canvasUsableViewport(viewportSize.value, mobileViewport.value))
 let pointerGesture = null
 let touchBaseline = null
 let touchOwner = null
@@ -50,6 +49,7 @@ let saveTimer = null
 let storage
 let resizeObserver
 let activeCardGesture = null
+let initialLayoutResolved = false
 
 const worldStyle = computed(() => ({
   transform: `translate(${transform.value.panX}px, ${transform.value.panY}px) scale(${transform.value.scale})`,
@@ -58,17 +58,23 @@ const worldStyle = computed(() => ({
 function currentLayout() {
   return {
     cards: cards.value.map((card) => ({ ...card })),
+    order: [...stackingOrder.value],
     transform: { ...transform.value },
   }
 }
 
 function applyLayout(layout) {
   cards.value = layout.cards.map((card) => ({ ...card }))
+  stackingOrder.value = [...layout.order]
   transform.value = { ...layout.transform }
 }
 
 function syncHistoryPresent() {
-  history.value = rebaseHistoryTransform(history.value, transform.value)
+  const rebased = rebaseHistoryTransform(history.value, transform.value)
+  history.value = {
+    ...rebased,
+    present: { ...rebased.present, order: [...stackingOrder.value] },
+  }
 }
 
 function zIndexFor(id) {
@@ -76,7 +82,7 @@ function zIndexFor(id) {
 }
 
 function emitLayout() {
-  emit('layout-change', { cards: cards.value, transform: { ...transform.value } })
+  emit('layout-change', currentLayout())
 }
 
 function cancelScheduledSave() {
@@ -297,6 +303,9 @@ function handleTouchCancel(event) {
 function selectCard(id) {
   selectedCardId.value = id
   stackingOrder.value = [...stackingOrder.value.filter((cardId) => cardId !== id), id]
+  syncHistoryPresent()
+  emitLayout()
+  scheduleSave()
 }
 
 function updateCardGeometry({ id, geometry }) {
@@ -353,7 +362,7 @@ function focusCard(id) {
   selectCard(id)
   applyTransform(fitWorldBounds(
     { x: card.x, y: card.y, width: card.width, height: card.height },
-    viewportSize.value,
+    usableViewport.value,
     64,
   ))
 }
@@ -381,7 +390,16 @@ function zoomOut() {
 }
 
 function fitCanvas() {
-  applyTransform(fitWorldBounds(stableWorldBounds, viewportSize.value, 64))
+  applyTransform(fitWorldBounds(worldBounds.value, usableViewport.value, 24))
+}
+
+function fitInitialLayout() {
+  const firstFitBounds = computeWorldBounds(
+    initialFitCards(cards.value, mobileViewport.value),
+    canonicalBounds,
+    96,
+  )
+  applyTransform(fitWorldBounds(firstFitBounds, usableViewport.value, 24))
 }
 
 function undoCanvas() {
@@ -396,23 +414,29 @@ function restoreDefaults() {
   history.value = pushHistory(history.value, defaultLayout)
   applyLayout(history.value.present)
   selectedCardId.value = null
-  stackingOrder.value = defaultLayout.cards.map((card) => card.id)
   emitLayout()
-  scheduleSave()
+  fitCanvas()
 }
 
 function updateViewportSize() {
   const rect = viewport.value?.getBoundingClientRect()
-  if (!rect) return
+  if (!rect || rect.width <= 0 || rect.height <= 0) return
   viewportSize.value = { width: rect.width, height: rect.height }
+  initializeLayout()
+}
+
+function initializeLayout() {
+  if (initialLayoutResolved || viewportSize.value.width <= 0 || viewportSize.value.height <= 0) return
+  const loaded = loadCanvasLayout(storage, defaultLayout)
+  initialLayoutResolved = true
+  history.value = createHistory(loaded ?? defaultLayout)
+  applyLayout(history.value.present)
+  if (!loaded) fitInitialLayout()
 }
 
 onMounted(() => {
   const target = viewport.value
   try { storage = window.localStorage } catch { storage = undefined }
-  const loaded = loadCanvasLayout(storage, defaultLayout) ?? defaultLayout
-  history.value = createHistory(loaded)
-  applyLayout(history.value.present)
   updateViewportSize()
 
   target.addEventListener('wheel', handleWheel, { passive: false })
@@ -493,7 +517,7 @@ onBeforeUnmount(() => {
       :cards="cards"
       :transform="transform"
       :viewport="viewportSize"
-      :world-bounds="stableWorldBounds"
+      :world-bounds="worldBounds"
       @navigate="navigateToPoint"
     />
     <CanvasControls

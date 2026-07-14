@@ -1,5 +1,8 @@
 const MIN_SCALE = 0.15
 const MAX_SCALE = 3
+const PRIMARY_IDS = new Set([
+  'identity', 'growth-field', 'growth-product', 'growth-system', 'growth-ai',
+])
 
 export function clampScale(scale) {
   if (!Number.isFinite(scale)) return 1
@@ -46,11 +49,63 @@ export function fitWorldBounds(bounds, viewport, padding = 64) {
     availableWidth / bounds.width,
     availableHeight / bounds.height,
   ))
+  const centerAtScale = (nextScale) => ({
+    scale: nextScale,
+    panX: (viewport.x ?? 0)
+      + (viewport.width - bounds.width * nextScale) / 2 - bounds.x * nextScale,
+    panY: (viewport.y ?? 0)
+      + (viewport.height - bounds.height * nextScale) / 2 - bounds.y * nextScale,
+  })
 
+  const fitted = centerAtScale(scale)
+  if (Object.values(fitted).every(Number.isFinite)) return fitted
+
+  const safeFitted = centerAtScale(Math.min(scale, 1))
+  if (Object.values(safeFitted).every(Number.isFinite)) return safeFitted
+  return { scale: 1, panX: 0, panY: 0 }
+}
+
+export function initialFitCards(cards, mobile) {
+  return cards.filter((card) => card.visible !== false && (!mobile || PRIMARY_IDS.has(card.id)))
+}
+
+export function computeWorldBounds(cards, fallback, padding = 96) {
+  const visible = cards.filter((card) => card.visible !== false
+    && [card.x, card.y, card.width, card.height].every(Number.isFinite)
+    && card.width > 0 && card.height > 0
+    && Number.isFinite(card.x + card.width)
+    && Number.isFinite(card.y + card.height))
+  if (visible.length === 0) return { ...fallback }
+
+  const minX = Math.min(...visible.map(({ x }) => x))
+  const minY = Math.min(...visible.map(({ y }) => y))
+  const maxX = Math.max(...visible.map(({ x, width }) => x + width))
+  const maxY = Math.max(...visible.map(({ y, height }) => y + height))
+  const bounds = {
+    x: minX - padding,
+    y: minY - padding,
+    width: maxX - minX + padding * 2,
+    height: maxY - minY + padding * 2,
+  }
+  if (!Object.values(bounds).every(Number.isFinite)
+    || bounds.width <= 0 || bounds.height <= 0) return { ...fallback }
+  return bounds
+}
+
+export function canvasUsableViewport(viewport, mobile) {
+  if (mobile) {
+    return {
+      x: 16,
+      y: 16,
+      width: Math.max(1, viewport.width - 32),
+      height: Math.max(1, viewport.height - 176),
+    }
+  }
   return {
-    scale,
-    panX: (viewport.width - bounds.width * scale) / 2 - bounds.x * scale,
-    panY: (viewport.height - bounds.height * scale) / 2 - bounds.y * scale,
+    x: 72,
+    y: 24,
+    width: Math.max(1, viewport.width - 96),
+    height: Math.max(1, viewport.height - 120),
   }
 }
 
