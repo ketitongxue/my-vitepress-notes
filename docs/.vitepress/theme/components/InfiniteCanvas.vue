@@ -477,7 +477,14 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="infinite-canvas" aria-label="JuZX OS 无限画布">
+  <section
+    class="infinite-canvas"
+    aria-label="JuZX OS 无限画布"
+    aria-describedby="canvas-instructions"
+  >
+    <p id="canvas-instructions" class="infinite-canvas__instructions">
+      拖动画布浏览，滚轮或双指缩放；也可通过图层聚焦节点，通过适应按钮恢复全局视图。
+    </p>
     <div
       ref="viewport"
       class="infinite-canvas__viewport"
@@ -541,6 +548,14 @@ onBeforeUnmount(() => {
   background: #2b7fd8;
 }
 
+.infinite-canvas__instructions {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
 .infinite-canvas__viewport {
   position: absolute;
   inset: 0;
@@ -563,9 +578,13 @@ onBeforeUnmount(() => {
 
 @media (prefers-reduced-motion: reduce) {
   .infinite-canvas,
-  .infinite-canvas * {
-    scroll-behavior: auto;
-    transition: none !important;
+  .infinite-canvas *,
+  .canvas-layers,
+  .canvas-controls {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
   }
 }
 </style>

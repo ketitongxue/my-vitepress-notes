@@ -222,7 +222,6 @@ onBeforeUnmount(() => {
   color: inherit;
   text-align: left;
   cursor: move;
-  touch-action: none;
 }
 
 .canvas-card__titlebar:focus-visible,
@@ -433,7 +432,6 @@ onBeforeUnmount(() => {
   background: #F4D758;
   color: transparent;
   cursor: nwse-resize;
-  touch-action: none;
 }
 
 .canvas-card__resize:hover {
@@ -444,7 +442,9 @@ onBeforeUnmount(() => {
 @media (prefers-reduced-motion: reduce) {
   .canvas-card,
   .canvas-card :where(a, button) {
-    transition: none !important;
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
   }
 }
 </style>

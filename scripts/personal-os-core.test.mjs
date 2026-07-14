@@ -1202,3 +1202,58 @@ test('Layers returns focus outside the panel before making it inert', () => {
   assert.ok(closePanel.indexOf('layersToggle.value?.focus()') >= 0)
   assert.ok(closePanel.indexOf('expanded.value = false') > closePanel.indexOf('layersToggle.value?.focus()'))
 })
+
+test('canvas controls retain seven named native actions', () => {
+  const controls = readComponent('CanvasControls.vue')
+  assert.deepEqual([...controls.matchAll(/aria-label="([^"]+)"/g)].map((match) => match[1])
+    .filter((label) => ['缩小画布', '当前画布缩放比例', '放大画布', '适应全部内容',
+      '撤销上一步', '保存画布布局', '恢复默认布局'].includes(label)), [
+    '缩小画布', '当前画布缩放比例', '放大画布', '适应全部内容',
+    '撤销上一步', '保存画布布局', '恢复默认布局',
+  ])
+  for (const event of ['zoom-out', 'zoom-in', 'fit', 'undo', 'save', 'reset']) {
+    assert.match(controls, new RegExp(`'${event}'`))
+  }
+  assert.match(controls, /role="group" aria-label="确认恢复默认布局"/)
+  assert.match(controls, /ref="resetButton"/)
+  assert.match(controls, /resetButton\.value\?\.focus\(\)/)
+})
+
+test('reset Escape recovery is conditional and covers focus outside canvas controls', () => {
+  const controls = readComponent('CanvasControls.vue')
+  assert.doesNotMatch(controls, /@keydown\.esc/)
+  assert.match(controls, /window\.addEventListener\('keydown', handleWindowKeydown\)/)
+  assert.match(controls, /window\.removeEventListener\('keydown', handleWindowKeydown\)/)
+  assert.match(controls, /onBeforeUnmount\(stopEscapeListener\)/)
+  const handler = controls.match(/function handleWindowKeydown\(event\) \{[\s\S]*?\n\}/)?.[0] ?? ''
+  assert.match(handler, /event\.key !== 'Escape' \|\| !confirmingReset\.value/)
+  assert.match(handler, /event\.preventDefault\(\)/)
+  assert.match(handler, /event\.stopPropagation\(\)/)
+  assert.match(handler, /cancelReset\(\)/)
+  const cancelReset = controls.match(/async function cancelReset\(\) \{[\s\S]*?\n\}/)?.[0] ?? ''
+  assert.match(cancelReset, /if \(!confirmingReset\.value\) return/)
+  assert.match(cancelReset, /stopEscapeListener\(\)/)
+  assert.ok(cancelReset.indexOf('confirmingReset.value = false') >= 0)
+  assert.ok(cancelReset.indexOf('resetButton.value?.focus()') > cancelReset.indexOf('confirmingReset.value = false'))
+})
+
+test('system canvas is read-only content with alternate navigation paths', () => {
+  const canvas = readComponent('InfiniteCanvas.vue')
+  const nonViewportComponents = ['CanvasCard.vue', 'CanvasLayers.vue', 'CanvasControls.vue']
+    .map(readComponent).join('\n')
+  const sources = [canvas, nonViewportComponents].join('\n')
+  assert.doesNotMatch(sources,
+    /contenteditable|<textarea|type="file"|new card|新建|删除卡片|上传|自由连线|createConnection/i)
+  assert.match(sources, /aria-label="JuZX OS 无限画布"/)
+  assert.match(sources, /aria-describedby="canvas-instructions"/)
+  assert.match(sources, /id="canvas-instructions"/)
+  assert.match(sources, /聚焦 \$\{card\.title\}/)
+  assert.match(sources, /适应全部内容/)
+  assert.match(sources, /\[data-canvas-card\], a, button, \[data-canvas-control\]/)
+  assert.match(readComponent('CanvasConnections.vue'), /aria-hidden="true"/)
+  assert.match(canvas, /\.infinite-canvas__viewport\s*\{[\s\S]*?touch-action:\s*none;/)
+  assert.doesNotMatch(nonViewportComponents, /touch-action:\s*none;/)
+  assert.match(canvas, /max-width:\s*100vw;[\s\S]*?overflow:\s*hidden;/)
+  assert.match(canvas, /animation-duration:\s*1ms !important;/)
+  assert.match(canvas, /transition-duration:\s*1ms !important;/)
+})
