@@ -6,6 +6,7 @@ const props = defineProps({
   scale: { type: Number, required: true },
   selected: { type: Boolean, default: false },
   zIndex: { type: Number, required: true },
+  order: { type: Number, default: 0 },
 })
 
 const emit = defineEmits(['select', 'geometry-change', 'gesture-complete'])
@@ -138,6 +139,7 @@ onBeforeUnmount(() => {
       width: `${card.width}px`,
       height: `${card.height}px`,
       zIndex,
+      '--node-order': order,
     }"
   >
     <button

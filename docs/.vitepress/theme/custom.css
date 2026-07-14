@@ -359,13 +359,63 @@
   text-underline-offset: 4px;
 }
 
+.factory-home .personal-system-view {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #F7F4EC;
+  color: #1E2430;
+}
+
+.factory-home .personal-system-view__status,
+.factory-home .personal-system-view__error {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: min(420px, calc(100vw - 32px));
+  transform: translate(-50%, -50%);
+  border: 1px solid #315EFB;
+  border-radius: 12px;
+  padding: 24px;
+  background: #FFFDF7;
+}
+
+.factory-home .personal-system-view__status {
+  color: #69707D;
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+  text-align: center;
+}
+
+.factory-home .personal-system-view__error strong {
+  display: block;
+  color: #1E2430;
+  font-size: 18px;
+}
+
+.factory-home .personal-system-view__error p {
+  margin: 12px 0 20px;
+  color: #69707D;
+  line-height: 1.65;
+}
+
+.factory-home .personal-system-view__error button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid #315EFB;
+  border-radius: 8px;
+  padding: 10px 16px;
+  background: #315EFB;
+  color: #FFFDF7;
+  font: 700 14px/1.4 "JetBrains Mono", "Fira Code", Consolas, monospace;
+  cursor: pointer;
+}
+
 .factory-home .infinite-canvas {
   width: 100%;
   max-width: 100vw;
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  background: #2B7FD8;
+  background: #F7F4EC;
 }
 
 .factory-home .canvas-card {

@@ -24,6 +24,7 @@ const transform = ref({ ...INITIAL_TRANSFORM })
 const selectedCardId = ref(null)
 const stackingOrder = ref(cards.value.map((card) => card.id))
 const viewportSize = ref({ width: 1, height: 1 })
+const ready = ref(false)
 
 const defaultLayout = {
   cards: canvasCards.map((card) => ({ ...card })),
@@ -49,6 +50,7 @@ let storage
 let resizeObserver
 let activeCardGesture = null
 let initialLayoutResolved = false
+let readyFrame = null
 
 const worldStyle = computed(() => ({
   transform: `translate(${transform.value.panX}px, ${transform.value.panY}px) scale(${transform.value.scale})`,
@@ -437,6 +439,10 @@ onMounted(() => {
   const target = viewport.value
   try { storage = window.localStorage } catch { storage = undefined }
   updateViewportSize()
+  readyFrame = window.requestAnimationFrame(() => {
+    readyFrame = null
+    ready.value = true
+  })
 
   target.addEventListener('wheel', handleWheel, { passive: false })
   target.addEventListener('touchstart', handleTouchStart, { passive: false })
@@ -462,11 +468,13 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', updateViewportSize)
   cancelScheduledSave()
   if (frameId !== null) window.cancelAnimationFrame(frameId)
+  if (readyFrame !== null) window.cancelAnimationFrame(readyFrame)
   const pointerId = pointerGesture?.pointerId
   if (pointerId !== undefined && target?.hasPointerCapture?.(pointerId)) {
     target.releasePointerCapture(pointerId)
   }
   frameId = null
+  readyFrame = null
   pendingTransform = null
   pointerGesture = null
   touchBaseline = null
@@ -479,6 +487,7 @@ onBeforeUnmount(() => {
 <template>
   <section
     class="infinite-canvas"
+    :class="{ 'is-ready': ready }"
     aria-label="JuZX OS 无限画布"
     aria-describedby="canvas-instructions"
   >
@@ -500,9 +509,10 @@ onBeforeUnmount(() => {
       <div class="infinite-canvas__world" :style="worldStyle">
         <CanvasConnections :cards="cards" :connections="canvasConnections" />
         <CanvasCard
-          v-for="card in cards"
+          v-for="(card, index) in cards"
           :key="card.id"
           :card="card"
+          :order="index"
           :scale="transform.scale"
           :selected="selectedCardId === card.id"
           :z-index="zIndexFor(card.id)"
@@ -545,7 +555,8 @@ onBeforeUnmount(() => {
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  background: #2b7fd8;
+  background-color: #f7f4ec;
+  color: #1e2430;
 }
 
 .infinite-canvas__instructions {
@@ -562,6 +573,8 @@ onBeforeUnmount(() => {
   overflow: hidden;
   cursor: grab;
   touch-action: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='%68%74%74%70%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='1' cy='1' r='1' fill='%239AAECC' fill-opacity='.34'/%3E%3C/svg%3E");
+  background-size: 24px 24px;
 }
 
 .infinite-canvas__viewport:active {
@@ -576,7 +589,36 @@ onBeforeUnmount(() => {
   transform-origin: 0 0;
 }
 
+.infinite-canvas:not(.is-ready) :deep(.canvas-card) {
+  opacity: 0;
+}
+
+.infinite-canvas.is-ready :deep(.canvas-card) {
+  animation: canvas-node-enter 360ms cubic-bezier(.16, 1, .3, 1) both;
+  animation-delay: calc(var(--node-order) * 55ms);
+}
+
+@keyframes canvas-node-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(.995);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .infinite-canvas:not(.is-ready) :deep(.canvas-card) {
+    opacity: 1;
+  }
+
+  .infinite-canvas.is-ready :deep(.canvas-card) {
+    animation: none;
+  }
+
   .infinite-canvas,
   .infinite-canvas *,
   .canvas-layers,

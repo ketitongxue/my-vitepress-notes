@@ -1257,3 +1257,37 @@ test('system canvas is read-only content with alternate navigation paths', () =>
   assert.match(canvas, /animation-duration:\s*1ms !important;/)
   assert.match(canvas, /transition-duration:\s*1ms !important;/)
 })
+
+test('system lazy boundary keeps navigation usable and retries a distinct chunk', () => {
+  const home = readComponent('KnowledgeFactoryHome.vue')
+  assert.match(home, /class="personal-system-view__error"/)
+  assert.match(home, /role="alert"/)
+  assert.match(home, />\s*重新加载我的 OS\s*</)
+  assert.match(home, /\(\) => import\('\.\/InfiniteCanvas\.vue'\)/)
+  assert.match(home, /\(\) => import\('\.\/InfiniteCanvas\.vue\?retry=1'\)/)
+  assert.equal([...home.matchAll(/<BottomOsNavigation\b/g)].length, 1)
+  assert.doesNotMatch(home, /@vite-ignore|location\.reload|<iframe|<object|<embed/i)
+})
+
+test('my os visual system is warm dotted paper without forbidden assets', () => {
+  const canvas = readComponent('InfiniteCanvas.vue')
+  const card = readComponent('CanvasCard.vue')
+  const css = readFileSync(new URL('../docs/.vitepress/theme/custom.css', import.meta.url), 'utf8')
+  const os = css.match(/\/\* Personal OS start \*\/([\s\S]*?)\/\* Personal OS end \*\//)?.[1] ?? ''
+  const system = [canvas, card, os].join('\n')
+  for (const token of ['#F7F4EC', '#FFFDF7', '#1E2430', '#69707D', '#315EFB',
+    '#F4D758', '#EF7B45', '#3FAE78']) assert.match(system, new RegExp(token, 'i'))
+  assert.match(canvas, /background-size:\s*24px 24px/)
+  assert.match(canvas, /data:image\/svg\+xml/)
+  assert.match(canvas, /--node-order/)
+  assert.match(canvas, /calc\(var\(--node-order\) \* 55ms\)/)
+  assert.doesNotMatch(system,
+    /linear-gradient|radial-gradient|backdrop-filter|\bstars?\b|sparkle|particle|illustration|portrait|<img/i)
+})
+
+test('canvas connections remain visible blue on the warm paper surface', () => {
+  const connections = readComponent('CanvasConnections.vue')
+  assert.match(connections,
+    /\.canvas-connections line\s*\{[^}]*stroke:\s*#315efb;[^}]*stroke-opacity:\s*\.(?:5[5-9]|[6-9]\d);/i)
+  assert.doesNotMatch(connections, /\.canvas-connections line\s*\{[^}]*stroke:\s*#fffdf7;/i)
+})

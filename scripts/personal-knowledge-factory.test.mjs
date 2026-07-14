@@ -17,12 +17,19 @@ test('homepage mounts the dedicated factory component', async () => {
 
 test('Personal OS visual contract is exact, scoped, interactive, and responsive', async () => {
   const css = await read('docs/.vitepress/theme/custom.css')
+  const home = await read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue')
   const componentStyles = (await Promise.all([
     'CanvasControls.vue', 'CanvasCard.vue', 'CanvasLayers.vue', 'CanvasMinimap.vue', 'InfiniteCanvas.vue',
   ].map((name) => read(`docs/.vitepress/theme/components/${name}`)))).join('\n')
   const scopedOs = css.match(/\/\* Personal OS start \*\/([\s\S]*?)\/\* Personal OS end \*\//)?.[1] ?? ''
   assert.ok(scopedOs, 'homepage OS styles must have an auditable scoped block')
   const os = `${scopedOs}\n${componentStyles}`
+
+  assert.match(home, /class="personal-system-view__error"/)
+  assert.match(scopedOs, /\.factory-home \.personal-system-view__error/)
+  assert.match(scopedOs, /#F7F4EC/i)
+  assert.doesNotMatch(scopedOs,
+    /linear-gradient|radial-gradient|backdrop-filter|\bstars?\b|sparkle|particle|illustration|portrait|<img/i)
 
   for (const color of [
     '#F7F4EC', '#FFFDF7', '#1E2430', '#69707D', '#315EFB',
