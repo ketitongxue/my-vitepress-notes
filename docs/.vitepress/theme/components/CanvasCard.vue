@@ -146,6 +146,7 @@ onBeforeUnmount(() => {
       type="button"
       class="canvas-card__titlebar"
       :aria-label="`选择并移动 ${card.title}`"
+      :aria-pressed="selected"
       @click="selectCard"
       @pointerdown="beginGesture('move', $event)"
       @pointermove="queuePoint"

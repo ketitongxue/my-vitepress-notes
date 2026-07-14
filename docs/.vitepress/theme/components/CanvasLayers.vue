@@ -257,6 +257,10 @@ function closePanel() {
     pointer-events: none;
   }
 
+  .canvas-layers.is-open {
+    z-index: 32;
+  }
+
   .canvas-layers__rail {
     width: 100%;
     height: 44px;
@@ -265,6 +269,11 @@ function closePanel() {
     border: 0;
     background: transparent;
     pointer-events: none;
+  }
+
+  .canvas-layers.is-open .canvas-layers__rail {
+    background: #fffdf7;
+    pointer-events: auto;
   }
 
   .canvas-layers__toggle {

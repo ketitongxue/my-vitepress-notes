@@ -10,6 +10,7 @@ import {
 } from './personalOsRouter.mjs'
 import { loadSystemCanvasModule } from './systemCanvasLoader.mjs'
 
+const SYSTEM_ACTIVE_CLASS = 'personal-os-system-active'
 const claimedView = typeof document === 'undefined'
   ? 'home'
   : document.documentElement.dataset.personalOsView
@@ -26,6 +27,16 @@ const systemImporters = Object.freeze({
 })
 let systemImportAttempt = 0
 let requestId = 0
+
+function setSystemChromeIsolation(active) {
+  if (typeof document === 'undefined') return
+  const targets = [
+    document.documentElement,
+    document.body,
+    document.querySelector('.Layout'),
+  ]
+  for (const target of targets) target?.classList.toggle(SYSTEM_ACTIVE_CLASS, active)
+}
 
 async function requestSystem() {
   if (systemLoadState.value === 'loading' || InfiniteCanvas.value) return
@@ -55,6 +66,7 @@ async function applyHash({ scroll = true } = {}) {
   const nextView = normalizeOsHash(window.location.hash)
   activeView.value = nextView
   document.documentElement.dataset.personalOsView = nextView
+  setSystemChromeIsolation(nextView === 'system')
 
   if (nextView === 'system') void requestSystem()
   if (nextView === 'home' && !homeEntered.value) {
@@ -106,6 +118,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   requestId += 1
+  setSystemChromeIsolation(false)
   window.removeEventListener('hashchange', handleHashChange)
 })
 </script>

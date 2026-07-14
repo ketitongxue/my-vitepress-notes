@@ -985,6 +985,14 @@ test('CanvasCard renders eight read-only semantic variants', () => {
   assert.doesNotMatch(card, /contenteditable|<textarea|<input|<img|picture|illustration|portrait/i)
 })
 
+test('CanvasCard titlebar exposes its selection state to assistive technology', () => {
+  const card = readComponent('CanvasCard.vue')
+  assert.match(card,
+    /<button[\s\S]*?class="canvas-card__titlebar"[\s\S]*?:aria-pressed="selected"/)
+  assert.doesNotMatch(card,
+    /class="canvas-card__titlebar"[\s\S]{0,240}:aria-current=/)
+})
+
 test('identity anchor is one rounded JZ rectangle without geometry shift', () => {
   const card = readComponent('CanvasCard.vue')
   const identity = canvasCards.find(({ id }) => id === 'identity')
@@ -1267,6 +1275,32 @@ test('system lazy boundary keeps navigation usable and retries a distinct chunk'
   assert.match(home, /\(\) => import\('\.\/InfiniteCanvas\.vue\?retry=1'\)/)
   assert.equal([...home.matchAll(/<BottomOsNavigation\b/g)].length, 1)
   assert.doesNotMatch(home, /@vite-ignore|location\.reload|<iframe|<object|<embed/i)
+})
+
+test('active system view isolates VitePress chrome for its exact lifecycle', () => {
+  const home = readComponent('KnowledgeFactoryHome.vue')
+  const css = readFileSync(new URL('../docs/.vitepress/theme/custom.css', import.meta.url), 'utf8')
+  assert.match(home, /const SYSTEM_ACTIVE_CLASS = 'personal-os-system-active'/)
+  assert.match(home,
+    /function setSystemChromeIsolation\(active\)[\s\S]*document\.documentElement[\s\S]*document\.body[\s\S]*document\.querySelector\('\.Layout'\)/)
+  assert.match(home, /setSystemChromeIsolation\(nextView === 'system'\)/)
+  assert.match(home, /onBeforeUnmount\(\(\) => \{[\s\S]*setSystemChromeIsolation\(false\)/)
+  assert.match(css, /html\.personal-os-system-active[\s\S]*overflow:\s*hidden;/)
+  assert.match(css,
+    /html\.personal-os-system-active \.VPLocalNav\.empty\.fixed[\s\S]*html\.personal-os-system-active \.VPFooter[\s\S]*display:\s*none !important;/)
+})
+
+test('mobile canvas controls clear the Layers trigger and drawer', () => {
+  const controls = readComponent('CanvasControls.vue')
+  const layers = readComponent('CanvasLayers.vue')
+  const mobileControls = controls.match(/@media \(max-width: 767px\) \{([\s\S]*?)\n\}/)?.[1] ?? ''
+  const mobileLayers = layers.match(/@media \(max-width: 767px\) \{([\s\S]*?)\n\}/)?.[1] ?? ''
+  assert.match(mobileControls, /\.canvas-controls\s*\{[\s\S]*left:\s*60px;[\s\S]*right:\s*8px;/)
+  assert.match(mobileControls, /scrollbar-width:\s*none;/)
+  assert.match(controls, /\.canvas-controls::-webkit-scrollbar\s*\{[\s\S]*display:\s*none;/)
+  assert.match(mobileLayers, /\.canvas-layers\.is-open\s*\{[\s\S]*z-index:\s*32;/)
+  assert.match(mobileLayers,
+    /\.canvas-layers\.is-open \.canvas-layers__rail\s*\{[\s\S]*background:\s*#fffdf7;[\s\S]*pointer-events:\s*auto;/i)
 })
 
 test('my os visual system is warm dotted paper without forbidden assets', () => {

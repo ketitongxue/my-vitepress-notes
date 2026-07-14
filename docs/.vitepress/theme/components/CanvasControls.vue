@@ -145,10 +145,16 @@ onBeforeUnmount(stopEscapeListener)
 
 @media (max-width: 767px) {
   .canvas-controls {
+    left: 60px;
     right: 8px;
-    left: auto;
-    max-width: calc(100vw - 64px);
+    max-width: none;
     overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .canvas-controls::-webkit-scrollbar {
+    display: none;
   }
 
   .canvas-controls__actions {
