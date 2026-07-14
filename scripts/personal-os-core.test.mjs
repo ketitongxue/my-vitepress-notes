@@ -970,6 +970,45 @@ test('pending persistence never serializes transient cancelled card geometry', (
   assert.equal(transient.cards[0].x, defaults.cards[0].x + 333)
 })
 
+test('CanvasCard renders eight read-only semantic variants', () => {
+  const card = readComponent('CanvasCard.vue')
+  assert.match(card, /:data-card-type="card\.type"/)
+  assert.match(card, /:class="\[`canvas-card--\$\{card\.type\}`/)
+  for (const type of ['identity', 'timeline', 'principle', 'skills', 'project', 'knowledge', 'status', 'next']) {
+    assert.match(card, new RegExp(`canvas-card--${type}`))
+  }
+  assert.match(card, /class="canvas-card__mark"[\s\S]*\{\{ card\.mark \}\}/)
+  assert.match(card, /v-for="item in card\.items"/)
+  assert.match(card, /v-for="link in card\.links"[\s\S]*:href="link\.href"/)
+  assert.match(card, /Math\.max\(props\.card\.minWidth/)
+  assert.match(card, /Math\.max\(props\.card\.minHeight/)
+  assert.doesNotMatch(card, /contenteditable|<textarea|<input|<img|picture|illustration|portrait/i)
+})
+
+test('identity anchor is one rounded JZ rectangle without geometry shift', () => {
+  const card = readComponent('CanvasCard.vue')
+  const identity = canvasCards.find(({ id }) => id === 'identity')
+  assert.deepEqual(
+    (({ width, height, minWidth, minHeight }) => ({ width, height, minWidth, minHeight }))(identity),
+    { width: 360, height: 260, minWidth: 300, minHeight: 220 },
+  )
+  assert.match(card, /\.canvas-card--identity\s*\{[\s\S]*border-radius:\s*16px/)
+  assert.match(card, /\.canvas-card\.is-selected\s*\{[\s\S]*outline:/)
+  assert.match(card, /outline-offset:/)
+  assert.match(card, /\.canvas-card--identity \.canvas-card__titlebar\s*\{[^}]*padding:\s*14px 20px 8px;/)
+  assert.match(card, /\.canvas-card--identity \.canvas-card__body\s*\{[^}]*padding:\s*0 64px 14px 20px;/)
+  assert.match(card, /\.canvas-card--identity \.canvas-card__copy\s*\{[^}]*margin:\s*0;[^}]*font-size:\s*13px;[^}]*line-height:\s*1\.45;/)
+  assert.doesNotMatch(card, /\.canvas-card\.is-selected\s*\{[^}]*border-width:/)
+  assert.doesNotMatch(card, /\.canvas-card--identity \.canvas-card__body\s*\{[^}]*overflow:\s*auto/)
+})
+
+test('status copy is exclusive and native links keep canvas gestures isolated', () => {
+  const card = readComponent('CanvasCard.vue')
+  assert.match(card, /<p v-if="card\.body && !card\.status"/)
+  assert.match(card, /<span v-if="card\.status" class="canvas-card__status">[\s\S]*\{\{ card\.body \}\}/)
+  assert.match(card, /v-for="link in card\.links"[\s\S]*@pointerdown\.stop[\s\S]*@click\.stop/)
+})
+
 test('infinite canvas components preserve interaction and source contracts', () => {
   const canvas = readComponent('InfiniteCanvas.vue')
   const card = readComponent('CanvasCard.vue')
@@ -1015,11 +1054,13 @@ test('infinite canvas components preserve interaction and source contracts', () 
   assert.match(card, /lostpointercapture/)
   assert.match(card, /onBeforeUnmount\(\(\) => \{[\s\S]*?hasPointerCapture/)
   assert.match(card, /\/ props\.scale/)
-  assert.match(card, /Math\.max\(180,/)
-  assert.match(card, /Math\.max\(120,/)
-  assert.match(card, /<a\s+v-if="card\.href"/)
+  assert.match(card, /Math\.max\(props\.card\.minWidth,/)
+  assert.match(card, /Math\.max\(props\.card\.minHeight,/)
+  assert.match(card, /v-for="link in card\.links"/)
+  assert.match(card, /:href="link\.href"/)
   assert.match(card, /gesture-complete/)
   assert.doesNotMatch(card, /v-html/)
+  assert.doesNotMatch(card, /:hover\s*\{[^}]*transform:/)
 
   assert.match(connections, /import \{ connectionEndpoints \} from '\.\/canvasGeometry\.mjs'/)
   assert.match(connections, /fromCard\.visible === false \|\| toCard\.visible === false/)
