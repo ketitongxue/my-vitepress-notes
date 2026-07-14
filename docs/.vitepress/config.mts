@@ -4,15 +4,34 @@ const personalSiteAccessPreflight = String.raw`(function () {
   var root = document.documentElement
   var isHomepage = location.pathname === '/' || location.pathname === '/index.html'
   if (!isHomepage) return
+  var view = location.hash === '#knowledge' ? 'knowledge' : location.hash === '#system' ? 'system' : 'home'
+  root.dataset.personalOsView = view
+  function syncNavigationClaim() {
+    var buttons = document.querySelectorAll('[data-os-nav-target]')
+    for (var index = 0; index < buttons.length; index += 1) {
+      var button = buttons[index]
+      if (button.dataset.osNavTarget === view) button.setAttribute('aria-current', 'page')
+      else button.removeAttribute('aria-current')
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', syncNavigationClaim, { once: true })
+  } else {
+    syncNavigationClaim()
+  }
+  if (view !== 'home') {
+    root.dataset.personalSiteAccess = 'claimed'
+    return
+  }
   try {
     if (typeof window.matchMedia !== 'function') throw new Error('motion query unavailable')
     var stored = window.sessionStorage.getItem('personal-site-accessed')
     var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (stored === 'true' || reduced) root.dataset.personalSiteAccess = 'returning'
     else root.dataset.personalSiteAccess = 'pending'
-    if (root.dataset.personalSiteAccess === 'pending') {
+    if (root.dataset.personalSiteAccess === 'pending' || root.dataset.personalSiteAccess === 'returning') {
       window['__personalSiteAccessFallback'] = window.setTimeout(function () {
-        if (root.dataset.personalSiteAccess === 'pending') root.dataset.personalSiteAccess = 'fallback'
+        if (root.dataset.personalSiteAccess === 'pending' || root.dataset.personalSiteAccess === 'returning') root.dataset.personalSiteAccess = 'fallback'
         delete window['__personalSiteAccessFallback']
       }, 2500)
     }

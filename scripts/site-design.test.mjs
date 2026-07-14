@@ -5,20 +5,30 @@ import test from 'node:test'
 const root = new URL('../', import.meta.url)
 const read = (path) => readFile(new URL(path, root), 'utf8')
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const task7Components = [
+  'MacbookBoot', 'MacbookExit', 'BottomOsNavigation', 'DesktopSurface', 'DesktopIcon', 'WindowManager',
+  'KnowledgePortfolio', 'InfiniteCanvas', 'CanvasCard', 'CanvasConnections', 'CanvasLayers',
+  'CanvasMinimap', 'CanvasControls',
+]
 
-test('homepage delegates its Personal OS shell to focused components', async () => {
-  const [page, home, canvas] = await Promise.all([
+function scopedStyles(source) {
+  return [...source.matchAll(/<style scoped>([\s\S]*?)<\/style>/g)].map((match) => match[1]).join('\n')
+}
+
+test('homepage keeps the Personal OS route shell and focused view components available', async () => {
+  const [page, home, desktop, knowledge, system] = await Promise.all([
     read('docs/index.md'),
     read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue'),
-    read('docs/.vitepress/theme/components/DesktopCanvas.vue'),
+    read('docs/.vitepress/theme/components/DesktopSurface.vue'),
+    read('docs/.vitepress/theme/components/KnowledgePortfolio.vue'),
+    read('docs/.vitepress/theme/components/InfiniteCanvas.vue'),
   ])
   assert.match(page, /<KnowledgeFactoryHome\s*\/>/)
-  assert.match(home, /<SystemTopBar\s*\/>/)
-  assert.match(home, /<DesktopCanvas\s*\/>/)
-  for (const name of [
-    'ProfileCard', 'CurrentStatusCard', 'FeaturedProjectCard', 'ProjectFolder',
-    'NotesLauncher', 'LabLauncher', 'ContactTerminal', 'CanvasControls',
-  ]) assert.match(canvas, new RegExp(`<${name}\\s*/>`))
+  for (const view of ['home', 'knowledge', 'system']) assert.match(home, new RegExp(`data-os-view="${view}"`))
+  assert.match(desktop, /<DesktopIcon\b/)
+  assert.match(desktop, /<WindowManager\b/)
+  assert.match(knowledge, /<main class="knowledge-portfolio"/)
+  assert.match(system, /<CanvasControls\b/)
 })
 
 test('knowledge pages are generated as compact accessible hubs', async () => {
@@ -38,20 +48,12 @@ test('Q&A clearly limits retrieval to the AI knowledge base', async () => {
   assert.doesNotMatch(component, /金融知识库/)
 })
 
-test('factory homepage links and local anchors resolve after the OS component split', async () => {
-  const [topbar, canvas, profile, featured] = await Promise.all([
-    read('docs/.vitepress/theme/components/SystemTopBar.vue'),
-    read('docs/.vitepress/theme/components/DesktopCanvas.vue'),
-    read('docs/.vitepress/theme/components/ProfileCard.vue'),
-    read('docs/.vitepress/theme/components/FeaturedProjectCard.vue'),
-  ])
-  assert.match(topbar, /href="#projects"/)
-  assert.match(topbar, /href="#notes"/)
-  assert.match(profile, /href="\/about"/)
-  assert.match(profile, /href="#projects"/)
-  assert.match(featured, /href="#projects"/)
-  assert.match(canvas, /<ProjectFolder\s*\/>/)
-  assert.match(canvas, /<NotesLauncher\s*\/>/)
+test('Personal OS menu destinations and local routes resolve', async () => {
+  const desktop = await read('docs/.vitepress/theme/components/DesktopSurface.vue')
+  assert.match(desktop, /href="#home"/)
+  assert.match(desktop, /href="#knowledge"/)
+  assert.match(desktop, /href="#system"/)
+  assert.match(desktop, /href="\/about"/)
   await assert.doesNotReject(access(new URL('docs/about.md', root)), '/about must resolve')
 })
 
@@ -67,36 +69,102 @@ test('Q&A and local search expose Chinese interface labels', async () => {
   }
 })
 
-test('theme styles balance the factory, knowledge, and QA surfaces', async () => {
+test('theme styles balance the Personal OS, knowledge, and QA surfaces', async () => {
   const css = await read('docs/.vitepress/theme/custom.css')
   assert.match(css, /\.VPHero \.main[\s\S]*max-width:\s*900px/)
   assert.match(css, /\.VPHero \.text[\s\S]*text-wrap:\s*balance/)
   assert.match(css, /\.knowledge-hub__featured/)
   assert.match(css, /\.knowledge-hub__all/)
   for (const selector of [
-    '.system-topbar', '.desktop-canvas', '.profile-card', '.project-folder',
-    '.notes-launcher', '.lab-launcher', '.contact-terminal', '.canvas-controls',
+    '.macbook-boot', '.desktop-surface', '.desktop-surface__menu', '.desktop-icon',
+    '.window-manager__window', '.bottom-os-navigation', '.knowledge-portfolio',
+    '.infinite-canvas', '.canvas-card', '.canvas-layers', '.canvas-minimap', '.canvas-controls',
   ]) assert.match(css, new RegExp(`\\.factory-home ${selector.replace('.', '\\.')}(?:\\s|,|\\{|:)`))
-  assert.match(css, /\.factory-home a:focus-visible\s*\{[^}]*outline:\s*2px solid #315EFB/)
-  assert.match(css, /\.factory-home \.desktop-canvas\s*\{[^}]*grid-template-columns:\s*repeat\(14, minmax\(0, 1fr\)\)/)
-  assert.match(css, /@media \(max-width: 767px\)[\s\S]*?\.factory-home \.desktop-canvas\s*\{[^}]*grid-template-columns:\s*1fr/)
+  assert.match(css, /\.factory-home :where\(a, button\):focus-visible\s*\{[^}]*outline:\s*3px solid #315EFB/)
+  assert.match(css, /\.factory-home \.desktop-surface__menu\s*\{[^}]*height:\s*30px/)
+  assert.match(css, /\.factory-home \.desktop-surface__workspace\s*\{[^}]*height:\s*calc\(100vh - 30px\)/)
+  assert.match(css, /\.factory-home \.desktop-surface__workspace\s*\{[^}]*height:\s*calc\(100dvh - 30px\)/)
+  const mobileOverflowPattern = [
+    '@media \\(max-width: 767px\\)[\\s\\S]*?\\.factory-home\\s*\\{[^}]*overflow-x:',
+    '\\s*clip',
+  ].join('')
+  assert.match(css, new RegExp(mobileOverflowPattern))
+  assert.match(css, /@media \(max-width: 767px\)[\s\S]*?\.factory-home \.canvas-controls button\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px/)
   assert.match(css, /\.factory-home\s*\{[^}]*font-family:\s*var\(--vp-font-family-base\)/)
-  assert.match(css, /\.factory-home \.system-topbar\s*\{[^}]*font-family:\s*"JetBrains Mono", "Fira Code", Consolas, monospace/)
-  for (const selector of [
-    '.profile-card__summary', '.current-status-card dd', '.featured-project-card h2 + p',
-    '.notes-launcher li', '.lab-launcher li',
-  ]) {
-    assert.match(css, new RegExp(`\\.factory-home ${escapeRegex(selector)}(?:\\s|,)[\\s\\S]*?\\{[^}]*font-family:\\s*var\\(--vp-font-family-base\\)`))
-  }
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*animation:\s*none !important;[\s\S]*transition:\s*none !important;/)
+  assert.doesNotMatch(css.match(/\/\* Personal OS start \*\/([\s\S]*?)\/\* Personal OS end \*\//)?.[1] ?? '', /linear-gradient|radial-gradient|backdrop-filter|\bstars?\b|sparkle|particle|illustration|character-art/i)
   assert.doesNotMatch(css, /\.garden-/)
   assert.doesNotMatch(css, /\.wiki-ask__conversation[\s\S]{0,400}min-height:\s*190px/)
 })
 
-test('fullscreen splash replaces the inline boot without changing homepage discovery', async () => {
+test('all allowed Personal OS component styles enforce the approved visual policy', async () => {
+  const components = new Map(await Promise.all(task7Components.map(async (name) => [
+    name,
+    await read(`docs/.vitepress/theme/components/${name}.vue`),
+  ])))
+  const forbiddenEffects = /linear-gradient|radial-gradient|backdrop-filter|\bstars?\b|sparkle|particle|illustration|character-art/i
+  const remoteVisual = /data:image|url\(\s*['"]?https?:|https?:\/\/[^\s'"()<>]+\.(?:svg|png|jpe?g|webp|gif)(?:[?#][^\s'"()<>]*)?/i
+
+  for (const [name, source] of components) {
+    const styles = scopedStyles(source)
+    assert.doesNotMatch(styles, forbiddenEffects, `${name} scoped styles must not add forbidden visual effects`)
+    assert.doesNotMatch(styles, /#f2c94c/i, `${name} must not retain the rejected yellow`)
+    assert.doesNotMatch(source, /<(?:img|picture)\b/i, `${name} must not add image elements`)
+    assert.doesNotMatch(source, remoteVisual, `${name} must not load remote visual assets`)
+
+    const inlineSvgCount = [...source.matchAll(/<svg\b/gi)].length
+    if (name === 'CanvasConnections' || name === 'CanvasMinimap') {
+      assert.equal(inlineSvgCount, 1, `${name} keeps exactly one approved structural SVG`)
+      assert.doesNotMatch(source, /<(?:path|image|foreignObject)\b/i, `${name} SVG must stay structural`)
+    } else {
+      assert.equal(inlineSvgCount, 0, `${name} must not add decorative inline SVG`)
+    }
+  }
+
+  assert.match(scopedStyles(components.get('MacbookBoot')), /\.macbook-boot__launch\s*\{[^}]*background:\s*#F4D758;/)
+  assert.match(scopedStyles(components.get('CanvasCard')), /\.canvas-card__resize\s*\{[^}]*background:\s*#F4D758;/)
+})
+
+test('every required mobile Personal OS target keeps a 44 by 44 hit area', async () => {
+  const [boot, windows, navigation, layers, minimap, controls, card] = await Promise.all([
+    'MacbookBoot', 'WindowManager', 'BottomOsNavigation', 'CanvasLayers', 'CanvasMinimap',
+    'CanvasControls', 'CanvasCard',
+  ].map(async (name) => scopedStyles(await read(`docs/.vitepress/theme/components/${name}.vue`))))
+
+  assert.match(boot, /\.macbook-boot__launch\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
+  assert.match(windows, /@media \(max-width: 767px\)[\s\S]*?\.window-manager__controls a,\s*\.window-manager__controls button,\s*\.window-manager__resize\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
+  assert.match(navigation, /@media \(max-width: 767px\)[\s\S]*?\.bottom-os-navigation button\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
+  assert.match(layers, /@media \(max-width: 767px\)[\s\S]*?\.canvas-layers__toggle\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
+  assert.match(minimap, /\.canvas-minimap__surface\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
+  assert.match(controls, /@media \(max-width: 767px\)[\s\S]*?\.canvas-controls button\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
+  assert.match(card, /\.canvas-card__resize\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/)
+})
+
+test('MacBook splash and hash shell preserve homepage discovery', async () => {
   const home = await read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue')
-  const hero = home.match(/<section class="factory-hero"[\s\S]*?<\/section>/)?.[0] ?? ''
-  assert.doesNotMatch(hero, /FactoryBoot/)
-  assert.match(home, /<FactoryBoot @reveal="handleReveal"\s*\/>\s*<main/)
-  assert.match(home, /<SystemTopBar\s*\/>/)
-  assert.match(home, /<DesktopCanvas\s*\/>/)
+  assert.match(home, /<MacbookBoot[\s\S]*v-if="!hydrated \|\| \(activeView === 'home' && !homeEntered\)"[\s\S]*:active="activeView === 'home'"[\s\S]*:disabled="bootDisabled"[\s\S]*@entered="handleHomeEntered"[\s\S]*\/>/)
+  assert.deepEqual([...home.matchAll(/data-os-view="(home|knowledge|system)"/g)].map((match) => match[1]), [
+    'home', 'knowledge', 'system',
+  ])
+  assert.match(home, /<BottomOsNavigation[\s\S]*:active-view="activeView"[\s\S]*@select="selectView"[\s\S]*\/>/)
+  assert.match(home, /<DesktopSurface\s*\/>[\s\S]*<MacbookExit\s*\/>/)
+  assert.match(home, /<KnowledgePortfolio\s*\/>/)
+  assert.match(home, /\(\) => import\('\.\/InfiniteCanvas\.vue'\)/)
+  assert.match(home, /\(\) => import\('\.\/InfiniteCanvas\.vue\?retry=1'\)/)
+  assert.doesNotMatch(home, /@vite-ignore/)
+})
+
+test('knowledge portfolio is semantic document flow without copied visual effects', async () => {
+  const portfolio = await read('docs/.vitepress/theme/components/KnowledgePortfolio.vue')
+
+  assert.match(portfolio, /<main class="knowledge-portfolio" aria-labelledby="knowledge-portfolio-title">/)
+  assert.match(portfolio, /<article class="knowledge-portfolio__(?:feature|callout|method)"/)
+  assert.match(portfolio, /<ol class="knowledge-portfolio__workflow">/)
+  assert.match(portfolio, /<ul class="knowledge-portfolio__recent-list">/)
+  assert.match(portfolio, /<time datetime="\d{4}-\d{2}-\d{2}">/)
+  assert.doesNotMatch(portfolio, /<iframe\b|<object\b|<embed\b|<svg\b|v-html|contenteditable/i)
+  assert.doesNotMatch(portfolio, /BottomOsNavigation|DesktopSurface|window\.location|hashchange|sessionStorage/i)
+  assert.doesNotMatch(portfolio, /position:\s*(?:fixed|absolute)|transform:|touch-action:\s*none|dragg|resize|canvas/i)
+  assert.doesNotMatch(portfolio, /star|sparkle|particle|illustration|sticker|photograph|gradient|backdrop-filter|data:image|emoji/i)
+  assert.doesNotMatch(portfolio, /https?:\/\/(?!github\.com\/ketitongxue\/llm-wiki-skill)/i)
 })

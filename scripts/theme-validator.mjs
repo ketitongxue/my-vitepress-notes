@@ -12,9 +12,9 @@ function parseDeclarations(body) {
         const separator = declaration.indexOf(':')
         return [
           declaration.slice(0, separator).trim(),
-          declaration.slice(separator + 1).trim()
+          declaration.slice(separator + 1).trim(),
         ]
-      })
+      }),
   )
 }
 
@@ -68,82 +68,49 @@ function requireRule(rules, selector, ancestor) {
   return matches[0]
 }
 
-function assertAllowedAncestorContexts(rules, selector, allowedAncestors) {
-  for (const rule of rules.filter((candidate) => candidate.selectors.includes(selector))) {
-    const ancestor = rule.ancestors.length === 0 ? 'top level' : rule.ancestors.join(' > ')
-    if (!allowedAncestors.includes(ancestor)) {
-      throw new Error(`Personal OS contract selector ${selector} uses unexpected ancestor context ${ancestor}`)
-    }
-  }
+function includesDeclaration(rules, selector, property, value, ancestor) {
+  return matchingRules(rules, selector, ancestor)
+    .some((rule) => parseDeclarations(rule.body).get(property) === value)
 }
 
-function delayInMilliseconds(value) {
-  const match = value?.match(/^(\d+(?:\.\d+)?)(ms|s)$/)
-  if (!match) return undefined
-  return Number(match[1]) * (match[2] === 's' ? 1000 : 1)
+function isPersonalOsSelector(selector) {
+  return /\.(?:macbook-boot|desktop-surface|desktop-icon|window-manager|bottom-os-navigation|knowledge-portfolio|infinite-canvas|canvas-card|canvas-connections|canvas-layers|canvas-minimap|canvas-controls)(?:$|[_-]|[\s.:#\[])/.test(selector)
 }
 
-const revealAnimation = 'personal-os-reveal 420ms cubic-bezier(0.16, 1, 0.3, 1) both'
-const baseFontFamily = 'var(--vp-font-family-base)'
-const monoFontFamily = '"JetBrains Mono", "Fira Code", Consolas, monospace'
-const topLevel = 'top level'
-const mobileMedia = '@media (max-width: 767px)'
-const reducedMedia = '@media (prefers-reduced-motion: reduce)'
-const splashWideMedia = '@media (min-width: 640px)'
-
-function isHomepageScoped(selector) {
-  return /^(?:\.factory-home|\.knowledge-factory-page)(?:$|[\s.:#\[])/.test(selector)
-}
-
-function hasExactDeclarations(rule, expected) {
-  const declarations = parseDeclarations(rule?.body ?? '')
-  return declarations.size === expected.length
-    && expected.every(([property, value]) => declarations.get(property) === value)
-}
-
-function requireFontFamily(rules, selector, expected, message) {
-  const declarations = rules
-    .filter((rule) => rule.selectors.includes(selector))
-    .map((rule) => parseDeclarations(rule.body).get('font-family'))
-    .filter(Boolean)
-  if (declarations.length !== 1 || declarations[0] !== expected) {
-    throw new Error(message)
-  }
+function isPersonalOsScoped(selector) {
+  return /^(?:\.factory-home|\.knowledge-factory-page|\.personal-system-view)(?:$|[\s.:#\[])/.test(selector)
 }
 
 function isStrongShadow(value) {
   if (!value || value === 'none') return false
-  if (/(?:#315EFB|#F2C94C|#EF7B45|#3FAE78|var\(--os-(?:blue|yellow|orange|green)\))/i.test(value)) {
-    return true
-  }
+  if (/(?:#315EFB|#F2C94C|#EF7B45|#3FAE78|#2B7FD8)/i.test(value)) return true
   return [...value.matchAll(/-?\d+(?:\.\d+)?px/g)]
-    .some((match) => Math.abs(Number.parseFloat(match[0])) > 3)
+    .some((match) => Math.abs(Number.parseFloat(match[0])) > 12)
 }
+
+const mobileMedia = '@media (max-width: 767px)'
+const reducedMedia = '@media (prefers-reduced-motion: reduce)'
 
 export function validateThemeCss(source) {
   const css = stripComments(source)
   const rules = parseRules(css)
-  assertAllowedAncestorContexts(rules, ':root', [topLevel])
-  assertAllowedAncestorContexts(rules, '.dark', [topLevel])
-  const root = requireRule(rules, ':root')
-  const rootDeclarations = parseDeclarations(root.body)
-  const dark = requireRule(rules, '.dark')
-  const darkDeclarations = parseDeclarations(dark.body)
+  const rootDeclarations = parseDeclarations(requireRule(rules, ':root').body)
+  const darkDeclarations = parseDeclarations(requireRule(rules, '.dark').body)
 
   for (const [property, value] of [
     ['--vp-c-bg', '#f6f3ea'],
-    ['--vp-c-brand-1', '#275dad']
+    ['--vp-c-brand-1', '#275dad'],
   ]) {
-    if (rootDeclarations?.get(property) !== value) {
+    if (rootDeclarations.get(property) !== value) {
       throw new Error(`custom.css :root must declare ${property}: ${value}`)
     }
   }
 
   for (const [property, value] of [
     ['--vp-c-bg', '#0b1020'],
-    ['--vp-c-brand-1', '#8aa8ff']
+    ['--vp-c-brand-1', '#8aa8ff'],
   ]) {
-    if (darkDeclarations?.get(property) !== value) {
+    if (darkDeclarations.get(property) !== value) {
       throw new Error(`custom.css .dark must declare ${property}: ${value}`)
     }
   }
@@ -151,13 +118,11 @@ export function validateThemeCss(source) {
   const factoryTokens = [
     '--factory-bg', '--factory-surface', '--factory-surface-muted', '--factory-ink',
     '--factory-ink-muted', '--factory-border', '--factory-brand', '--factory-data',
-    '--factory-signal', '--factory-terminal', '--factory-terminal-ink', '--factory-focus'
+    '--factory-signal', '--factory-terminal', '--factory-terminal-ink', '--factory-focus',
   ]
   for (const [palette, declarations] of [[':root', rootDeclarations], ['.dark', darkDeclarations]]) {
     for (const token of factoryTokens) {
-      if (!declarations?.get(token)) {
-        throw new Error(`custom.css ${palette} must declare ${token}`)
-      }
+      if (!declarations.get(token)) throw new Error(`custom.css ${palette} must declare ${token}`)
     }
   }
 
@@ -165,15 +130,10 @@ export function validateThemeCss(source) {
   if (!osSource) throw new Error('custom.css must contain the scoped Personal OS block')
   const osCss = stripComments(osSource)
   const osRules = parseRules(osCss)
-  const homepageClassNames = [
-    'system-topbar', 'desktop-canvas', 'profile-card', 'current-status-card',
-    'featured-project-card', 'project-folder', 'notes-launcher', 'lab-launcher',
-    'contact-terminal', 'canvas-controls'
-  ]
+
   for (const rule of osRules) {
     for (const selector of rule.selectors) {
-      if (homepageClassNames.some((name) => selector.includes(`.${name}`))
-        && !isHomepageScoped(selector)) {
+      if (isPersonalOsSelector(selector) && !isPersonalOsScoped(selector)) {
         throw new Error(`Personal OS selector ${selector} must be homepage scoped`)
       }
     }
@@ -181,225 +141,67 @@ export function validateThemeCss(source) {
       throw new Error('Personal OS must not use a strong or saturated box-shadow')
     }
   }
-  for (const color of ['#F7F4EC', '#FFFDF7', '#1E2430', '#69707D', '#315EFB', '#F2C94C', '#EF7B45', '#3FAE78', '#192232']) {
+
+  for (const selector of [
+    '.factory-home .macbook-boot',
+    '.factory-home .desktop-surface',
+    '.factory-home .desktop-surface__menu',
+    '.factory-home .desktop-icon',
+    '.factory-home .window-manager__window',
+    '.factory-home .bottom-os-navigation',
+    '.factory-home .knowledge-portfolio',
+    '.factory-home .infinite-canvas',
+    '.factory-home .canvas-card',
+    '.factory-home .canvas-layers',
+    '.factory-home .canvas-minimap',
+    '.factory-home .canvas-controls',
+  ]) requireRule(osRules, selector)
+
+  for (const color of ['#F7F4EC', '#FFFDF7', '#1E2430', '#69707D', '#315EFB', '#F4D758', '#EF7B45', '#3FAE78', '#192232', '#2B7FD8']) {
     if (!new RegExp(color, 'i').test(osSource)) throw new Error(`Personal OS palette must include ${color}`)
   }
-  if (/linear-gradient|backdrop-filter|cursor\s*:\s*(?:grab|grabbing|zoom-in|zoom-out)|touch-action\s*:\s*none|\b(?:pointerdown|pointermove|wheel)\b/i.test(osSource)) {
-    throw new Error('custom.css must not enable drag or zoom behavior')
+
+  if (/linear-gradient|radial-gradient|backdrop-filter|\bstars?\b|sparkle|particle|illustration|character-art/i.test(osCss)) {
+    throw new Error('Personal OS must not use gradients, stars, particles, or illustrations')
   }
 
-  requireFontFamily(
-    osRules,
-    '.factory-home',
-    baseFontFamily,
-    'Personal OS root must use the VitePress base font',
-  )
-  const sansBodySelectors = [
-    '.factory-home .profile-card__summary',
-    '.factory-home .current-status-card dd',
-    '.factory-home .featured-project-card h2',
-    '.factory-home .featured-project-card h2 + p',
-    '.factory-home .notes-launcher li',
-    '.factory-home .lab-launcher li',
-  ]
-  for (const selector of sansBodySelectors) {
-    requireFontFamily(
-      osRules,
-      selector,
-      baseFontFamily,
-      `Personal OS Chinese body text must use the VitePress base font: ${selector}`,
-    )
-  }
-  const monoSystemSelectors = [
-    '.factory-home .system-topbar',
-    '.factory-home .profile-card__eyebrow',
-    '.factory-home .profile-card h1',
-    '.factory-home .profile-card__role',
-    '.factory-home .profile-card__specialty',
-    '.factory-home .profile-card__about',
-    '.factory-home .profile-card__projects',
-    '.factory-home .current-status-card h2',
-    '.factory-home .project-folder h2',
-    '.factory-home .notes-launcher h2',
-    '.factory-home .lab-launcher h2',
-    '.factory-home .current-status-card dt',
-    '.factory-home .featured-project-card > p:first-child',
-    '.factory-home .featured-project-card dl',
-    '.factory-home .featured-project-card a',
-    '.factory-home .project-folder',
-    '.factory-home .project-folder li span',
-    '.factory-home .notes-launcher li span',
-    '.factory-home .lab-launcher li span',
-    '.factory-home .contact-terminal',
-    '.factory-home .canvas-controls',
-  ]
-  for (const selector of monoSystemSelectors) {
-    requireFontFamily(
-      osRules,
-      selector,
-      monoFontFamily,
-      `Personal OS system text must use the exact monospace stack: ${selector}`,
-    )
-  }
-  const allowedMonoSelectors = new Set(monoSystemSelectors)
-  for (const rule of osRules) {
-    if (parseDeclarations(rule.body).get('font-family') !== monoFontFamily) continue
-    for (const selector of rule.selectors) {
-      if (!allowedMonoSelectors.has(selector)) {
-        throw new Error(`Personal OS monospace font is not allowed on ${selector}`)
-      }
-    }
+  const menu = parseDeclarations(requireRule(osRules, '.factory-home .desktop-surface__menu').body)
+  if (menu.get('height') !== '30px') throw new Error('Personal OS menu must be exactly 30px high')
+
+  if (!includesDeclaration(osRules, '.factory-home .desktop-surface__workspace', 'height', 'calc(100vh - 30px)')
+    || !includesDeclaration(osRules, '.factory-home .desktop-surface__workspace', 'height', 'calc(100dvh - 30px)')) {
+    throw new Error('Personal OS workspace must include 100vh and 100dvh geometry')
   }
 
-  const surfaceSelectors = [
-    '.factory-home .profile-card', '.factory-home .current-status-card',
-    '.factory-home .featured-project-card', '.factory-home .project-folder',
-    '.factory-home .notes-launcher', '.factory-home .lab-launcher',
-    '.factory-home .contact-terminal', '.factory-home .canvas-controls'
-  ]
-  const placements = [
-    ['.desktop-canvas__profile', '1 / 8', '1 / 5', '50ms'],
-    ['.desktop-canvas__status', '9 / 13', '1 / 4', '110ms'],
-    ['.desktop-canvas__featured', '4 / 11', '5 / 10', '170ms'],
-    ['.desktop-canvas__projects', '11 / 15', '4 / 8', '230ms'],
-    ['.desktop-canvas__notes', '1 / 4', '6 / 10', '290ms'],
-    ['.desktop-canvas__lab', '11 / 15', '9 / 13', '350ms'],
-    ['.desktop-canvas__contact', '3 / 10', '11 / 15', '410ms'],
-    ['.desktop-canvas__controls', '12 / 15', '14 / 15', '470ms']
-  ]
-  const scopedPlacements = placements.map(([selector]) => `.factory-home ${selector}`)
-  for (const selector of [
-    '.factory-home .desktop-canvas', '.factory-home .system-topbar',
-    ...surfaceSelectors, ...scopedPlacements
-  ]) {
-    assertAllowedAncestorContexts(rules, selector, [topLevel, mobileMedia])
-  }
-  for (const selector of [
-    '.factory-home.is-entering .system-topbar',
-    '.factory-home.is-entering .desktop-canvas > *'
-  ]) {
-    assertAllowedAncestorContexts(rules, selector, [topLevel, reducedMedia])
-  }
-  for (const [selector] of placements) {
-    assertAllowedAncestorContexts(rules, `.factory-home.is-entering ${selector}`, [topLevel])
-  }
-  assertAllowedAncestorContexts(rules, '.factory-boot', [topLevel, splashWideMedia, reducedMedia])
-  assertAllowedAncestorContexts(rules, '.factory-boot__access', [topLevel, splashWideMedia])
-  assertAllowedAncestorContexts(rules, '.factory-boot__cursor', [topLevel, reducedMedia])
-  for (const selector of [
-    '.factory-home .desktop-canvas', '.factory-home .system-topbar',
-    ...surfaceSelectors, ...scopedPlacements, '.factory-boot'
-  ]) {
-    const rule = requireRule(rules, selector)
-    if (!rule || parseDeclarations(rule.body).size === 0) {
-      throw new Error(`custom.css must contain an active ${selector} rule`)
-    }
+  const window = parseDeclarations(requireRule(osRules, '.factory-home .window-manager__window').body)
+  if (window.get('min-width') !== '280px' || window.get('min-height') !== '200px') {
+    throw new Error('Personal OS windows must keep the 280 x 200 minimum')
   }
 
-  const topbarDeclarations = parseDeclarations(requireRule(rules, '.factory-home .system-topbar').body)
-  if (topbarDeclarations.get('position') !== 'fixed' || topbarDeclarations.get('height') !== '56px') {
-    throw new Error('Personal OS topbar must use fixed positioning and a 56px height')
+  const mobileRoot = parseDeclarations(requireRule(osRules, '.factory-home', mobileMedia).body)
+  if (mobileRoot.get('overflow-x') !== 'clip') {
+    throw new Error('Personal OS mobile root must prevent horizontal overflow')
+  }
+  const mobileControl = parseDeclarations(requireRule(osRules, '.factory-home .canvas-controls button', mobileMedia).body)
+  if (mobileControl.get('min-width') !== '44px' || mobileControl.get('min-height') !== '44px') {
+    throw new Error('Personal OS mobile controls must keep a 44px hit area')
   }
 
-  const canvasDeclarations = parseDeclarations(requireRule(rules, '.factory-home .desktop-canvas').body)
-  if (canvasDeclarations.get('display') !== 'grid'
-    || canvasDeclarations.get('width') !== 'min(1360px, calc(100vw - 48px))'
-    || canvasDeclarations.get('min-height') !== '1040px'
-    || canvasDeclarations.get('grid-template-columns') !== 'repeat(14, minmax(0, 1fr))'
-    || canvasDeclarations.get('grid-template-rows') !== 'repeat(14, minmax(0, 1fr))'
-    || canvasDeclarations.get('gap') !== '16px') {
-    throw new Error('Personal OS desktop canvas must use the exact 14-column grid')
+  const focusRules = osRules.filter((rule) => rule.selectors.some((selector) => selector.includes(':focus-visible')))
+  if (!focusRules.some((rule) => parseDeclarations(rule.body).has('outline'))) {
+    throw new Error('Personal OS must provide visible focus rules')
   }
 
-  const entranceDelays = []
-  for (const [selector, column, row, delay] of placements) {
-    const scopedSelector = `.factory-home ${selector}`
-    const placement = parseDeclarations(requireRule(rules, scopedSelector).body)
-    if (placement.get('grid-column') !== column || placement.get('grid-row') !== row) {
-      throw new Error(`Personal OS placement ${scopedSelector} must use grid-column ${column} and grid-row ${row}`)
-    }
-    const stagger = requireRule(rules, `.factory-home.is-entering ${selector}`)
-    const staggerDeclarations = parseDeclarations(stagger?.body ?? '')
-    if (staggerDeclarations.get('animation-delay') !== delay) {
-      throw new Error(`Personal OS entrance must stagger ${selector} at ${delay}`)
-    }
-    entranceDelays.push(delayInMilliseconds(delay))
-  }
-  if (entranceDelays.some((delay) => delay === undefined)
-    || entranceDelays.some((delay, index) => index > 0 && delay <= entranceDelays[index - 1])) {
-    throw new Error('Personal OS reveal delays must be distinct and strictly increasing')
-  }
-  const topbarEntrance = parseDeclarations(requireRule(rules, '.factory-home.is-entering .system-topbar').body)
-  const childrenEntrance = parseDeclarations(requireRule(rules, '.factory-home.is-entering .desktop-canvas > *').body)
-  if (topbarEntrance.get('animation') !== revealAnimation
-    || childrenEntrance.get('animation') !== revealAnimation) {
-    throw new Error('Personal OS reveal animation must use the exact name, duration, easing, and fill mode')
-  }
-  if (topbarEntrance.get('animation-delay') !== '0ms') {
-    throw new Error('Personal OS reveal must stagger .system-topbar at 0ms')
-  }
+  const reducedRules = osRules.filter((rule) => rule.ancestors.includes(reducedMedia))
+  if (!reducedRules.some((rule) => {
+    const declarations = parseDeclarations(rule.body)
+    return declarations.get('animation') === 'none !important'
+      && declarations.get('transition') === 'none !important'
+  })) throw new Error('Personal OS must include reduced-motion coverage')
 
-  const revealAncestor = '@keyframes personal-os-reveal'
-  const revealFrames = osRules.filter((rule) => rule.ancestors.includes(revealAncestor))
-  const fromFrame = revealFrames.find((rule) => rule.selectors.includes('from'))
-  const toFrame = revealFrames.find((rule) => rule.selectors.includes('to'))
-  if ((osSource.match(/@keyframes\s+personal-os-reveal\b/g) ?? []).length !== 1
-    || revealFrames.length !== 2
-    || !hasExactDeclarations(fromFrame, [
-      ['opacity', '0'], ['transform', 'translateY(8px) scale(.995)']
-    ])
-    || !hasExactDeclarations(toFrame, [
-      ['opacity', '1'], ['transform', 'none']
-    ])) {
-    throw new Error('Personal OS reveal keyframes must use only the approved opacity and transform states')
-  }
-
-  const splash = requireRule(rules, '.factory-boot')
-  const splashDeclarations = parseDeclarations(splash?.body ?? '')
-  if (splashDeclarations.get('position') !== 'fixed' || splashDeclarations.get('inset') !== '0') {
-    throw new Error('factory splash must use fixed positioning and inset: 0')
-  }
-  if (splashDeclarations.get('background') !== '#F7F4EC' || splashDeclarations.get('color') !== '#1E2430') {
-    throw new Error('factory splash must use the approved fixed palette')
-  }
-  if (splashDeclarations.get('transition') !== 'opacity 400ms cubic-bezier(0.16, 1, 0.3, 1)') {
-    throw new Error('factory splash must use the approved 400ms exit')
-  }
-
-  const accessButton = requireRule(rules, '.factory-boot__access')
-  const accessDeclarations = parseDeclarations(accessButton?.body ?? '')
-  if (accessDeclarations.get('min-width') !== '44px' || accessDeclarations.get('min-height') !== '44px') {
-    throw new Error('factory splash access button must keep a 44px hit area')
-  }
-
-  const mobileCanvas = requireRule(rules, '.factory-home .desktop-canvas', mobileMedia)
-  const mobileCanvasDeclarations = parseDeclarations(mobileCanvas?.body ?? '')
-  if (mobileCanvasDeclarations.get('grid-template-columns') !== '1fr'
-    || mobileCanvasDeclarations.get('width') !== 'calc(100vw - 32px)') {
-    throw new Error(`custom.css ${mobileMedia} must set .desktop-canvas to one column`)
-  }
-
-  for (const selector of [
-    '.factory-home.is-entering .system-topbar',
-    '.factory-home.is-entering .desktop-canvas > *'
-  ]) {
-    const reducedFactory = requireRule(rules, selector, reducedMedia)
-    const reducedDeclarations = parseDeclarations(reducedFactory?.body ?? '')
-    if (reducedDeclarations.get('animation') !== 'none !important'
-      || reducedDeclarations.get('transition') !== 'none !important'
-      || reducedDeclarations.get('transform') !== 'none !important') {
-      throw new Error(`custom.css reduced-motion media must reset animation, transition, and transform for ${selector}`)
-    }
-  }
-  const reducedSplash = requireRule(rules, '.factory-boot', reducedMedia)
-  const reducedSplashDeclarations = parseDeclarations(reducedSplash?.body ?? '')
-  if (reducedSplashDeclarations.get('animation') !== 'none !important'
-    || reducedSplashDeclarations.get('transition') !== 'none !important') {
-    throw new Error('custom.css reduced-motion media must suppress splash motion')
-  }
-  const reducedCursor = requireRule(rules, '.factory-boot__cursor', reducedMedia)
-  if (parseDeclarations(reducedCursor?.body ?? '').get('animation') !== 'none !important') {
-    throw new Error('custom.css reduced-motion media must suppress cursor motion')
-  }
-
+  const pageWideTouchAction = osRules.some((rule) => {
+    if (parseDeclarations(rule.body).get('touch-action') !== 'none') return false
+    return rule.selectors.some((selector) => /^(?:html|body|\.factory-home|\.knowledge-factory-page|\.personal-system-view)(?:$|[\s.:#\[])/.test(selector))
+  })
+  if (pageWideTouchAction) throw new Error('Personal OS must not disable touch action page-wide')
 }
