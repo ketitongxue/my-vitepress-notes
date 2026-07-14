@@ -4,7 +4,6 @@ import CanvasCard from './CanvasCard.vue'
 import CanvasConnections from './CanvasConnections.vue'
 import CanvasControls from './CanvasControls.vue'
 import CanvasLayers from './CanvasLayers.vue'
-import CanvasMinimap from './CanvasMinimap.vue'
 import {
   canvasUsableViewport, canvasWheelTransform, clampScale, computeWorldBounds, fitWorldBounds,
   initialFitCards, resolveTouchOwner, screenToWorld, touchGesture, zoomAtPoint,
@@ -510,14 +509,11 @@ onBeforeUnmount(() => {
     <CanvasLayers
       :cards="cards"
       :selected-card-id="selectedCardId"
-      @focus="focusCard"
-      @visibility="changeVisibility"
-    />
-    <CanvasMinimap
-      :cards="cards"
       :transform="transform"
       :viewport="viewportSize"
       :world-bounds="worldBounds"
+      @focus="focusCard"
+      @visibility="changeVisibility"
       @navigate="navigateToPoint"
     />
     <CanvasControls

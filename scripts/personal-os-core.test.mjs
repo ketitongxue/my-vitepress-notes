@@ -1082,10 +1082,14 @@ test('canvas chrome wires layers, minimap, controls, persistence, and bounded hi
   const minimap = readComponent('CanvasMinimap.vue')
   const controls = readComponent('CanvasControls.vue')
 
-  for (const name of ['CanvasLayers', 'CanvasMinimap', 'CanvasControls']) {
+  for (const name of ['CanvasLayers', 'CanvasControls']) {
     assert.match(canvas, new RegExp(`import ${name} from './${name}\\.vue'`))
     assert.match(canvas, new RegExp(`<${name}\\b`))
   }
+  assert.match(layers, /import CanvasMinimap from '.\/CanvasMinimap\.vue'/)
+  assert.match(layers, /<CanvasMinimap\b/)
+  assert.doesNotMatch(canvas, /import CanvasMinimap/)
+  assert.doesNotMatch(canvas, /<CanvasMinimap\b/)
   assert.match(canvas, /from '\.\/canvasPersistence\.mjs'/)
   assert.match(canvas, /from '\.\/canvasHistory\.mjs'/)
   assert.match(canvas, /@focus="focusCard"/)
@@ -1123,14 +1127,14 @@ test('canvas chrome wires layers, minimap, controls, persistence, and bounded hi
     assert.doesNotMatch(match[0], /pushHistory\(/, handler)
   }
 
-  assert.match(layers, /defineEmits\(\['focus', 'visibility'\]\)/)
+  assert.match(layers, /defineEmits\(\['focus', 'visibility', 'navigate'\]\)/)
   assert.match(layers, /<aside\s+[\s\S]*?class="canvas-layers"/)
   assert.match(layers, /v-for="card in cards"/)
   assert.match(layers, /:key="card\.id"/)
-  assert.match(layers, /type="checkbox"/)
   assert.match(layers, /:aria-current="selectedCardId === card\.id \? 'true' : undefined"/)
   assert.match(layers, /:disabled="card\.visible === false"/)
-  assert.match(layers, /切换画布图层面板/)
+  assert.match(layers, /展开或收起画布图层/)
+  assert.match(layers, /:aria-pressed="card\.visible !== false"/)
   assert.match(layers, /min-width: 44px/)
   assert.match(layers, /@media \(max-width: 767px\)/)
 
@@ -1144,10 +1148,9 @@ test('canvas chrome wires layers, minimap, controls, persistence, and bounded hi
   assert.match(minimap, /emit\('navigate', \{ x, y \}\)/)
   assert.match(minimap, /<svg\b/)
   assert.match(minimap, /<rect\b/)
-  assert.match(minimap, /left: 18px/)
-  assert.match(minimap, /left: 10px/)
-  assert.doesNotMatch(minimap, /right: (?:18|10)px/)
-  assert.match(minimap, /@media \(max-width: 359px\)[\s\S]*?width: 112px/)
+  assert.match(minimap, /position: static/)
+  assert.match(minimap, /width: 100%/)
+  assert.doesNotMatch(minimap, /position: absolute/)
 
   assert.match(controls, /defineEmits\(\['zoom-in', 'zoom-out', 'fit', 'undo', 'save', 'reset'\]\)/)
   for (const label of ['缩小画布', '放大画布', '适应全部内容', '撤销上一步', '保存画布布局', '恢复默认布局']) {
@@ -1164,4 +1167,38 @@ test('canvas chrome wires layers, minimap, controls, persistence, and bounded hi
     assert.doesNotMatch(source, /contenteditable|v-html|<iframe\b|<object\b|<embed\b|sessionStorage|window\.confirm/i)
     assert.doesNotMatch(source, /upload|create-card|delete-card|sparkle|particle|illustration|https?:\/\//i)
   }
+})
+
+test('Layers is a 48px rail, 220px overlay, and mobile bottom drawer', () => {
+  const layers = readComponent('CanvasLayers.vue')
+  const canvas = readComponent('InfiniteCanvas.vue')
+  assert.match(layers, /import CanvasMinimap from '.\/CanvasMinimap\.vue'/)
+  assert.match(layers, /aria-controls="canvas-layers-panel"/)
+  assert.match(layers, /:aria-expanded="expanded"/)
+  assert.match(layers, /id="canvas-layers-panel"/)
+  assert.match(layers, /<CanvasMinimap[\s\S]*:world-bounds="worldBounds"/)
+  assert.match(layers, /width:\s*48px/)
+  assert.match(layers, /width:\s*220px/)
+  assert.match(layers, /@media \(max-width:\s*767px\)[\s\S]*position:\s*fixed[\s\S]*bottom:/)
+  assert.match(layers, /min-width:\s*44px[\s\S]*min-height:\s*44px/)
+  assert.equal([...canvas.matchAll(/<CanvasMinimap\b/g)].length, 0)
+  assert.equal([...canvas.matchAll(/<CanvasLayers\b/g)].length, 1)
+})
+
+test('Layers exposes selection and visibility state by accessible name', () => {
+  const layers = readComponent('CanvasLayers.vue')
+  assert.match(layers, /:aria-current="selectedCardId === card\.id \? 'true' : undefined"/)
+  assert.match(layers, /:aria-label="`\$\{card\.visible !== false \? '隐藏' : '显示'\} \$\{card\.title\}`"/)
+  assert.match(layers, /@click="emit\('visibility', \{ id: card\.id, visible: card\.visible === false \}\)"/)
+})
+
+test('Layers returns focus outside the panel before making it inert', () => {
+  const layers = readComponent('CanvasLayers.vue')
+  assert.match(layers, /const layersToggle = ref\(null\)/)
+  assert.match(layers, /ref="layersToggle"/)
+  assert.match(layers, /@click="closePanel"/)
+  const closePanel = layers.match(/function closePanel\(\) \{[\s\S]*?\n\}/)?.[0]
+  assert.ok(closePanel)
+  assert.ok(closePanel.indexOf('layersToggle.value?.focus()') >= 0)
+  assert.ok(closePanel.indexOf('expanded.value = false') > closePanel.indexOf('layersToggle.value?.focus()'))
 })
