@@ -189,8 +189,24 @@ onBeforeUnmount(() => {
         @pointerup="endManipulation"
         @pointercancel="cancelManipulation"
       >
-        <span class="window-manager__traffic-lights" aria-hidden="true">
-          <i></i><i></i><i></i>
+        <span class="window-manager__traffic-lights">
+          <button
+            type="button"
+            class="window-manager__traffic-control window-manager__traffic-control--close"
+            :aria-label="closeLabel(titleFor(item))"
+            @pointerdown.stop="focus(item.id)"
+            @click="close(item.id)"
+          ><span aria-hidden="true">×</span></button>
+          <i
+            class="window-manager__traffic-control window-manager__traffic-control--minimize"
+            aria-hidden="true"
+            @pointerdown.stop="focus(item.id)"
+          ><span>−</span></i>
+          <i
+            class="window-manager__traffic-control window-manager__traffic-control--zoom"
+            aria-hidden="true"
+            @pointerdown.stop="focus(item.id)"
+          ><span>＋</span></i>
         </span>
         <strong>{{ titleFor(item) }}</strong>
         <span class="window-manager__controls">
@@ -202,13 +218,6 @@ onBeforeUnmount(() => {
             rel="noopener noreferrer"
             @pointerdown.stop="focus(item.id)"
           >打开</a>
-          <button
-            type="button"
-            class="window-manager__close"
-            :aria-label="closeLabel(titleFor(item))"
-            @pointerdown.stop="focus(item.id)"
-            @click="close(item.id)"
-          ><span aria-hidden="true">×</span></button>
         </span>
       </header>
 
@@ -300,21 +309,55 @@ onBeforeUnmount(() => {
 .window-manager__traffic-lights {
   display: flex;
   flex: 0 0 auto;
-  gap: 7px;
-  pointer-events: none;
+  align-items: center;
+  gap: 0;
 }
 
-.window-manager__traffic-lights i {
-  width: 11px;
-  height: 11px;
+.window-manager__traffic-control {
+  position: relative;
+  display: inline-grid;
+  width: 36px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgb(30 36 48 / 64%);
+  cursor: default;
+  font: 700 11px/1 "JetBrains Mono", "Fira Code", Consolas, monospace;
+}
+
+.window-manager__traffic-control::before {
+  position: absolute;
+  width: 12px;
+  height: 12px;
   border: 1px solid rgb(30 36 48 / 18%);
   border-radius: 50%;
   box-shadow: inset 0 1px rgb(255 255 255 / 42%);
+  content: "";
 }
 
-.window-manager__traffic-lights i:nth-child(1) { background: #ef6b62; }
-.window-manager__traffic-lights i:nth-child(2) { background: #f2c94c; }
-.window-manager__traffic-lights i:nth-child(3) { background: #57ba78; }
+.window-manager__traffic-control span {
+  position: relative;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.window-manager__traffic-lights:hover .window-manager__traffic-control span,
+.window-manager__traffic-control--close:focus-visible span {
+  opacity: .72;
+}
+
+button.window-manager__traffic-control {
+  cursor: pointer;
+}
+
+.window-manager__traffic-control--close::before { background: #ef6b62; }
+.window-manager__traffic-control--minimize::before { background: #f2c94c; }
+.window-manager__traffic-control--zoom::before { background: #57ba78; }
 
 .window-manager__controls {
   display: flex;
@@ -323,14 +366,12 @@ onBeforeUnmount(() => {
 }
 
 .window-manager__controls a,
-.window-manager__controls button,
 .window-manager__preview a {
   color: #1e4dc0;
   font: inherit;
 }
 
-.window-manager__controls a,
-.window-manager__controls button {
+.window-manager__controls a {
   min-width: 40px;
   min-height: 40px;
   padding: 6px 10px;
@@ -343,15 +384,7 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 
-.window-manager__controls .window-manager__close {
-  width: 40px;
-  padding: 0;
-  color: #5b6677;
-  font-size: 21px;
-  line-height: 1;
-}
-
-.window-manager__controls :where(a, button):hover {
+.window-manager__controls a:hover {
   border-color: rgb(45 111 181 / 46%);
   background: #fff;
 }
@@ -503,8 +536,12 @@ onBeforeUnmount(() => {
     border-radius: 18px;
   }
 
-  .window-manager__controls a,
-  .window-manager__controls button {
+  .window-manager__traffic-control {
+    width: 44px;
+    height: 44px;
+  }
+
+  .window-manager__controls a {
     min-width: 44px;
     min-height: 44px;
   }
