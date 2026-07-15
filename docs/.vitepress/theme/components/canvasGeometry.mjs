@@ -1,7 +1,7 @@
 const MIN_SCALE = 0.15
 const MAX_SCALE = 3
 const PRIMARY_IDS = new Set([
-  'identity', 'growth-field', 'growth-product', 'growth-system', 'growth-ai',
+  'identity', 'growth-product', 'growth-ai',
 ])
 
 export function clampScale(scale) {
