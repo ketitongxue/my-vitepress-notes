@@ -1,7 +1,7 @@
 export const bootLines = Object.freeze([
   'JuZX@digital-factory ~ zsh',
   '$ whoami',
-  'MES Product Manager / Industrial Digitalization Explorer',
+  'Product Manager / Industrial Digitalization Explorer',
   '$ open juzx-os',
 ])
 
@@ -43,18 +43,12 @@ const node = ({ id, type, kicker, title, body, x, y, width, height,
 
 export const canvasCards = Object.freeze([
   node({ id: 'identity', type: 'identity', kicker: "HELLO, I'M", title: 'JuZX', mark: 'JZ',
-    body: 'MES Product Manager · Industrial Digitalization Explorer\n关注工业数字化、智能制造，以及 AI 在个人工作流中的实践。',
+    body: 'Product Manager · Industrial Digitalization Explorer\n关注智能制造以及 AI 在个人工作流中的实践。',
     x: 120, y: 360, width: 360, height: 260, minWidth: 300, minHeight: 220, accent: 'blue' }),
-  node({ id: 'growth-field', type: 'timeline', kicker: '01', title: '制造现场',
-    body: '理解真实业务、流程与协作约束。', x: 560, y: 340, width: 240, height: 160,
-    minWidth: 220, minHeight: 140, accent: 'yellow' }),
-  node({ id: 'growth-product', type: 'timeline', kicker: '02', title: '产品实践',
+  node({ id: 'growth-product', type: 'timeline', kicker: '01', title: '产品实践',
     body: '把业务问题转化为可落地的产品方案。', x: 860, y: 280, width: 240, height: 160,
     minWidth: 220, minHeight: 140, accent: 'blue' }),
-  node({ id: 'growth-system', type: 'timeline', kicker: '03', title: '工业数字化',
-    body: '连接生产、物资、质量、焊接和设备业务。', x: 1160, y: 340, width: 260, height: 170,
-    minWidth: 220, minHeight: 140, accent: 'yellow' }),
-  node({ id: 'growth-ai', type: 'timeline', kicker: '04', title: 'AI 工作流',
+  node({ id: 'growth-ai', type: 'timeline', kicker: '02', title: 'AI 工作流',
     body: '把知识、检索和 Agent 变成持续使用的系统。', x: 1500, y: 270, width: 260, height: 170,
     minWidth: 220, minHeight: 140, accent: 'blue' }),
   node({ id: 'core-story', type: 'principle', kicker: 'CORE STORY', title: '从真实问题出发',
@@ -81,15 +75,12 @@ export const canvasCards = Object.freeze([
 const connection = (from, to) => Object.freeze({ from, to })
 
 export const canvasConnections = Object.freeze([
-  connection('identity', 'growth-field'),
-  connection('growth-field', 'growth-product'),
-  connection('growth-product', 'growth-system'),
-  connection('growth-system', 'growth-ai'),
+  connection('identity', 'growth-product'),
+  connection('growth-product', 'growth-ai'),
   connection('growth-product', 'core-story'),
-  connection('growth-system', 'core-story'),
-  connection('growth-system', 'capabilities'),
+  connection('growth-product', 'capabilities'),
   connection('growth-ai', 'capabilities'),
-  connection('growth-system', 'project-archive'),
+  connection('growth-product', 'project-archive'),
   connection('growth-ai', 'knowledge-products'),
   connection('growth-ai', 'current-build'),
   connection('growth-ai', 'next-direction'),

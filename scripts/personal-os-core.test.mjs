@@ -71,12 +71,10 @@ test('Personal OS content is complete and internally referential', () => {
   assert.equal(knowledgeSections.length, 6)
 })
 
-test('growth-axis content has eleven immutable trusted nodes', () => {
+test('growth-axis content has nine immutable trusted nodes', () => {
   assert.deepEqual(canvasCards.map(({ id, type }) => [id, type]), [
     ['identity', 'identity'],
-    ['growth-field', 'timeline'],
     ['growth-product', 'timeline'],
-    ['growth-system', 'timeline'],
     ['growth-ai', 'timeline'],
     ['core-story', 'principle'],
     ['capabilities', 'skills'],
@@ -88,9 +86,7 @@ test('growth-axis content has eleven immutable trusted nodes', () => {
   assert.deepEqual(canvasCards.map(({ id, x, y, width, height }) =>
     [id, x, y, width, height]), [
     ['identity', 120, 360, 360, 260],
-    ['growth-field', 560, 340, 240, 160],
     ['growth-product', 860, 280, 240, 160],
-    ['growth-system', 1160, 340, 260, 170],
     ['growth-ai', 1500, 270, 260, 170],
     ['core-story', 780, 570, 340, 190],
     ['capabilities', 1180, 600, 380, 180],
@@ -116,15 +112,12 @@ test('growth-axis content has eleven immutable trusted nodes', () => {
 
 test('growth-axis relationships and native destinations are exact', () => {
   assert.deepEqual(canvasConnections.map(({ from, to }) => [from, to]), [
-    ['identity', 'growth-field'],
-    ['growth-field', 'growth-product'],
-    ['growth-product', 'growth-system'],
-    ['growth-system', 'growth-ai'],
+    ['identity', 'growth-product'],
+    ['growth-product', 'growth-ai'],
     ['growth-product', 'core-story'],
-    ['growth-system', 'core-story'],
-    ['growth-system', 'capabilities'],
+    ['growth-product', 'capabilities'],
     ['growth-ai', 'capabilities'],
-    ['growth-system', 'project-archive'],
+    ['growth-product', 'project-archive'],
     ['growth-ai', 'knowledge-products'],
     ['growth-ai', 'current-build'],
     ['growth-ai', 'next-direction'],
@@ -137,7 +130,7 @@ test('growth-axis relationships and native destinations are exact', () => {
     { label: 'llm-wiki Skill', href: '/llm-wiki/' },
   ])
   const ids = new Set(canvasCards.map(({ id }) => id))
-  assert.equal(ids.size, 11)
+  assert.equal(ids.size, 9)
   for (const edge of canvasConnections) {
     assert.ok(ids.has(edge.from), edge.from)
     assert.ok(ids.has(edge.to), edge.to)
@@ -961,8 +954,8 @@ test('dynamic bounds measure visible cards and share one Fit rectangle', () => {
   const fitted = fitWorldBounds(computeWorldBounds(cards, fallback, 50), usable, 24)
   assert.ok(Number.isFinite(fitted.scale) && Number.isFinite(fitted.panX) && Number.isFinite(fitted.panY))
   assert.deepEqual(initialFitCards(canvasCards, true).map(({ id }) => id),
-    ['identity', 'growth-field', 'growth-product', 'growth-system', 'growth-ai'])
-  assert.equal(initialFitCards(canvasCards, false).length, 11)
+    ['identity', 'growth-product', 'growth-ai'])
+  assert.equal(initialFitCards(canvasCards, false).length, 9)
 
   const offsetFit = fitWorldBounds(
     { x: 0, y: 0, width: 100, height: 100 },
