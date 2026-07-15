@@ -5,8 +5,8 @@ import WindowManager from './WindowManager.vue'
 import { constrainIconPosition, resolveSurfaceBounds } from './desktopGeometry.mjs'
 import { desktopEntries } from './personalOsContent.mjs'
 import {
+  constrainWindowState,
   createWindowState,
-  moveWindow,
   openWindow,
 } from './windowManagerState.mjs'
 
@@ -55,11 +55,7 @@ function openEntry(entry) {
 }
 
 function constrainOpenWindows(nextBounds) {
-  let nextState = windowState.value
-  for (const item of nextState.windows) {
-    nextState = moveWindow(nextState, item.id, { x: item.x, y: item.y }, nextBounds)
-  }
-  windowState.value = nextState
+  windowState.value = constrainWindowState(windowState.value, nextBounds)
 }
 
 function measureSurface() {

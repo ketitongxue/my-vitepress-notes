@@ -14,8 +14,8 @@ import {
   finishIconPointer, isDragDistance, resolveIconPosition, resolveSurfaceBounds,
 } from '../docs/.vitepress/theme/components/desktopGeometry.mjs'
 import {
-  closeWindow, createWindowState, moveWindow, openWindow, resizeWindow, resizeWindowByKey,
-  resizeWindowFromEdge,
+  closeWindow, constrainWindowState, createWindowState, moveWindow, openWindow, resizeWindow,
+  resizeWindowByKey, resizeWindowFromEdge, toggleMaximizeWindow,
 } from '../docs/.vitepress/theme/components/windowManagerState.mjs'
 import {
   exitFrame, normalizeExitProgress,
@@ -498,6 +498,49 @@ test('desktop window resize reducer supports keyboard steps and all eight edges'
   }
 })
 
+test('desktop window maximize fills current bounds and restores readable geometry', () => {
+  const bounds = { width: 1000, height: 700 }
+  const entry = desktopEntries[0]
+  const positioned = moveWindow(
+    resizeWindow(openWindow(createWindowState(), entry, bounds), entry.id, { width: 520, height: 340 }, bounds),
+    entry.id,
+    { x: 140, y: 110 },
+    bounds,
+  )
+
+  const maximized = toggleMaximizeWindow(positioned, entry.id, bounds)
+  assert.deepEqual(
+    (({ x, y, width, height }) => ({ x, y, width, height }))(maximized.windows[0]),
+    { x: 0, y: 0, width: 1000, height: 700 },
+  )
+  assert.equal(maximized.windows[0].maximized, true)
+  assert.deepEqual(maximized.windows[0].restoreRect, { x: 140, y: 110, width: 520, height: 340 })
+  assert.ok(maximized.windows[0].z > positioned.windows[0].z)
+  assert.equal(moveWindow(maximized, entry.id, { x: 20, y: 20 }, bounds), maximized)
+  assert.equal(resizeWindow(maximized, entry.id, { width: 600, height: 400 }, bounds), maximized)
+  assert.equal(resizeWindowFromEdge(maximized, entry.id, 'se', { x: -20, y: -20 }, bounds), maximized)
+
+  const restored = toggleMaximizeWindow(maximized, entry.id, bounds)
+  assert.deepEqual(
+    (({ x, y, width, height }) => ({ x, y, width, height }))(restored.windows[0]),
+    { x: 140, y: 110, width: 520, height: 340 },
+  )
+  assert.equal('maximized' in restored.windows[0], false)
+  assert.equal('restoreRect' in restored.windows[0], false)
+
+  const maximizedAgain = toggleMaximizeWindow(restored, entry.id, bounds)
+  const narrowed = constrainWindowState(maximizedAgain, { width: 600, height: 420 })
+  assert.deepEqual(
+    (({ x, y, width, height }) => ({ x, y, width, height }))(narrowed.windows[0]),
+    { x: 0, y: 0, width: 600, height: 420 },
+  )
+  const constrainedRestore = toggleMaximizeWindow(narrowed, entry.id, { width: 600, height: 420 })
+  assert.deepEqual(
+    (({ x, y, width, height }) => ({ x, y, width, height }))(constrainedRestore.windows[0]),
+    { x: 140, y: 110, width: 460, height: 310 },
+  )
+})
+
 test('desktop components use local Tabler icons and native pointer interactions', () => {
   const icon = readComponent('DesktopIcon.vue')
   const manager = readComponent('WindowManager.vue')
@@ -529,11 +572,12 @@ test('desktop components use local Tabler icons and native pointer interactions'
   assert.match(manager, /\.is-manipulating/)
   assert.match(manager, /`关闭 \$\{title\}`/)
   assert.match(manager, /class="window-manager__traffic-control window-manager__traffic-control--close"[\s\S]{0,240}:aria-label="closeLabel\(titleFor\(item\)\)"[\s\S]{0,240}@click="close\(item\.id\)"/)
-  assert.match(manager, /window-manager__traffic-control--minimize"[\s\S]{0,160}aria-hidden="true"[\s\S]{0,160}@pointerdown\.stop="focus\(item\.id\)"/)
-  assert.match(manager, /window-manager__traffic-control--zoom"[\s\S]{0,160}aria-hidden="true"[\s\S]{0,160}@pointerdown\.stop="focus\(item\.id\)"/)
+  assert.doesNotMatch(manager, /window-manager__traffic-control--minimize|#f2c94c/i)
+  assert.match(manager, /class="window-manager__traffic-control window-manager__traffic-control--zoom"[\s\S]{0,280}:aria-label="maximizeLabel\(item\)"[\s\S]{0,280}:aria-pressed="Boolean\(item\.maximized\)"[\s\S]{0,280}@click="toggleMaximize\(item\.id\)"/)
   assert.doesNotMatch(manager, /window-manager__close/)
-  assert.doesNotMatch(manager, /class="window-manager__controls"[\s\S]{0,420}<button/)
-  assert.match(manager, /`在新页面打开 \$\{title\}`/)
+  assert.doesNotMatch(manager, /window-manager__controls|externalLabel|>打开<\/a>/)
+  assert.match(manager, /v-for="handle in item\.maximized \? \[\] : resizeEdges"/)
+  assert.match(manager, /if \(item\.maximized\) return/)
   assert.match(manager, /@pointerdown\.stop="focus\(item\.id\)"/)
   assert.match(manager, /data-resize-edge/)
   assert.match(manager, /@keydown="handleResizeKey\(item, handle\.edge, \$event\)"/)
@@ -547,6 +591,7 @@ test('desktop components use local Tabler icons and native pointer interactions'
 
   assert.match(surface, /desktopEntries/)
   assert.match(surface, /createWindowState/)
+  assert.match(surface, /constrainWindowState/)
   assert.match(surface, /openWindow/)
   assert.match(surface, /ResizeObserver/)
   assert.match(surface, /重置桌面位置/)

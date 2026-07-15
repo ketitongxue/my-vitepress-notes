@@ -168,7 +168,7 @@ test('every required mobile Personal OS target keeps a 44 by 44 hit area', async
 
   assert.match(boot, /\.macbook-boot__launch\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
   assert.match(windows, /@media \(max-width: 767px\)[\s\S]*?\.window-manager__traffic-control\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/)
-  assert.match(windows, /@media \(max-width: 767px\)[\s\S]*?\.window-manager__controls a\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
+  assert.doesNotMatch(windows, /\.window-manager__controls/)
   assert.match(windows, /@media \(max-width: 767px\)[\s\S]*?\.window-manager__resize-handle\s*\{[^}]*display:\s*none;/)
   assert.match(navigation, /@media \(max-width: 767px\)[\s\S]*?\.bottom-os-navigation button\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
   assert.match(layers, /@media \(max-width: 767px\)[\s\S]*?\.canvas-layers__toggle\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
