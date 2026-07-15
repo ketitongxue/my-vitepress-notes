@@ -74,7 +74,7 @@ function includesDeclaration(rules, selector, property, value, ancestor) {
 }
 
 function isPersonalOsSelector(selector) {
-  return /\.(?:macbook-boot|desktop-surface|desktop-icon|window-manager|bottom-os-navigation|knowledge-portfolio|infinite-canvas|canvas-card|canvas-connections|canvas-layers|canvas-minimap|canvas-controls)(?:$|[_-]|[\s.:#\[])/.test(selector)
+  return /\.(?:macbook-boot|desktop-surface|desktop-icon|window-manager|bottom-os-navigation|knowledge-portfolio|infinite-canvas|canvas-card|canvas-connections|canvas-layers|canvas-controls)(?:$|[_-]|[\s.:#\[])/.test(selector)
 }
 
 function isPersonalOsScoped(selector) {
@@ -153,7 +153,6 @@ export function validateThemeCss(source) {
     '.factory-home .infinite-canvas',
     '.factory-home .canvas-card',
     '.factory-home .canvas-layers',
-    '.factory-home .canvas-minimap',
     '.factory-home .canvas-controls',
   ]) requireRule(osRules, selector)
 

@@ -1,16 +1,12 @@
 <script setup>
 import { computed, ref } from 'vue'
-import CanvasMinimap from './CanvasMinimap.vue'
 
 const props = defineProps({
   cards: { type: Array, required: true },
   selectedCardId: { type: String, default: null },
-  transform: { type: Object, required: true },
-  viewport: { type: Object, required: true },
-  worldBounds: { type: Object, required: true },
 })
 
-const emit = defineEmits(['focus', 'visibility', 'navigate'])
+const emit = defineEmits(['focus', 'visibility'])
 const expanded = ref(false)
 const layersToggle = ref(null)
 const visibleCount = computed(() => props.cards.filter((card) => card.visible !== false).length)
@@ -74,13 +70,6 @@ function closePanel() {
         </li>
       </ol>
 
-      <CanvasMinimap
-        :cards="cards"
-        :transform="transform"
-        :viewport="viewport"
-        :world-bounds="worldBounds"
-        @navigate="emit('navigate', $event)"
-      />
     </div>
   </aside>
 </template>

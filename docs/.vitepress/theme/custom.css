@@ -445,7 +445,6 @@ html.personal-os-system-active .VPFooter {
 }
 
 .factory-home .canvas-layers,
-.factory-home .canvas-minimap,
 .factory-home .canvas-controls {
   color: #192232;
 }
@@ -470,7 +469,6 @@ html.personal-os-system-active .VPFooter {
 
   .factory-home .bottom-os-navigation button,
   .factory-home .canvas-layers__toggle,
-  .factory-home .canvas-minimap__surface,
   .factory-home .macbook-boot__launch {
     min-width: 44px;
     min-height: 44px;
