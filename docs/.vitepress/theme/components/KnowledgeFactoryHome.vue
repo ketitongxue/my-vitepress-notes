@@ -10,6 +10,7 @@ import {
 } from './personalOsRouter.mjs'
 import { loadSystemCanvasModule } from './systemCanvasLoader.mjs'
 
+const SYSTEM_ACTIVE_CLASS = 'personal-os-system-active'
 const claimedView = typeof document === 'undefined'
   ? 'home'
   : document.documentElement.dataset.personalOsView
@@ -26,6 +27,16 @@ const systemImporters = Object.freeze({
 })
 let systemImportAttempt = 0
 let requestId = 0
+
+function setSystemChromeIsolation(active) {
+  if (typeof document === 'undefined') return
+  const targets = [
+    document.documentElement,
+    document.body,
+    document.querySelector('.Layout'),
+  ]
+  for (const target of targets) target?.classList.toggle(SYSTEM_ACTIVE_CLASS, active)
+}
 
 async function requestSystem() {
   if (systemLoadState.value === 'loading' || InfiniteCanvas.value) return
@@ -55,6 +66,7 @@ async function applyHash({ scroll = true } = {}) {
   const nextView = normalizeOsHash(window.location.hash)
   activeView.value = nextView
   document.documentElement.dataset.personalOsView = nextView
+  setSystemChromeIsolation(nextView === 'system')
 
   if (nextView === 'system') void requestSystem()
   if (nextView === 'home' && !homeEntered.value) {
@@ -106,6 +118,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   requestId += 1
+  setSystemChromeIsolation(false)
   window.removeEventListener('hashchange', handleHashChange)
 })
 </script>
@@ -144,15 +157,25 @@ onBeforeUnmount(() => {
       data-os-view="system"
     >
       <component v-if="InfiniteCanvas" :is="InfiniteCanvas" />
-      <p v-else-if="systemLoadState === 'loading'" role="status">正在加载我的 OS…</p>
-      <button
-        v-else-if="systemLoadState === 'error'"
-        type="button"
-        @click="retrySystem"
+      <div
+        v-else-if="systemLoadState === 'loading'"
+        class="personal-system-view__status"
+        role="status"
       >
-        重新加载我的 OS
-      </button>
-      <p v-else role="status">准备加载我的 OS…</p>
+        正在加载我的 OS…
+      </div>
+      <div
+        v-else-if="systemLoadState === 'error'"
+        class="personal-system-view__error"
+        role="alert"
+      >
+        <strong>我的 OS 暂时无法加载</strong>
+        <p>其他页面仍可正常使用，你可以重新请求画布模块。</p>
+        <button type="button" @click="retrySystem">重新加载我的 OS</button>
+      </div>
+      <div v-else class="personal-system-view__status" role="status">
+        准备加载我的 OS…
+      </div>
     </section>
     <BottomOsNavigation
       v-show="!hydrated || activeView !== 'home' || homeEntered"

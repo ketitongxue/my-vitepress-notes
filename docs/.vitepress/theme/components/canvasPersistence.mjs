@@ -1,4 +1,4 @@
-export const CANVAS_LAYOUT_KEY = 'juzx-personal-os-layout-v1'
+export const CANVAS_LAYOUT_KEY = 'juzx-personal-os-layout-v2'
 
 const MIN_SCALE = 0.15
 const MAX_SCALE = 3
@@ -30,29 +30,54 @@ function validCard(card) {
     && card.width > 0
     && isFiniteNumber(card.height)
     && card.height > 0
+    && Number.isFinite(card.x + card.width)
+    && Number.isFinite(card.y + card.height)
     && typeof card.visible === 'boolean'
 }
 
-function validLayout(layout) {
+function hasFiniteLayoutBounds(cards) {
+  const minX = Math.min(...cards.map(({ x }) => x))
+  const minY = Math.min(...cards.map(({ y }) => y))
+  const maxX = Math.max(...cards.map(({ x, width }) => x + width))
+  const maxY = Math.max(...cards.map(({ y, height }) => y + height))
+  return Number.isFinite(maxX - minX) && Number.isFinite(maxY - minY)
+}
+
+function validOrder(order, ids) {
+  if (!Array.isArray(order) || order.length !== ids.size) return false
+  const orderedIds = new Set()
+  for (const id of order) {
+    if (typeof id !== 'string' || !ids.has(id) || orderedIds.has(id)) return false
+    orderedIds.add(id)
+  }
+  return orderedIds.size === ids.size
+}
+
+function validLayout(layout, requireTrustedMinimums = false) {
   if (!isObject(layout) || !validTransform(layout.transform)) return false
   if (!Array.isArray(layout.cards) || layout.cards.length === 0) return false
   const ids = new Set()
   for (const card of layout.cards) {
     if (!validCard(card) || ids.has(card.id)) return false
+    if (requireTrustedMinimums && (
+      !isFiniteNumber(card.minWidth) || card.minWidth <= 0
+      || !isFiniteNumber(card.minHeight) || card.minHeight <= 0
+    )) return false
     ids.add(card.id)
   }
-  return true
+  return validOrder(layout.order, ids) && hasFiniteLayoutBounds(layout.cards)
 }
 
 function serializableEnvelope(layout) {
   if (!validLayout(layout)) return null
   return {
-    version: 1,
+    version: 2,
     transform: {
       scale: layout.transform.scale,
       panX: layout.transform.panX,
       panY: layout.transform.panY,
     },
+    order: [...layout.order],
     cards: layout.cards.map(({ id, x, y, width, height, visible }) => ({
       id, x, y, width, height, visible,
     })),
@@ -66,21 +91,25 @@ export function serializeCanvasLayout(layout) {
 }
 
 export function parseCanvasLayout(raw, defaults) {
-  if (typeof raw !== 'string' || !validLayout(defaults)) return null
+  if (typeof raw !== 'string' || !validLayout(defaults, true)) return null
 
   try {
     const stored = JSON.parse(raw)
-    if (!isObject(stored) || stored.version !== 1) return null
+    if (!isObject(stored) || stored.version !== 2) return null
     if (!validTransform(stored.transform) || !Array.isArray(stored.cards)) return null
     if (stored.cards.length !== defaults.cards.length) return null
 
     const trustedIds = new Set(defaults.cards.map(({ id }) => id))
+    if (!validOrder(stored.order, trustedIds)) return null
     const storedById = new Map()
     for (const card of stored.cards) {
       if (!validCard(card) || !trustedIds.has(card.id) || storedById.has(card.id)) return null
+      const trusted = defaults.cards.find(({ id }) => id === card.id)
+      if (card.width < trusted.minWidth || card.height < trusted.minHeight) return null
       storedById.set(card.id, card)
     }
     if (storedById.size !== trustedIds.size) return null
+    if (!hasFiniteLayoutBounds(stored.cards)) return null
 
     return {
       cards: defaults.cards.map((trusted) => {
@@ -94,6 +123,7 @@ export function parseCanvasLayout(raw, defaults) {
           visible: geometry.visible,
         }
       }),
+      order: [...stored.order],
       transform: {
         scale: stored.transform.scale,
         panX: stored.transform.panX,

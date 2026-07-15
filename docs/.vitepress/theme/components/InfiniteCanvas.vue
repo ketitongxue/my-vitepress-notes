@@ -4,10 +4,9 @@ import CanvasCard from './CanvasCard.vue'
 import CanvasConnections from './CanvasConnections.vue'
 import CanvasControls from './CanvasControls.vue'
 import CanvasLayers from './CanvasLayers.vue'
-import CanvasMinimap from './CanvasMinimap.vue'
 import {
-  canvasWheelTransform, clampScale, fitWorldBounds, resolveTouchOwner, screenToWorld,
-  touchGesture, zoomAtPoint,
+  canvasUsableViewport, canvasWheelTransform, clampScale, computeWorldBounds, fitWorldBounds,
+  initialFitCards, resolveTouchOwner, screenToWorld, touchGesture, zoomAtPoint,
 } from './canvasGeometry.mjs'
 import {
   captureCardGeometry, createHistory, getCommittedLayout, pushHistory,
@@ -25,22 +24,22 @@ const transform = ref({ ...INITIAL_TRANSFORM })
 const selectedCardId = ref(null)
 const stackingOrder = ref(cards.value.map((card) => card.id))
 const viewportSize = ref({ width: 1, height: 1 })
+const ready = ref(false)
 
 const defaultLayout = {
   cards: canvasCards.map((card) => ({ ...card })),
+  order: canvasCards.map(({ id }) => id),
   transform: { ...INITIAL_TRANSFORM },
 }
 const history = ref(createHistory(defaultLayout))
-
-function boundsFor(cardsToMeasure) {
-  const minX = Math.min(...cardsToMeasure.map((card) => card.x))
-  const minY = Math.min(...cardsToMeasure.map((card) => card.y))
-  const maxX = Math.max(...cardsToMeasure.map((card) => card.x + card.width))
-  const maxY = Math.max(...cardsToMeasure.map((card) => card.y + card.height))
-  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
-}
-
-const stableWorldBounds = Object.freeze(boundsFor(defaultLayout.cards))
+const canonicalBounds = Object.freeze(computeWorldBounds(
+  defaultLayout.cards,
+  { x: 0, y: 0, width: 2400, height: 1200 },
+  96,
+))
+const worldBounds = computed(() => computeWorldBounds(cards.value, canonicalBounds, 96))
+const mobileViewport = computed(() => viewportSize.value.width < 768)
+const usableViewport = computed(() => canvasUsableViewport(viewportSize.value, mobileViewport.value))
 let pointerGesture = null
 let touchBaseline = null
 let touchOwner = null
@@ -50,6 +49,8 @@ let saveTimer = null
 let storage
 let resizeObserver
 let activeCardGesture = null
+let initialLayoutResolved = false
+let readyFrame = null
 
 const worldStyle = computed(() => ({
   transform: `translate(${transform.value.panX}px, ${transform.value.panY}px) scale(${transform.value.scale})`,
@@ -58,17 +59,23 @@ const worldStyle = computed(() => ({
 function currentLayout() {
   return {
     cards: cards.value.map((card) => ({ ...card })),
+    order: [...stackingOrder.value],
     transform: { ...transform.value },
   }
 }
 
 function applyLayout(layout) {
   cards.value = layout.cards.map((card) => ({ ...card }))
+  stackingOrder.value = [...layout.order]
   transform.value = { ...layout.transform }
 }
 
 function syncHistoryPresent() {
-  history.value = rebaseHistoryTransform(history.value, transform.value)
+  const rebased = rebaseHistoryTransform(history.value, transform.value)
+  history.value = {
+    ...rebased,
+    present: { ...rebased.present, order: [...stackingOrder.value] },
+  }
 }
 
 function zIndexFor(id) {
@@ -76,7 +83,7 @@ function zIndexFor(id) {
 }
 
 function emitLayout() {
-  emit('layout-change', { cards: cards.value, transform: { ...transform.value } })
+  emit('layout-change', currentLayout())
 }
 
 function cancelScheduledSave() {
@@ -297,6 +304,9 @@ function handleTouchCancel(event) {
 function selectCard(id) {
   selectedCardId.value = id
   stackingOrder.value = [...stackingOrder.value.filter((cardId) => cardId !== id), id]
+  syncHistoryPresent()
+  emitLayout()
+  scheduleSave()
 }
 
 function updateCardGeometry({ id, geometry }) {
@@ -353,7 +363,7 @@ function focusCard(id) {
   selectCard(id)
   applyTransform(fitWorldBounds(
     { x: card.x, y: card.y, width: card.width, height: card.height },
-    viewportSize.value,
+    usableViewport.value,
     64,
   ))
 }
@@ -381,7 +391,16 @@ function zoomOut() {
 }
 
 function fitCanvas() {
-  applyTransform(fitWorldBounds(stableWorldBounds, viewportSize.value, 64))
+  applyTransform(fitWorldBounds(worldBounds.value, usableViewport.value, 24))
+}
+
+function fitInitialLayout() {
+  const firstFitBounds = computeWorldBounds(
+    initialFitCards(cards.value, mobileViewport.value),
+    canonicalBounds,
+    96,
+  )
+  applyTransform(fitWorldBounds(firstFitBounds, usableViewport.value, 24))
 }
 
 function undoCanvas() {
@@ -396,24 +415,34 @@ function restoreDefaults() {
   history.value = pushHistory(history.value, defaultLayout)
   applyLayout(history.value.present)
   selectedCardId.value = null
-  stackingOrder.value = defaultLayout.cards.map((card) => card.id)
   emitLayout()
-  scheduleSave()
+  fitCanvas()
 }
 
 function updateViewportSize() {
   const rect = viewport.value?.getBoundingClientRect()
-  if (!rect) return
+  if (!rect || rect.width <= 0 || rect.height <= 0) return
   viewportSize.value = { width: rect.width, height: rect.height }
+  initializeLayout()
+}
+
+function initializeLayout() {
+  if (initialLayoutResolved || viewportSize.value.width <= 0 || viewportSize.value.height <= 0) return
+  const loaded = loadCanvasLayout(storage, defaultLayout)
+  initialLayoutResolved = true
+  history.value = createHistory(loaded ?? defaultLayout)
+  applyLayout(history.value.present)
+  if (!loaded) fitInitialLayout()
 }
 
 onMounted(() => {
   const target = viewport.value
   try { storage = window.localStorage } catch { storage = undefined }
-  const loaded = loadCanvasLayout(storage, defaultLayout) ?? defaultLayout
-  history.value = createHistory(loaded)
-  applyLayout(history.value.present)
   updateViewportSize()
+  readyFrame = window.requestAnimationFrame(() => {
+    readyFrame = null
+    ready.value = true
+  })
 
   target.addEventListener('wheel', handleWheel, { passive: false })
   target.addEventListener('touchstart', handleTouchStart, { passive: false })
@@ -439,11 +468,13 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', updateViewportSize)
   cancelScheduledSave()
   if (frameId !== null) window.cancelAnimationFrame(frameId)
+  if (readyFrame !== null) window.cancelAnimationFrame(readyFrame)
   const pointerId = pointerGesture?.pointerId
   if (pointerId !== undefined && target?.hasPointerCapture?.(pointerId)) {
     target.releasePointerCapture(pointerId)
   }
   frameId = null
+  readyFrame = null
   pendingTransform = null
   pointerGesture = null
   touchBaseline = null
@@ -454,7 +485,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="infinite-canvas" aria-label="JuZX OS 无限画布">
+  <section
+    class="infinite-canvas"
+    :class="{ 'is-ready': ready }"
+    aria-label="JuZX OS 无限画布"
+    aria-describedby="canvas-instructions"
+  >
+    <p id="canvas-instructions" class="infinite-canvas__instructions">
+      拖动画布浏览，滚轮或双指缩放；也可通过图层聚焦节点，通过适应按钮恢复全局视图。
+    </p>
     <div
       ref="viewport"
       class="infinite-canvas__viewport"
@@ -470,9 +509,10 @@ onBeforeUnmount(() => {
       <div class="infinite-canvas__world" :style="worldStyle">
         <CanvasConnections :cards="cards" :connections="canvasConnections" />
         <CanvasCard
-          v-for="card in cards"
+          v-for="(card, index) in cards"
           :key="card.id"
           :card="card"
+          :order="index"
           :scale="transform.scale"
           :selected="selectedCardId === card.id"
           :z-index="zIndexFor(card.id)"
@@ -486,14 +526,11 @@ onBeforeUnmount(() => {
     <CanvasLayers
       :cards="cards"
       :selected-card-id="selectedCardId"
-      @focus="focusCard"
-      @visibility="changeVisibility"
-    />
-    <CanvasMinimap
-      :cards="cards"
       :transform="transform"
       :viewport="viewportSize"
-      :world-bounds="stableWorldBounds"
+      :world-bounds="worldBounds"
+      @focus="focusCard"
+      @visibility="changeVisibility"
       @navigate="navigateToPoint"
     />
     <CanvasControls
@@ -518,7 +555,16 @@ onBeforeUnmount(() => {
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  background: #2b7fd8;
+  background-color: #f7f4ec;
+  color: #1e2430;
+}
+
+.infinite-canvas__instructions {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
 
 .infinite-canvas__viewport {
@@ -527,6 +573,8 @@ onBeforeUnmount(() => {
   overflow: hidden;
   cursor: grab;
   touch-action: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='%68%74%74%70%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='1' cy='1' r='1' fill='%239AAECC' fill-opacity='.34'/%3E%3C/svg%3E");
+  background-size: 24px 24px;
 }
 
 .infinite-canvas__viewport:active {
@@ -541,11 +589,44 @@ onBeforeUnmount(() => {
   transform-origin: 0 0;
 }
 
+.infinite-canvas:not(.is-ready) :deep(.canvas-card) {
+  opacity: 0;
+}
+
+.infinite-canvas.is-ready :deep(.canvas-card) {
+  animation: canvas-node-enter 360ms cubic-bezier(.16, 1, .3, 1) both;
+  animation-delay: calc(var(--node-order) * 55ms);
+}
+
+@keyframes canvas-node-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(.995);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .infinite-canvas:not(.is-ready) :deep(.canvas-card) {
+    opacity: 1;
+  }
+
+  .infinite-canvas.is-ready :deep(.canvas-card) {
+    animation: none;
+  }
+
   .infinite-canvas,
-  .infinite-canvas * {
-    scroll-behavior: auto;
-    transition: none !important;
+  .infinite-canvas *,
+  .canvas-layers,
+  .canvas-controls {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
   }
 }
 </style>

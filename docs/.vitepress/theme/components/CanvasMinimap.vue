@@ -79,14 +79,10 @@ function navigate(event) {
 
 <style scoped>
 .canvas-minimap {
-  position: absolute;
-  left: 18px;
-  bottom: 82px;
-  z-index: 30;
-  width: 180px;
-  padding: 7px;
-  border: 1px solid #1e2430;
-  border-radius: 5px;
+  position: static;
+  width: 100%;
+  padding: 10px;
+  border-top: 1px solid #b9c7db;
   background: #fffdf7;
 }
 
@@ -128,20 +124,6 @@ function navigate(event) {
   vector-effect: non-scaling-stroke;
 }
 
-@media (max-width: 767px) {
-  .canvas-minimap {
-    left: 10px;
-    left: max(10px, env(safe-area-inset-left));
-    bottom: max(136px, calc(env(safe-area-inset-bottom) + 126px));
-    width: 132px;
-  }
-
-  .canvas-minimap__surface {
-    min-height: 44px;
-    height: 76px;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .canvas-minimap,
   .canvas-minimap__surface {
@@ -149,9 +131,10 @@ function navigate(event) {
   }
 }
 
-@media (max-width: 359px) {
-  .canvas-minimap {
-    width: 112px;
+@media (max-width: 767px) {
+  .canvas-minimap__surface {
+    min-height: 88px;
+    height: 112px;
   }
 }
 </style>

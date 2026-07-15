@@ -23,8 +23,8 @@ import {
   loadSystemCanvasModule,
 } from '../docs/.vitepress/theme/components/systemCanvasLoader.mjs'
 import {
-  canvasWheelTransform, clampScale, connectionEndpoints, fitWorldBounds, resolveTouchOwner,
-  screenToWorld, touchGesture, zoomAtPoint,
+  canvasUsableViewport, canvasWheelTransform, clampScale, computeWorldBounds, connectionEndpoints,
+  fitWorldBounds, initialFitCards, resolveTouchOwner, screenToWorld, touchGesture, zoomAtPoint,
 } from '../docs/.vitepress/theme/components/canvasGeometry.mjs'
 import {
   CANVAS_LAYOUT_KEY, loadCanvasLayout, parseCanvasLayout, saveCanvasLayout, serializeCanvasLayout,
@@ -67,9 +67,75 @@ test('Personal OS content is complete and internally referential', () => {
   ])
   assert.deepEqual(desktopEntries.slice(0, 4).map(({ window }) => window.href), ['/wiki/', '/finance/', '/ask/', '/llm-wiki/'])
   assert.equal(knowledgeSections.length, 6)
-  assert.ok(canvasCards.length >= 8)
+})
+
+test('growth-axis content has eleven immutable trusted nodes', () => {
+  assert.deepEqual(canvasCards.map(({ id, type }) => [id, type]), [
+    ['identity', 'identity'],
+    ['growth-field', 'timeline'],
+    ['growth-product', 'timeline'],
+    ['growth-system', 'timeline'],
+    ['growth-ai', 'timeline'],
+    ['core-story', 'principle'],
+    ['capabilities', 'skills'],
+    ['project-archive', 'project'],
+    ['knowledge-products', 'knowledge'],
+    ['current-build', 'status'],
+    ['next-direction', 'next'],
+  ])
+  assert.deepEqual(canvasCards.map(({ id, x, y, width, height }) =>
+    [id, x, y, width, height]), [
+    ['identity', 120, 360, 360, 260],
+    ['growth-field', 560, 340, 240, 160],
+    ['growth-product', 860, 280, 240, 160],
+    ['growth-system', 1160, 340, 260, 170],
+    ['growth-ai', 1500, 270, 260, 170],
+    ['core-story', 780, 570, 340, 190],
+    ['capabilities', 1180, 600, 380, 180],
+    ['project-archive', 1190, 850, 340, 190],
+    ['knowledge-products', 1830, 500, 400, 260],
+    ['current-build', 1740, 850, 320, 170],
+    ['next-direction', 1900, 240, 300, 150],
+  ])
+  assert.equal(Object.isFrozen(canvasCards), true)
+  const capabilities = canvasCards.find(({ id }) => id === 'capabilities')
+  assert.equal(Object.isFrozen(capabilities), true)
+  assert.equal(Object.isFrozen(capabilities.items), true)
+  for (const item of capabilities.items) assert.equal(Object.isFrozen(item), true)
+
+  const knowledge = canvasCards.find(({ id }) => id === 'knowledge-products')
+  assert.equal(Object.isFrozen(knowledge), true)
+  assert.equal(Object.isFrozen(knowledge.links), true)
+  for (const link of knowledge.links) assert.equal(Object.isFrozen(link), true)
+
+  assert.equal(Object.isFrozen(canvasConnections), true)
+  for (const connection of canvasConnections) assert.equal(Object.isFrozen(connection), true)
+})
+
+test('growth-axis relationships and native destinations are exact', () => {
+  assert.deepEqual(canvasConnections.map(({ from, to }) => [from, to]), [
+    ['identity', 'growth-field'],
+    ['growth-field', 'growth-product'],
+    ['growth-product', 'growth-system'],
+    ['growth-system', 'growth-ai'],
+    ['growth-product', 'core-story'],
+    ['growth-system', 'core-story'],
+    ['growth-system', 'capabilities'],
+    ['growth-ai', 'capabilities'],
+    ['growth-system', 'project-archive'],
+    ['growth-ai', 'knowledge-products'],
+    ['growth-ai', 'current-build'],
+    ['growth-ai', 'next-direction'],
+  ])
+  const knowledge = canvasCards.find(({ id }) => id === 'knowledge-products')
+  assert.deepEqual(knowledge.links, [
+    { label: 'LLM Wiki', href: '/wiki/' },
+    { label: 'Finance Wiki', href: '/finance/' },
+    { label: '知识问答', href: '/ask/' },
+    { label: 'llm-wiki Skill', href: '/llm-wiki/' },
+  ])
   const ids = new Set(canvasCards.map(({ id }) => id))
-  assert.equal(ids.size, canvasCards.length)
+  assert.equal(ids.size, 11)
   for (const edge of canvasConnections) {
     assert.ok(ids.has(edge.from), edge.from)
     assert.ok(ids.has(edge.to), edge.to)
@@ -559,11 +625,12 @@ test('canvas wheel zoom remains pointer centered over an interactive target', ()
 
 const trustedCanvasDefaults = () => ({
   cards: canvasCards.map((card) => ({ ...card })),
+  order: canvasCards.map(({ id }) => id),
   transform: { scale: 1, panX: 24, panY: -18 },
 })
 
-test('canvas persistence round trips only trusted geometry and visibility', () => {
-  assert.equal(CANVAS_LAYOUT_KEY, 'juzx-personal-os-layout-v1')
+test('canvas persistence uses only complete trusted v2 geometry', () => {
+  assert.equal(CANVAS_LAYOUT_KEY, 'juzx-personal-os-layout-v2')
   const defaults = trustedCanvasDefaults()
   const layout = {
     cards: defaults.cards.map((card, index) => ({
@@ -572,28 +639,37 @@ test('canvas persistence round trips only trusted geometry and visibility', () =
       visible: index !== 3,
       arbitrary: 'untrusted',
     })),
+    order: [...defaults.order.slice(1), defaults.order[0]],
     transform: { scale: 1.5, panX: -220, panY: 84 },
     arbitrary: 'untrusted',
   }
   const raw = serializeCanvasLayout(layout)
   const envelope = JSON.parse(raw)
-  assert.deepEqual(Object.keys(envelope), ['version', 'transform', 'cards'])
+  assert.deepEqual(Object.keys(envelope), ['version', 'transform', 'order', 'cards'])
+  assert.equal(envelope.version, 2)
   assert.deepEqual(Object.keys(envelope.transform), ['scale', 'panX', 'panY'])
   assert.deepEqual(Object.keys(envelope.cards[0]), ['id', 'x', 'y', 'width', 'height', 'visible'])
-  for (const forbidden of ['title', 'body', 'href', 'accent', 'arbitrary']) {
+  for (const forbidden of ['title', 'body', 'href', 'links', 'accent', 'arbitrary']) {
     assert.equal(raw.includes(`\"${forbidden}\"`), false)
   }
 
+  envelope.cards.find(({ id }) => id === 'knowledge-products').links = [
+    { label: 'Untrusted', href: 'https://example.com/' },
+  ]
   const reversed = JSON.stringify({ ...envelope, cards: [...envelope.cards].reverse() })
   const defaultsSnapshot = structuredClone(defaults)
   const parsed = parseCanvasLayout(reversed, defaults)
   assert.deepEqual(parsed.cards.map(({ id }) => id), defaults.cards.map(({ id }) => id))
   assert.equal(parsed.cards[0].title, defaults.cards[0].title)
   assert.equal(parsed.cards[0].body, defaults.cards[0].body)
-  assert.equal(parsed.cards[5].href, defaults.cards[5].href)
+  assert.deepEqual(
+    parsed.cards.find(({ id }) => id === 'knowledge-products').links,
+    defaults.cards.find(({ id }) => id === 'knowledge-products').links,
+  )
   assert.equal(parsed.cards[0].accent, defaults.cards[0].accent)
   assert.equal(parsed.cards[3].visible, false)
   assert.equal(parsed.cards[8].x, defaults.cards[8].x + 8)
+  assert.deepEqual(parsed.order, layout.order)
   assert.deepEqual(defaults, defaultsSnapshot)
   assert.notEqual(parsed, defaults)
   assert.notEqual(parsed.cards[0], defaults.cards[0])
@@ -611,11 +687,15 @@ test('canvas persistence strictly rejects malformed and untrusted layouts', () =
   for (const raw of ['{', 'null', '[]', '42', JSON.stringify({ version: 1 })]) {
     assert.equal(parseCanvasLayout(raw, defaults), null)
   }
-  assert.equal(parse((candidate) => { candidate.version = 2 }), null)
+  assert.equal(parse((candidate) => { candidate.version = 1 }), null)
+  assert.equal(parse((candidate) => { delete candidate.version }), null)
   assert.equal(parse((candidate) => { candidate.cards.pop() }), null)
   assert.equal(parse((candidate) => { candidate.cards.push({ ...candidate.cards[0] }) }), null)
   assert.equal(parse((candidate) => { candidate.cards[0].id = 'unknown' }), null)
   assert.equal(parse((candidate) => { candidate.cards.push({ ...candidate.cards[0], id: 'extra' }) }), null)
+  assert.equal(parse((candidate) => { candidate.order.pop() }), null)
+  assert.equal(parse((candidate) => { candidate.order.push(candidate.order[0]) }), null)
+  assert.equal(parse((candidate) => { candidate.order[0] = 'unknown' }), null)
   for (const field of ['x', 'y', 'width', 'height', 'visible']) {
     assert.equal(parse((candidate) => { delete candidate.cards[0][field] }), null, field)
   }
@@ -624,15 +704,68 @@ test('canvas persistence strictly rejects malformed and untrusted layouts', () =
     assert.equal(parse((candidate) => { candidate.cards[0].x = value }), null)
   }
   assert.equal(parse((candidate) => { candidate.cards[0].visible = 1 }), null)
-  assert.equal(parse((candidate) => { candidate.cards[0].width = 0 }), null)
-  assert.equal(parse((candidate) => { candidate.cards[0].height = -1 }), null)
+  assert.equal(parse((candidate) => { candidate.cards[0].width = defaults.cards[0].minWidth - 1 }), null)
+  assert.equal(parse((candidate) => { candidate.cards[0].height = defaults.cards[0].minHeight - 1 }), null)
   assert.equal(parse((candidate) => { candidate.transform.scale = 9 }), null)
   assert.equal(parse((candidate) => { candidate.transform.scale = 0.14 }), null)
-  assert.equal(parseCanvasLayout(JSON.stringify(valid), { cards: [], transform: defaults.transform }), null)
+  assert.equal(parseCanvasLayout(JSON.stringify(valid), { cards: [], order: [], transform: defaults.transform }), null)
   assert.equal(parseCanvasLayout(JSON.stringify(valid), { cards: defaults.cards, transform: { scale: null, panX: 0, panY: 0 } }), null)
 })
 
-test('canvas storage uses one key and silently fails closed', () => {
+test('canvas persistence rejects finite geometry whose derived bounds overflow', () => {
+  const defaults = trustedCanvasDefaults()
+  const valid = JSON.parse(serializeCanvasLayout(defaults))
+  const parse = (mutate) => {
+    const candidate = structuredClone(valid)
+    mutate(candidate)
+    return parseCanvasLayout(JSON.stringify(candidate), defaults)
+  }
+
+  assert.equal(parse((candidate) => {
+    candidate.cards[0].x = Number.MAX_VALUE
+    candidate.cards[0].width = Number.MAX_VALUE
+  }), null)
+  assert.equal(parse((candidate) => {
+    candidate.cards[0].y = Number.MAX_VALUE
+    candidate.cards[0].height = Number.MAX_VALUE
+  }), null)
+  assert.equal(parse((candidate) => {
+    candidate.cards[0].x = -Number.MAX_VALUE
+    candidate.cards[1].x = Number.MAX_VALUE
+  }), null)
+
+  const largeButSafe = parse((candidate) => {
+    candidate.cards[0].x = Number.MAX_VALUE / 4
+    candidate.cards[0].width = Number.MAX_VALUE / 4
+  })
+  assert.ok(largeButSafe)
+  assert.equal(Number.isFinite(largeButSafe.cards[0].x + largeButSafe.cards[0].width), true)
+})
+
+test('canvas persistence accepted at a high absolute origin remains fit-safe end to end', () => {
+  const defaults = trustedCanvasDefaults()
+  const envelope = JSON.parse(serializeCanvasLayout(defaults))
+  for (const card of envelope.cards) card.visible = false
+  envelope.cards[0].visible = true
+  envelope.cards[0].x = Number.MAX_VALUE * 0.75
+
+  const parsed = parseCanvasLayout(JSON.stringify(envelope), defaults)
+  assert.ok(parsed)
+  const bounds = computeWorldBounds(
+    parsed.cards,
+    { x: 0, y: 0, width: 2400, height: 1200 },
+    96,
+  )
+  assert.equal(Object.values(bounds).every(Number.isFinite), true)
+  const fitted = fitWorldBounds(
+    bounds,
+    canvasUsableViewport({ width: 1440, height: 900 }, false),
+    24,
+  )
+  assert.equal(Object.values(fitted).every(Number.isFinite), true)
+})
+
+test('storage denial is silent and v1 is never accessed', () => {
   const defaults = trustedCanvasDefaults()
   const calls = []
   const storage = {
@@ -648,7 +781,81 @@ test('canvas storage uses one key and silently fails closed', () => {
   assert.equal(saveCanvasLayout(undefined, defaults), false)
   assert.equal(loadCanvasLayout({ getItem() { throw new Error('denied') } }, defaults), null)
   assert.equal(saveCanvasLayout({ setItem() { throw new Error('quota') } }, defaults), false)
-  assert.equal(saveCanvasLayout(storage, { cards: [], transform: defaults.transform }), false)
+  assert.equal(saveCanvasLayout(storage, { cards: [], order: [], transform: defaults.transform }), false)
+  const deniedCalls = []
+  const denied = {
+    getItem(key) { deniedCalls.push(key); throw new Error('denied') },
+    setItem() { throw new Error('quota') },
+  }
+  assert.equal(loadCanvasLayout(denied, defaults), null)
+  assert.equal(saveCanvasLayout(denied, defaults), false)
+  assert.deepEqual(deniedCalls, ['juzx-personal-os-layout-v2'])
+})
+
+test('dynamic bounds measure visible cards and share one Fit rectangle', () => {
+  const fallback = { x: 0, y: 0, width: 1000, height: 700 }
+  const cards = [
+    { id: 'a', x: 100, y: 200, width: 200, height: 100, visible: true },
+    { id: 'b', x: 600, y: 500, width: 300, height: 200, visible: true },
+    { id: 'hidden', x: -900, y: -900, width: 50, height: 50, visible: false },
+    { id: 'bad', x: Number.NaN, y: 0, width: 20, height: 20, visible: true },
+  ]
+  assert.deepEqual(computeWorldBounds(cards, fallback, 50),
+    { x: 50, y: 150, width: 900, height: 600 })
+  assert.deepEqual(computeWorldBounds(cards.map((card) => ({ ...card, visible: false })), fallback, 50), fallback)
+  const usable = canvasUsableViewport({ width: 1440, height: 900 }, false)
+  assert.deepEqual(usable, { x: 72, y: 24, width: 1344, height: 780 })
+  assert.deepEqual(canvasUsableViewport({ width: 390, height: 844 }, true),
+    { x: 16, y: 16, width: 358, height: 668 })
+  const fitted = fitWorldBounds(computeWorldBounds(cards, fallback, 50), usable, 24)
+  assert.ok(Number.isFinite(fitted.scale) && Number.isFinite(fitted.panX) && Number.isFinite(fitted.panY))
+  assert.deepEqual(initialFitCards(canvasCards, true).map(({ id }) => id),
+    ['identity', 'growth-field', 'growth-product', 'growth-system', 'growth-ai'])
+  assert.equal(initialFitCards(canvasCards, false).length, 11)
+
+  const offsetFit = fitWorldBounds(
+    { x: 0, y: 0, width: 100, height: 100 },
+    { x: 100, y: 50, width: 500, height: 300 },
+    0,
+  )
+  assert.deepEqual(offsetFit, { scale: 3, panX: 200, panY: 50 })
+})
+
+test('dynamic bounds exclude edge overflow and fall back on aggregate overflow', () => {
+  const fallback = { x: 0, y: 0, width: 1000, height: 700 }
+  const safe = { id: 'safe', x: 10, y: 20, width: 30, height: 40, visible: true }
+  const edgeOverflow = {
+    id: 'overflow', x: Number.MAX_VALUE, y: 0,
+    width: Number.MAX_VALUE, height: 10, visible: true,
+  }
+
+  assert.deepEqual(computeWorldBounds([edgeOverflow], fallback, 0), fallback)
+  assert.deepEqual(computeWorldBounds([safe, edgeOverflow], fallback, 0),
+    { x: 10, y: 20, width: 30, height: 40 })
+  assert.deepEqual(computeWorldBounds([
+    { ...safe, id: 'left', x: -Number.MAX_VALUE },
+    { ...safe, id: 'right', x: Number.MAX_VALUE },
+  ], fallback, 0), fallback)
+
+  const safeLargeBounds = computeWorldBounds([{
+    ...safe,
+    x: Number.MAX_VALUE / 4,
+    width: Number.MAX_VALUE / 4,
+  }], fallback, 0)
+  assert.equal(Object.values(safeLargeBounds).every(Number.isFinite), true)
+})
+
+test('dynamic bounds Fit stays finite at huge origins without disabling ordinary enlargement', () => {
+  const viewport = { x: 72, y: 24, width: 1344, height: 780 }
+  const ordinary = fitWorldBounds({ x: 10, y: 20, width: 192, height: 240 }, viewport, 24)
+  assert.ok(ordinary.scale > 1)
+  assert.equal(Object.values(ordinary).every(Number.isFinite), true)
+
+  for (const x of [Number.MAX_VALUE * 0.75, -Number.MAX_VALUE * 0.75]) {
+    const fitted = fitWorldBounds({ x, y: 20, width: 192, height: 240 }, viewport, 24)
+    assert.equal(Object.values(fitted).every(Number.isFinite), true)
+    assert.ok(fitted.scale <= 1)
+  }
 })
 
 test('canvas history is immutable, bounded, undoable, and resettable', () => {
@@ -658,10 +865,18 @@ test('canvas history is immutable, bounded, undoable, and resettable', () => {
   assert.deepEqual(created.future, [])
   assert.deepEqual(created.present, defaults)
   assert.notEqual(created.present, defaults)
+  assert.notEqual(created.present.order, defaults.order)
 
   const duplicate = pushHistory(created, structuredClone(defaults))
   assert.deepEqual(duplicate, created)
   assert.deepEqual(duplicate.past, [])
+
+  const reordered = structuredClone(defaults)
+  reordered.order = [...reordered.order.slice(1), reordered.order[0]]
+  const afterReorder = pushHistory(created, reordered)
+  assert.equal(afterReorder.past.length, 1)
+  assert.deepEqual(afterReorder.present.order, reordered.order)
+  assert.notEqual(afterReorder.present.order, reordered.order)
 
   let history = created
   for (let index = 1; index <= 55; index += 1) {
@@ -755,6 +970,53 @@ test('pending persistence never serializes transient cancelled card geometry', (
   assert.equal(transient.cards[0].x, defaults.cards[0].x + 333)
 })
 
+test('CanvasCard renders eight read-only semantic variants', () => {
+  const card = readComponent('CanvasCard.vue')
+  assert.match(card, /:data-card-type="card\.type"/)
+  assert.match(card, /:class="\[`canvas-card--\$\{card\.type\}`/)
+  for (const type of ['identity', 'timeline', 'principle', 'skills', 'project', 'knowledge', 'status', 'next']) {
+    assert.match(card, new RegExp(`canvas-card--${type}`))
+  }
+  assert.match(card, /class="canvas-card__mark"[\s\S]*\{\{ card\.mark \}\}/)
+  assert.match(card, /v-for="item in card\.items"/)
+  assert.match(card, /v-for="link in card\.links"[\s\S]*:href="link\.href"/)
+  assert.match(card, /Math\.max\(props\.card\.minWidth/)
+  assert.match(card, /Math\.max\(props\.card\.minHeight/)
+  assert.doesNotMatch(card, /contenteditable|<textarea|<input|<img|picture|illustration|portrait/i)
+})
+
+test('CanvasCard titlebar exposes its selection state to assistive technology', () => {
+  const card = readComponent('CanvasCard.vue')
+  assert.match(card,
+    /<button[\s\S]*?class="canvas-card__titlebar"[\s\S]*?:aria-pressed="selected"/)
+  assert.doesNotMatch(card,
+    /class="canvas-card__titlebar"[\s\S]{0,240}:aria-current=/)
+})
+
+test('identity anchor is one rounded JZ rectangle without geometry shift', () => {
+  const card = readComponent('CanvasCard.vue')
+  const identity = canvasCards.find(({ id }) => id === 'identity')
+  assert.deepEqual(
+    (({ width, height, minWidth, minHeight }) => ({ width, height, minWidth, minHeight }))(identity),
+    { width: 360, height: 260, minWidth: 300, minHeight: 220 },
+  )
+  assert.match(card, /\.canvas-card--identity\s*\{[\s\S]*border-radius:\s*16px/)
+  assert.match(card, /\.canvas-card\.is-selected\s*\{[\s\S]*outline:/)
+  assert.match(card, /outline-offset:/)
+  assert.match(card, /\.canvas-card--identity \.canvas-card__titlebar\s*\{[^}]*padding:\s*14px 20px 8px;/)
+  assert.match(card, /\.canvas-card--identity \.canvas-card__body\s*\{[^}]*padding:\s*0 64px 14px 20px;/)
+  assert.match(card, /\.canvas-card--identity \.canvas-card__copy\s*\{[^}]*margin:\s*0;[^}]*font-size:\s*13px;[^}]*line-height:\s*1\.45;/)
+  assert.doesNotMatch(card, /\.canvas-card\.is-selected\s*\{[^}]*border-width:/)
+  assert.doesNotMatch(card, /\.canvas-card--identity \.canvas-card__body\s*\{[^}]*overflow:\s*auto/)
+})
+
+test('status copy is exclusive and native links keep canvas gestures isolated', () => {
+  const card = readComponent('CanvasCard.vue')
+  assert.match(card, /<p v-if="card\.body && !card\.status"/)
+  assert.match(card, /<span v-if="card\.status" class="canvas-card__status">[\s\S]*\{\{ card\.body \}\}/)
+  assert.match(card, /v-for="link in card\.links"[\s\S]*@pointerdown\.stop[\s\S]*@click\.stop/)
+})
+
 test('infinite canvas components preserve interaction and source contracts', () => {
   const canvas = readComponent('InfiniteCanvas.vue')
   const card = readComponent('CanvasCard.vue')
@@ -765,6 +1027,8 @@ test('infinite canvas components preserve interaction and source contracts', () 
   assert.match(canvas, /import CanvasCard from '\.\/CanvasCard\.vue'/)
   assert.match(canvas, /import CanvasConnections from '\.\/CanvasConnections\.vue'/)
   assert.match(canvas, /canvasCards\.map\(\(card\) => \(\{ \.\.\.card \}\)\)/)
+  assert.match(canvas, /order: canvasCards\.map\(\(\{ id \}\) => id\)/)
+  assert.match(canvas, /order: \[\.\.\.stackingOrder\.value\]/)
   assert.match(canvas, /translate\(\$\{transform\.value\.panX\}px, \$\{transform\.value\.panY\}px\) scale\(\$\{transform\.value\.scale\}\)/)
   assert.match(canvas, /transform-origin: 0 0/)
   assert.match(canvas, /const currentTransform = pendingTransform \?\? transform\.value/)
@@ -789,7 +1053,7 @@ test('infinite canvas components preserve interaction and source contracts', () 
   assert.match(canvas, /onBeforeUnmount/)
   assert.match(canvas, /@lostpointercapture="cancelPointerPan"/)
   assert.match(canvas, /:key="card\.id"/)
-  assert.match(canvas, /emit\('layout-change', \{ cards: cards\.value, transform: \{ \.\.\.transform\.value \} \}\)/)
+  assert.match(canvas, /emit\('layout-change', currentLayout\(\)\)/)
 
   assert.match(card, /data-canvas-card/)
   assert.match(card, /setPointerCapture/)
@@ -798,11 +1062,13 @@ test('infinite canvas components preserve interaction and source contracts', () 
   assert.match(card, /lostpointercapture/)
   assert.match(card, /onBeforeUnmount\(\(\) => \{[\s\S]*?hasPointerCapture/)
   assert.match(card, /\/ props\.scale/)
-  assert.match(card, /Math\.max\(180,/)
-  assert.match(card, /Math\.max\(120,/)
-  assert.match(card, /<a\s+v-if="card\.href"/)
+  assert.match(card, /Math\.max\(props\.card\.minWidth,/)
+  assert.match(card, /Math\.max\(props\.card\.minHeight,/)
+  assert.match(card, /v-for="link in card\.links"/)
+  assert.match(card, /:href="link\.href"/)
   assert.match(card, /gesture-complete/)
   assert.doesNotMatch(card, /v-html/)
+  assert.doesNotMatch(card, /:hover\s*\{[^}]*transform:/)
 
   assert.match(connections, /import \{ connectionEndpoints \} from '\.\/canvasGeometry\.mjs'/)
   assert.match(connections, /fromCard\.visible === false \|\| toCard\.visible === false/)
@@ -824,10 +1090,14 @@ test('canvas chrome wires layers, minimap, controls, persistence, and bounded hi
   const minimap = readComponent('CanvasMinimap.vue')
   const controls = readComponent('CanvasControls.vue')
 
-  for (const name of ['CanvasLayers', 'CanvasMinimap', 'CanvasControls']) {
+  for (const name of ['CanvasLayers', 'CanvasControls']) {
     assert.match(canvas, new RegExp(`import ${name} from './${name}\\.vue'`))
     assert.match(canvas, new RegExp(`<${name}\\b`))
   }
+  assert.match(layers, /import CanvasMinimap from '.\/CanvasMinimap\.vue'/)
+  assert.match(layers, /<CanvasMinimap\b/)
+  assert.doesNotMatch(canvas, /import CanvasMinimap/)
+  assert.doesNotMatch(canvas, /<CanvasMinimap\b/)
   assert.match(canvas, /from '\.\/canvasPersistence\.mjs'/)
   assert.match(canvas, /from '\.\/canvasHistory\.mjs'/)
   assert.match(canvas, /@focus="focusCard"/)
@@ -841,6 +1111,11 @@ test('canvas chrome wires layers, minimap, controls, persistence, and bounded hi
   assert.match(canvas, /window\.localStorage/)
   assert.match(canvas, /loadCanvasLayout\(storage, defaultLayout\)/)
   assert.match(canvas, /saveCanvasLayout\(storage, getCommittedLayout\(history\.value\)\)/)
+  assert.match(canvas, /const worldBounds = computed\(\(\) => computeWorldBounds\(cards\.value, canonicalBounds, 96\)\)/)
+  assert.match(canvas, /const usableViewport = computed\(\(\) => canvasUsableViewport\(viewportSize\.value, mobileViewport\.value\)\)/)
+  assert.match(canvas, /initialFitCards\(cards\.value, mobileViewport\.value\)/)
+  assert.match(canvas, /fitWorldBounds\(worldBounds\.value, usableViewport\.value, 24\)/)
+  assert.match(canvas, /:world-bounds="worldBounds"/)
   assert.match(canvas, /clearTimeout\(saveTimer\)/)
   assert.match(canvas, /:can-undo="history\.past\.length > 0"/)
   assert.match(canvas, /@gesture-complete="completeCardGesture"/)
@@ -860,14 +1135,14 @@ test('canvas chrome wires layers, minimap, controls, persistence, and bounded hi
     assert.doesNotMatch(match[0], /pushHistory\(/, handler)
   }
 
-  assert.match(layers, /defineEmits\(\['focus', 'visibility'\]\)/)
+  assert.match(layers, /defineEmits\(\['focus', 'visibility', 'navigate'\]\)/)
   assert.match(layers, /<aside\s+[\s\S]*?class="canvas-layers"/)
   assert.match(layers, /v-for="card in cards"/)
   assert.match(layers, /:key="card\.id"/)
-  assert.match(layers, /type="checkbox"/)
   assert.match(layers, /:aria-current="selectedCardId === card\.id \? 'true' : undefined"/)
   assert.match(layers, /:disabled="card\.visible === false"/)
-  assert.match(layers, /切换画布图层面板/)
+  assert.match(layers, /展开或收起画布图层/)
+  assert.match(layers, /:aria-pressed="card\.visible !== false"/)
   assert.match(layers, /min-width: 44px/)
   assert.match(layers, /@media \(max-width: 767px\)/)
 
@@ -881,10 +1156,9 @@ test('canvas chrome wires layers, minimap, controls, persistence, and bounded hi
   assert.match(minimap, /emit\('navigate', \{ x, y \}\)/)
   assert.match(minimap, /<svg\b/)
   assert.match(minimap, /<rect\b/)
-  assert.match(minimap, /left: 18px/)
-  assert.match(minimap, /left: 10px/)
-  assert.doesNotMatch(minimap, /right: (?:18|10)px/)
-  assert.match(minimap, /@media \(max-width: 359px\)[\s\S]*?width: 112px/)
+  assert.match(minimap, /position: static/)
+  assert.match(minimap, /width: 100%/)
+  assert.doesNotMatch(minimap, /position: absolute/)
 
   assert.match(controls, /defineEmits\(\['zoom-in', 'zoom-out', 'fit', 'undo', 'save', 'reset'\]\)/)
   for (const label of ['缩小画布', '放大画布', '适应全部内容', '撤销上一步', '保存画布布局', '恢复默认布局']) {
@@ -901,4 +1175,153 @@ test('canvas chrome wires layers, minimap, controls, persistence, and bounded hi
     assert.doesNotMatch(source, /contenteditable|v-html|<iframe\b|<object\b|<embed\b|sessionStorage|window\.confirm/i)
     assert.doesNotMatch(source, /upload|create-card|delete-card|sparkle|particle|illustration|https?:\/\//i)
   }
+})
+
+test('Layers is a 48px rail, 220px overlay, and mobile bottom drawer', () => {
+  const layers = readComponent('CanvasLayers.vue')
+  const canvas = readComponent('InfiniteCanvas.vue')
+  assert.match(layers, /import CanvasMinimap from '.\/CanvasMinimap\.vue'/)
+  assert.match(layers, /aria-controls="canvas-layers-panel"/)
+  assert.match(layers, /:aria-expanded="expanded"/)
+  assert.match(layers, /id="canvas-layers-panel"/)
+  assert.match(layers, /<CanvasMinimap[\s\S]*:world-bounds="worldBounds"/)
+  assert.match(layers, /width:\s*48px/)
+  assert.match(layers, /width:\s*220px/)
+  assert.match(layers, /@media \(max-width:\s*767px\)[\s\S]*position:\s*fixed[\s\S]*bottom:/)
+  assert.match(layers, /min-width:\s*44px[\s\S]*min-height:\s*44px/)
+  assert.equal([...canvas.matchAll(/<CanvasMinimap\b/g)].length, 0)
+  assert.equal([...canvas.matchAll(/<CanvasLayers\b/g)].length, 1)
+})
+
+test('Layers exposes selection and visibility state by accessible name', () => {
+  const layers = readComponent('CanvasLayers.vue')
+  assert.match(layers, /:aria-current="selectedCardId === card\.id \? 'true' : undefined"/)
+  assert.match(layers, /:aria-label="`\$\{card\.visible !== false \? '隐藏' : '显示'\} \$\{card\.title\}`"/)
+  assert.match(layers, /@click="emit\('visibility', \{ id: card\.id, visible: card\.visible === false \}\)"/)
+})
+
+test('Layers returns focus outside the panel before making it inert', () => {
+  const layers = readComponent('CanvasLayers.vue')
+  assert.match(layers, /const layersToggle = ref\(null\)/)
+  assert.match(layers, /ref="layersToggle"/)
+  assert.match(layers, /@click="closePanel"/)
+  const closePanel = layers.match(/function closePanel\(\) \{[\s\S]*?\n\}/)?.[0]
+  assert.ok(closePanel)
+  assert.ok(closePanel.indexOf('layersToggle.value?.focus()') >= 0)
+  assert.ok(closePanel.indexOf('expanded.value = false') > closePanel.indexOf('layersToggle.value?.focus()'))
+})
+
+test('canvas controls retain seven named native actions', () => {
+  const controls = readComponent('CanvasControls.vue')
+  assert.deepEqual([...controls.matchAll(/aria-label="([^"]+)"/g)].map((match) => match[1])
+    .filter((label) => ['缩小画布', '当前画布缩放比例', '放大画布', '适应全部内容',
+      '撤销上一步', '保存画布布局', '恢复默认布局'].includes(label)), [
+    '缩小画布', '当前画布缩放比例', '放大画布', '适应全部内容',
+    '撤销上一步', '保存画布布局', '恢复默认布局',
+  ])
+  for (const event of ['zoom-out', 'zoom-in', 'fit', 'undo', 'save', 'reset']) {
+    assert.match(controls, new RegExp(`'${event}'`))
+  }
+  assert.match(controls, /role="group" aria-label="确认恢复默认布局"/)
+  assert.match(controls, /ref="resetButton"/)
+  assert.match(controls, /resetButton\.value\?\.focus\(\)/)
+})
+
+test('reset Escape recovery is conditional and covers focus outside canvas controls', () => {
+  const controls = readComponent('CanvasControls.vue')
+  assert.doesNotMatch(controls, /@keydown\.esc/)
+  assert.match(controls, /window\.addEventListener\('keydown', handleWindowKeydown\)/)
+  assert.match(controls, /window\.removeEventListener\('keydown', handleWindowKeydown\)/)
+  assert.match(controls, /onBeforeUnmount\(stopEscapeListener\)/)
+  const handler = controls.match(/function handleWindowKeydown\(event\) \{[\s\S]*?\n\}/)?.[0] ?? ''
+  assert.match(handler, /event\.key !== 'Escape' \|\| !confirmingReset\.value/)
+  assert.match(handler, /event\.preventDefault\(\)/)
+  assert.match(handler, /event\.stopPropagation\(\)/)
+  assert.match(handler, /cancelReset\(\)/)
+  const cancelReset = controls.match(/async function cancelReset\(\) \{[\s\S]*?\n\}/)?.[0] ?? ''
+  assert.match(cancelReset, /if \(!confirmingReset\.value\) return/)
+  assert.match(cancelReset, /stopEscapeListener\(\)/)
+  assert.ok(cancelReset.indexOf('confirmingReset.value = false') >= 0)
+  assert.ok(cancelReset.indexOf('resetButton.value?.focus()') > cancelReset.indexOf('confirmingReset.value = false'))
+})
+
+test('system canvas is read-only content with alternate navigation paths', () => {
+  const canvas = readComponent('InfiniteCanvas.vue')
+  const nonViewportComponents = ['CanvasCard.vue', 'CanvasLayers.vue', 'CanvasControls.vue']
+    .map(readComponent).join('\n')
+  const sources = [canvas, nonViewportComponents].join('\n')
+  assert.doesNotMatch(sources,
+    /contenteditable|<textarea|type="file"|new card|新建|删除卡片|上传|自由连线|createConnection/i)
+  assert.match(sources, /aria-label="JuZX OS 无限画布"/)
+  assert.match(sources, /aria-describedby="canvas-instructions"/)
+  assert.match(sources, /id="canvas-instructions"/)
+  assert.match(sources, /聚焦 \$\{card\.title\}/)
+  assert.match(sources, /适应全部内容/)
+  assert.match(sources, /\[data-canvas-card\], a, button, \[data-canvas-control\]/)
+  assert.match(readComponent('CanvasConnections.vue'), /aria-hidden="true"/)
+  assert.match(canvas, /\.infinite-canvas__viewport\s*\{[\s\S]*?touch-action:\s*none;/)
+  assert.doesNotMatch(nonViewportComponents, /touch-action:\s*none;/)
+  assert.match(canvas, /max-width:\s*100vw;[\s\S]*?overflow:\s*hidden;/)
+  assert.match(canvas, /animation-duration:\s*1ms !important;/)
+  assert.match(canvas, /transition-duration:\s*1ms !important;/)
+})
+
+test('system lazy boundary keeps navigation usable and retries a distinct chunk', () => {
+  const home = readComponent('KnowledgeFactoryHome.vue')
+  assert.match(home, /class="personal-system-view__error"/)
+  assert.match(home, /role="alert"/)
+  assert.match(home, />\s*重新加载我的 OS\s*</)
+  assert.match(home, /\(\) => import\('\.\/InfiniteCanvas\.vue'\)/)
+  assert.match(home, /\(\) => import\('\.\/InfiniteCanvas\.vue\?retry=1'\)/)
+  assert.equal([...home.matchAll(/<BottomOsNavigation\b/g)].length, 1)
+  assert.doesNotMatch(home, /@vite-ignore|location\.reload|<iframe|<object|<embed/i)
+})
+
+test('active system view isolates VitePress chrome for its exact lifecycle', () => {
+  const home = readComponent('KnowledgeFactoryHome.vue')
+  const css = readFileSync(new URL('../docs/.vitepress/theme/custom.css', import.meta.url), 'utf8')
+  assert.match(home, /const SYSTEM_ACTIVE_CLASS = 'personal-os-system-active'/)
+  assert.match(home,
+    /function setSystemChromeIsolation\(active\)[\s\S]*document\.documentElement[\s\S]*document\.body[\s\S]*document\.querySelector\('\.Layout'\)/)
+  assert.match(home, /setSystemChromeIsolation\(nextView === 'system'\)/)
+  assert.match(home, /onBeforeUnmount\(\(\) => \{[\s\S]*setSystemChromeIsolation\(false\)/)
+  assert.match(css, /html\.personal-os-system-active[\s\S]*overflow:\s*hidden;/)
+  assert.match(css,
+    /html\.personal-os-system-active \.VPLocalNav\.empty\.fixed[\s\S]*html\.personal-os-system-active \.VPFooter[\s\S]*display:\s*none !important;/)
+})
+
+test('mobile canvas controls clear the Layers trigger and drawer', () => {
+  const controls = readComponent('CanvasControls.vue')
+  const layers = readComponent('CanvasLayers.vue')
+  const mobileControls = controls.match(/@media \(max-width: 767px\) \{([\s\S]*?)\n\}/)?.[1] ?? ''
+  const mobileLayers = layers.match(/@media \(max-width: 767px\) \{([\s\S]*?)\n\}/)?.[1] ?? ''
+  assert.match(mobileControls, /\.canvas-controls\s*\{[\s\S]*left:\s*60px;[\s\S]*right:\s*8px;/)
+  assert.match(mobileControls, /scrollbar-width:\s*none;/)
+  assert.match(controls, /\.canvas-controls::-webkit-scrollbar\s*\{[\s\S]*display:\s*none;/)
+  assert.match(mobileLayers, /\.canvas-layers\.is-open\s*\{[\s\S]*z-index:\s*32;/)
+  assert.match(mobileLayers,
+    /\.canvas-layers\.is-open \.canvas-layers__rail\s*\{[\s\S]*background:\s*#fffdf7;[\s\S]*pointer-events:\s*auto;/i)
+})
+
+test('my os visual system is warm dotted paper without forbidden assets', () => {
+  const canvas = readComponent('InfiniteCanvas.vue')
+  const card = readComponent('CanvasCard.vue')
+  const css = readFileSync(new URL('../docs/.vitepress/theme/custom.css', import.meta.url), 'utf8')
+  const os = css.match(/\/\* Personal OS start \*\/([\s\S]*?)\/\* Personal OS end \*\//)?.[1] ?? ''
+  const system = [canvas, card, os].join('\n')
+  for (const token of ['#F7F4EC', '#FFFDF7', '#1E2430', '#69707D', '#315EFB',
+    '#F4D758', '#EF7B45', '#3FAE78']) assert.match(system, new RegExp(token, 'i'))
+  assert.match(canvas, /background-size:\s*24px 24px/)
+  assert.match(canvas, /data:image\/svg\+xml/)
+  assert.match(canvas, /--node-order/)
+  assert.match(canvas, /calc\(var\(--node-order\) \* 55ms\)/)
+  assert.doesNotMatch(system,
+    /linear-gradient|radial-gradient|backdrop-filter|\bstars?\b|sparkle|particle|illustration|portrait|<img/i)
+})
+
+test('canvas connections remain visible blue on the warm paper surface', () => {
+  const connections = readComponent('CanvasConnections.vue')
+  assert.match(connections,
+    /\.canvas-connections line\s*\{[^}]*stroke:\s*#315efb;[^}]*stroke-opacity:\s*\.(?:5[5-9]|[6-9]\d);/i)
+  assert.doesNotMatch(connections, /\.canvas-connections line\s*\{[^}]*stroke:\s*#fffdf7;/i)
 })

@@ -52,8 +52,8 @@ const lines = computed(() => {
 }
 
 .canvas-connections line {
-  stroke: #fffdf7;
-  stroke-opacity: .66;
+  stroke: #315efb;
+  stroke-opacity: .62;
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
 }

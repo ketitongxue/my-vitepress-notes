@@ -17,8 +17,19 @@ test('homepage mounts the dedicated factory component', async () => {
 
 test('Personal OS visual contract is exact, scoped, interactive, and responsive', async () => {
   const css = await read('docs/.vitepress/theme/custom.css')
-  const os = css.match(/\/\* Personal OS start \*\/([\s\S]*?)\/\* Personal OS end \*\//)?.[1] ?? ''
-  assert.ok(os, 'homepage OS styles must have an auditable scoped block')
+  const home = await read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue')
+  const componentStyles = (await Promise.all([
+    'CanvasControls.vue', 'CanvasCard.vue', 'CanvasLayers.vue', 'CanvasMinimap.vue', 'InfiniteCanvas.vue',
+  ].map((name) => read(`docs/.vitepress/theme/components/${name}`)))).join('\n')
+  const scopedOs = css.match(/\/\* Personal OS start \*\/([\s\S]*?)\/\* Personal OS end \*\//)?.[1] ?? ''
+  assert.ok(scopedOs, 'homepage OS styles must have an auditable scoped block')
+  const os = `${scopedOs}\n${componentStyles}`
+
+  assert.match(home, /class="personal-system-view__error"/)
+  assert.match(scopedOs, /\.factory-home \.personal-system-view__error/)
+  assert.match(scopedOs, /#F7F4EC/i)
+  assert.doesNotMatch(scopedOs,
+    /linear-gradient|radial-gradient|backdrop-filter|\bstars?\b|sparkle|particle|illustration|portrait|<img/i)
 
   for (const color of [
     '#F7F4EC', '#FFFDF7', '#1E2430', '#69707D', '#315EFB',
@@ -47,7 +58,27 @@ test('Personal OS visual contract is exact, scoped, interactive, and responsive'
 
   assert.match(os, /\.factory-home\s*\{[^}]*font-family:\s*var\(--vp-font-family-base\)/)
   assert.doesNotMatch(os, /linear-gradient|radial-gradient|backdrop-filter|\bstars?\b|sparkle|particle|illustration|character-art/i)
+  for (const source of [
+    '@media (max-width: 767px)',
+    '@media (prefers-reduced-motion: reduce)',
+    'min-width: 44px', 'min-height: 44px',
+    'env(safe-area-inset-bottom)',
+  ]) assert.match(os, new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'))
+  assert.doesNotMatch(os, /bounce|elastic|animation:[^;]*(?:pulse|sparkle|star)/i)
   assert.doesNotMatch(os, /(?:^|\})\s*(?:html|body|\.factory-home)\s*\{[^}]*touch-action:\s*none/i)
+})
+
+test('reduced motion preserves functional Personal OS transforms in the effective cascade', async () => {
+  const [css, canvas, navigation] = await Promise.all([
+    read('docs/.vitepress/theme/custom.css'),
+    read('docs/.vitepress/theme/components/InfiniteCanvas.vue'),
+    read('docs/.vitepress/theme/components/BottomOsNavigation.vue'),
+  ])
+  assert.doesNotMatch(css,
+    /\.factory-home \*,\s*\.factory-home \*::before,\s*\.factory-home \*::after\s*\{[^}]*transform:\s*none !important;/i)
+  assert.match(canvas, /transform:\s*`translate\(\$\{transform\.value\.panX\}px, \$\{transform\.value\.panY\}px\) scale\(\$\{transform\.value\.scale\}\)`/)
+  assert.match(navigation, /transform:\s*translateX\(50%\)/)
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*animation:\s*none !important;[\s\S]*transition:\s*none !important;[\s\S]*scroll-behavior:\s*auto !important;/)
 })
 
 test('Personal OS view components expose exact navigation and desktop menu labels', async () => {

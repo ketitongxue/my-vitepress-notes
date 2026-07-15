@@ -103,7 +103,16 @@ test('all allowed Personal OS component styles enforce the approved visual polic
     await read(`docs/.vitepress/theme/components/${name}.vue`),
   ])))
   const forbiddenEffects = /linear-gradient|radial-gradient|backdrop-filter|\bstars?\b|sparkle|particle|illustration|character-art/i
-  const remoteVisual = /data:image|url\(\s*['"]?https?:|https?:\/\/[^\s'"()<>]+\.(?:svg|png|jpe?g|webp|gif)(?:[?#][^\s'"()<>]*)?/i
+  const remoteVisual = /url\(\s*['"]?(?:(?:https?:)?\/\/)|https?:\/\/[^\s'"()<>]+\.(?:svg|png|jpe?g|webp|gif)(?:[?#][^\s'"()<>]*)?/i
+  const approvedGridUri = "data:image/svg+xml,%3Csvg xmlns='%68%74%74%70%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='1' cy='1' r='1' fill='%239AAECC' fill-opacity='.34'/%3E%3C/svg%3E"
+  const approvedGridDeclaration = `background-image: url("${approvedGridUri}");`
+  const inlineImageDeclarations = (source) => source.match(
+    /background-image:\s*url\("data:image[^\"]+"\);/gi,
+  ) ?? []
+  const hasOnlyApprovedGrid = (source) => {
+    const declarations = inlineImageDeclarations(source)
+    return declarations.length === 1 && declarations[0] === approvedGridDeclaration
+  }
 
   for (const [name, source] of components) {
     const styles = scopedStyles(source)
@@ -111,6 +120,15 @@ test('all allowed Personal OS component styles enforce the approved visual polic
     assert.doesNotMatch(styles, /#f2c94c/i, `${name} must not retain the rejected yellow`)
     assert.doesNotMatch(source, /<(?:img|picture)\b/i, `${name} must not add image elements`)
     assert.doesNotMatch(source, remoteVisual, `${name} must not load remote visual assets`)
+
+    const inlineImageCount = [...source.matchAll(/data:image/gi)].length
+    if (name === 'InfiniteCanvas') {
+      assert.equal(inlineImageCount, 1, 'InfiniteCanvas keeps one approved inline grid primitive')
+      assert.equal(hasOnlyApprovedGrid(styles), true)
+      assert.match(styles, /background-size:\s*24px 24px/)
+    } else {
+      assert.equal(inlineImageCount, 0, `${name} must not add inline image data`)
+    }
 
     const inlineSvgCount = [...source.matchAll(/<svg\b/gi)].length
     if (name === 'CanvasConnections' || name === 'CanvasMinimap') {
@@ -123,6 +141,16 @@ test('all allowed Personal OS component styles enforce the approved visual polic
 
   assert.match(scopedStyles(components.get('MacbookBoot')), /\.macbook-boot__launch\s*\{[^}]*background:\s*#F4D758;/)
   assert.match(scopedStyles(components.get('CanvasCard')), /\.canvas-card__resize\s*\{[^}]*background:\s*#F4D758;/)
+  assert.match('background-image: url("data:image/png;base64,invalid")', /data:image/i)
+  assert.match('background-image: url("https://example.invalid/remote.png")', remoteVisual)
+  assert.match('background-image: url("//cdn.example.invalid/remote.png")', remoteVisual)
+  assert.doesNotMatch('background-image: url("/assets/local.png")', remoteVisual)
+  assert.equal(hasOnlyApprovedGrid(
+    `background-image: url("data:image/svg+xml,%3Csvg xmlns='%68%74%74%70%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M0 0h24v24H0z'/%3E%3Ccircle cx='1' cy='1' r='1' fill='%239AAECC' fill-opacity='.34'/%3E%3C/svg%3E");`),
+  false)
+  assert.equal(hasOnlyApprovedGrid(
+    `background-image: url("data:image/svg+xml,%3Csvg xmlns='%68%74%74%70%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cimage href='remote.png'/%3E%3Ccircle cx='1' cy='1' r='1' fill='%239AAECC' fill-opacity='.34'/%3E%3C/svg%3E");`),
+  false)
 })
 
 test('every required mobile Personal OS target keeps a 44 by 44 hit area', async () => {
