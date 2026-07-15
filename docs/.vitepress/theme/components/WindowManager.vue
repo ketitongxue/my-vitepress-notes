@@ -4,8 +4,7 @@ import {
   closeWindow,
   focusWindow,
   moveWindow,
-  resizeWindow,
-  resizeWindowByKey,
+  resizeWindowFromEdge,
 } from './windowManagerState.mjs'
 
 const props = defineProps({
@@ -21,6 +20,16 @@ let frameId = null
 
 const closeLabel = (title) => `关闭 ${title}`
 const externalLabel = (title) => `在新页面打开 ${title}`
+const resizeEdges = Object.freeze([
+  { edge: 'n', label: '顶部' },
+  { edge: 'e', label: '右侧' },
+  { edge: 's', label: '底部' },
+  { edge: 'w', label: '左侧' },
+  { edge: 'nw', label: '左上角' },
+  { edge: 'ne', label: '右上角' },
+  { edge: 'se', label: '右下角' },
+  { edge: 'sw', label: '左下角' },
+])
 
 function titleFor(item) {
   return item.entry.window.title
@@ -38,12 +47,20 @@ function close(id) {
   updateState(closeWindow(props.state, id))
 }
 
-function handleResizeKey(item, event) {
-  const nextState = resizeWindowByKey(
+function handleResizeKey(item, edge, event) {
+  const direction = {
+    ArrowLeft: { x: -1, y: 0 },
+    ArrowRight: { x: 1, y: 0 },
+    ArrowUp: { x: 0, y: -1 },
+    ArrowDown: { x: 0, y: 1 },
+  }[event.key]
+  if (!direction) return
+  const step = event.shiftKey ? 32 : 8
+  const nextState = resizeWindowFromEdge(
     props.state,
     item.id,
-    event.key,
-    event.shiftKey,
+    edge,
+    { x: direction.x * step, y: direction.y * step },
     props.bounds,
   )
   if (nextState === props.state) return
@@ -51,12 +68,13 @@ function handleResizeKey(item, event) {
   updateState(nextState)
 }
 
-function beginManipulation(kind, item, event) {
+function beginManipulation(kind, item, event, edge = null) {
   if (event.pointerType === 'mouse' && event.button !== 0) return
   const target = event.currentTarget
   target.setPointerCapture(event.pointerId)
   manipulation.value = {
     kind,
+    edge,
     id: item.id,
     pointerId: event.pointerId,
     target,
@@ -90,10 +108,17 @@ function flushManipulation() {
     return
   }
 
-  updateState(resizeWindow(
-    props.state,
+  const baselineState = {
+    ...props.state,
+    windows: props.state.windows.map((item) => item.id === active.id
+      ? { ...item, ...active.initial }
+      : item),
+  }
+  updateState(resizeWindowFromEdge(
+    baselineState,
     active.id,
-    { width: active.initial.width + dx, height: active.initial.height + dy },
+    active.edge,
+    { x: dx, y: dy },
     props.bounds,
   ))
 }
@@ -147,6 +172,7 @@ onBeforeUnmount(() => {
       v-for="item in state.windows"
       :key="item.id"
       class="window-manager__window"
+      :class="{ 'window-manager__window--project': item.id === 'projects' }"
       :style="{
         left: `${item.x}px`,
         top: `${item.y}px`,
@@ -163,6 +189,9 @@ onBeforeUnmount(() => {
         @pointerup="endManipulation"
         @pointercancel="cancelManipulation"
       >
+        <span class="window-manager__traffic-lights" aria-hidden="true">
+          <i></i><i></i><i></i>
+        </span>
         <strong>{{ titleFor(item) }}</strong>
         <span class="window-manager__controls">
           <a
@@ -175,13 +204,16 @@ onBeforeUnmount(() => {
           >打开</a>
           <button
             type="button"
+            class="window-manager__close"
             :aria-label="closeLabel(titleFor(item))"
             @pointerdown.stop="focus(item.id)"
             @click="close(item.id)"
-          >关闭</button>
+          ><span aria-hidden="true">×</span></button>
         </span>
       </header>
 
+      <span class="window-manager__tape" aria-hidden="true"></span>
+      <span class="window-manager__sparkle" aria-hidden="true">✦</span>
       <div class="window-manager__preview">
         <p>{{ item.entry.window.summary }}</p>
         <a
@@ -190,20 +222,28 @@ onBeforeUnmount(() => {
           :target="item.entry.window.external ? '_blank' : undefined"
           :rel="item.entry.window.external ? 'noopener noreferrer' : undefined"
         >前往 {{ titleFor(item) }}</a>
-        <p v-else>此项目正在整理中。</p>
+        <div v-else class="window-manager__status">
+          <span>整理中</span>
+          <p>内容持续完善</p>
+        </div>
       </div>
 
-      <button
-        type="button"
-        class="window-manager__resize"
-        :aria-label="`调整 ${titleFor(item)} 窗口大小，使用方向键`"
+      <span
+        v-for="handle in resizeEdges"
+        :key="handle.edge"
+        class="window-manager__resize-handle"
+        :class="`window-manager__resize-handle--${handle.edge}`"
+        :data-resize-edge="handle.edge"
+        role="separator"
+        :tabindex="handle.edge === 'se' ? 0 : -1"
+        :aria-label="`从${handle.label}调整 ${titleFor(item)} 窗口大小`"
         aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight"
-        @pointerdown="beginManipulation('resize', item, $event)"
+        @pointerdown="beginManipulation('resize', item, $event, handle.edge)"
         @pointermove="queueManipulation"
         @pointerup="endManipulation"
         @pointercancel="cancelManipulation"
-        @keydown="handleResizeKey(item, $event)"
-      >调整大小</button>
+        @keydown="handleResizeKey(item, handle.edge, $event)"
+      ></span>
     </article>
   </div>
 </template>
@@ -219,15 +259,17 @@ onBeforeUnmount(() => {
 .window-manager__window {
   position: absolute;
   display: grid;
-  grid-template-rows: 38px 1fr;
+  grid-template-rows: 54px 1fr;
   overflow: hidden;
-  min-width: 280px;
-  min-height: 200px;
-  border: 1px solid #1e2430;
-  border-radius: 6px;
-  background: #fffdf7;
+  min-width: 360px;
+  min-height: 260px;
+  border: 1px solid rgb(40 90 135 / 35%);
+  border-radius: 20px;
+  background:
+    linear-gradient(rgb(255 253 246 / 94%), rgb(250 247 237 / 98%)),
+    repeating-linear-gradient(0deg, transparent 0 25px, rgb(49 94 138 / 3%) 25px 26px);
   color: #1e2430;
-  box-shadow: 0 8px 12px rgb(25 34 50 / 24%);
+  box-shadow: 0 12px 30px rgb(20 65 110 / 25%);
   pointer-events: auto;
 }
 
@@ -236,20 +278,43 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 0 8px 0 12px;
-  border-bottom: 1px solid #1e2430;
-  background: #f7f4ec;
+  padding: 6px 10px 0 18px;
+  border-bottom: 1px dashed rgb(64 125 180 / 30%);
+  background: rgb(255 253 246 / 76%);
   touch-action: none;
   user-select: none;
   cursor: move;
 }
 
 .window-manager__titlebar strong {
+  flex: 1;
   overflow: hidden;
-  font-size: 13px;
+  color: #2d6fb5;
+  font-family: "Comic Sans MS", "Bradley Hand", "Segoe Print", cursive;
+  font-size: 17px;
+  letter-spacing: .01em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.window-manager__traffic-lights {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 7px;
+  pointer-events: none;
+}
+
+.window-manager__traffic-lights i {
+  width: 11px;
+  height: 11px;
+  border: 1px solid rgb(30 36 48 / 18%);
+  border-radius: 50%;
+  box-shadow: inset 0 1px rgb(255 255 255 / 42%);
+}
+
+.window-manager__traffic-lights i:nth-child(1) { background: #ef6b62; }
+.window-manager__traffic-lights i:nth-child(2) { background: #f2c94c; }
+.window-manager__traffic-lights i:nth-child(3) { background: #57ba78; }
 
 .window-manager__controls {
   display: flex;
@@ -266,43 +331,150 @@ onBeforeUnmount(() => {
 
 .window-manager__controls a,
 .window-manager__controls button {
-  min-width: 44px;
-  min-height: 38px;
-  padding: 4px 8px;
-  border: 1px solid #aeb8c8;
-  border-radius: 5px;
-  background: #fff;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 1px solid rgb(49 94 138 / 22%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 68%);
   font-size: 12px;
   line-height: 18px;
   text-decoration: none;
   cursor: pointer;
 }
 
+.window-manager__controls .window-manager__close {
+  width: 40px;
+  padding: 0;
+  color: #5b6677;
+  font-size: 21px;
+  line-height: 1;
+}
+
+.window-manager__controls :where(a, button):hover {
+  border-color: rgb(45 111 181 / 46%);
+  background: #fff;
+}
+
 .window-manager__preview {
   min-height: 0;
-  padding: 24px;
+  margin: 12px 28px 28px;
+  padding: 24px 28px;
+  border: 1px dashed rgb(64 125 180 / 35%);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 35%);
   overflow: auto;
+  color: #485465;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  line-height: 1.75;
 }
 
 .window-manager__preview p {
   margin: 0 0 16px;
 }
 
-.window-manager__resize {
+.window-manager__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.window-manager__status span {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  padding: 4px 11px;
+  border: 1px solid rgb(183 121 0 / 22%);
+  border-radius: 999px;
+  background: #fff0b8;
+  color: #795800;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.window-manager__status p {
+  margin: 0;
+  color: #69707d;
+  font-size: 13px;
+}
+
+.window-manager__tape {
   position: absolute;
-  right: 4px;
-  bottom: 4px;
-  width: 84px;
-  min-height: 38px;
-  padding: 4px;
-  border: 1px solid #aeb8c8;
-  border-radius: 5px;
-  background: #fff;
-  color: #394459;
-  font: inherit;
-  font-size: 11px;
+  z-index: 2;
+  top: -7px;
+  right: 92px;
+  width: 72px;
+  height: 21px;
+  transform: rotate(2deg);
+  background: rgb(244 215 88 / 76%);
+  box-shadow: 0 2px 4px rgb(65 73 82 / 10%);
+  pointer-events: none;
+}
+
+.window-manager__sparkle {
+  position: absolute;
+  right: 24px;
+  bottom: 18px;
+  color: rgb(47 131 214 / 34%);
+  font-size: 17px;
+  pointer-events: none;
+}
+
+.window-manager__resize-handle {
+  position: absolute;
+  z-index: 4;
   touch-action: none;
-  cursor: nwse-resize;
+  user-select: none;
+}
+
+.window-manager__resize-handle--n,
+.window-manager__resize-handle--s {
+  right: 18px;
+  left: 18px;
+  height: 10px;
+}
+
+.window-manager__resize-handle--n { top: -2px; cursor: n-resize; }
+.window-manager__resize-handle--s { bottom: -2px; cursor: s-resize; }
+
+.window-manager__resize-handle--e,
+.window-manager__resize-handle--w {
+  top: 18px;
+  bottom: 18px;
+  width: 10px;
+}
+
+.window-manager__resize-handle--e { right: -2px; cursor: e-resize; }
+.window-manager__resize-handle--w { left: -2px; cursor: w-resize; }
+
+.window-manager__resize-handle--nw,
+.window-manager__resize-handle--ne,
+.window-manager__resize-handle--se,
+.window-manager__resize-handle--sw {
+  width: 22px;
+  height: 22px;
+}
+
+.window-manager__resize-handle--nw { top: -2px; left: -2px; cursor: nw-resize; }
+.window-manager__resize-handle--ne { top: -2px; right: -2px; cursor: ne-resize; }
+.window-manager__resize-handle--se { right: -2px; bottom: -2px; cursor: se-resize; }
+.window-manager__resize-handle--sw { bottom: -2px; left: -2px; cursor: sw-resize; }
+
+.window-manager__resize-handle--se::after {
+  position: absolute;
+  right: 7px;
+  bottom: 6px;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid rgb(45 111 181 / 38%);
+  border-bottom: 2px solid rgb(45 111 181 / 38%);
+  border-radius: 0 0 5px;
+  content: "";
+}
+
+.window-manager.is-manipulating {
+  user-select: none;
 }
 
 .window-manager.is-manipulating .window-manager__preview {
@@ -315,22 +487,39 @@ onBeforeUnmount(() => {
   outline-offset: 2px;
 }
 
+.window-manager__resize-handle:focus-visible {
+  outline: 3px solid #315efb;
+  outline-offset: -3px;
+}
+
 @media (max-width: 767px) {
   .window-manager__window {
     grid-template-rows: 46px 1fr;
-    max-width: calc(100vw - 16px);
+    left: 16px !important;
+    width: calc(100vw - 32px) !important;
+    min-width: 0;
+    max-width: calc(100vw - 32px);
     max-height: calc(100dvh - 46px);
+    border-radius: 18px;
   }
 
   .window-manager__controls a,
-  .window-manager__controls button,
-  .window-manager__resize {
+  .window-manager__controls button {
     min-width: 44px;
     min-height: 44px;
   }
 
   .window-manager__preview {
-    padding: 18px;
+    margin: 10px 20px 22px;
+    padding: 20px;
+  }
+
+  .window-manager__resize-handle {
+    display: none;
+  }
+
+  .window-manager__tape {
+    right: 82px;
   }
 }
 

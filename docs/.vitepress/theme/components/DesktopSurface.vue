@@ -10,8 +10,8 @@ import {
   openWindow,
 } from './windowManagerState.mjs'
 
-const MENU_HEIGHT = 30
 const surface = ref(null)
+const menu = ref(null)
 const iconPositions = ref(createIconPositions())
 const windowState = ref(createWindowState())
 const bounds = ref({ width: 1280, height: 690 })
@@ -68,7 +68,7 @@ function measureSurface() {
     bounds.value,
     surface.value.clientWidth,
     surface.value.clientHeight,
-    MENU_HEIGHT,
+    menu.value?.offsetHeight ?? 40,
   )
   if (nextBounds === bounds.value) return
   bounds.value = nextBounds
@@ -101,8 +101,8 @@ onBeforeUnmount(() => {
 
 <template>
   <section ref="surface" class="desktop-surface" aria-label="JuZX OS 桌面">
-    <header class="desktop-surface__menu">
-      <a class="desktop-surface__brand" href="#home">JuZX OS</a>
+    <header ref="menu" class="desktop-surface__menu">
+      <a class="desktop-surface__brand is-active" href="#home" aria-current="page">JuZX OS</a>
       <nav aria-label="JuZX OS 菜单">
         <a href="/about">About</a>
         <a href="#knowledge">Knowledge</a>
@@ -134,9 +134,50 @@ onBeforeUnmount(() => {
   min-height: 100vh;
   min-height: 100dvh;
   overflow: hidden;
-  background: #2B7FD8;
+  background:
+    radial-gradient(circle at 28% 18%, rgb(86 170 239 / 58%) 0, transparent 28%),
+    radial-gradient(circle at 82% 72%, rgb(39 112 192 / 38%) 0, transparent 34%),
+    linear-gradient(145deg, #3b91e1 0%, #2f83d6 46%, #2875c5 100%);
   color: #f6f7fb;
-  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.desktop-surface::before,
+.desktop-surface::after {
+  position: absolute;
+  z-index: 0;
+  content: "";
+  pointer-events: none;
+}
+
+.desktop-surface::before {
+  inset: 0;
+  opacity: .42;
+  background-image:
+    radial-gradient(circle, rgb(255 245 180 / 82%) 0 1px, transparent 1.7px),
+    radial-gradient(circle, rgb(255 255 255 / 64%) 0 1.2px, transparent 2px),
+    radial-gradient(circle, rgb(207 232 255 / 48%) 0 1px, transparent 1.6px);
+  background-position: 10px 18px, 43px 64px, 72px 22px;
+  background-size: 92px 92px, 128px 128px, 156px 156px;
+}
+
+.desktop-surface::after {
+  top: 12%;
+  left: 8%;
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: rgb(255 244 170 / 76%);
+  box-shadow:
+    16vw 19vh rgb(225 241 255 / 52%),
+    31vw -3vh rgb(255 244 170 / 64%),
+    47vw 31vh rgb(225 241 255 / 46%),
+    63vw 8vh rgb(255 244 170 / 68%),
+    77vw 42vh rgb(225 241 255 / 52%),
+    24vw 62vh rgb(255 244 170 / 62%),
+    56vw 70vh rgb(225 241 255 / 48%),
+    84vw 68vh rgb(255 244 170 / 62%);
+  transform: rotate(45deg);
 }
 
 .desktop-surface__menu {
@@ -145,22 +186,53 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: auto auto 1fr auto;
   align-items: center;
-  height: 30px;
-  padding: 0 12px;
-  gap: 18px;
-  background: rgb(43 127 216 / 96%);
-  border-bottom: 1px solid rgb(255 255 255 / 22%);
+  height: 40px;
+  padding: 0 18px;
+  gap: 20px;
+  background: rgb(47 131 214 / 88%);
+  border-bottom: 1px solid rgb(255 255 255 / 8%);
   font-size: 11px;
 }
 
 .desktop-surface__menu nav {
   display: flex;
-  gap: 14px;
+  gap: 16px;
 }
 
 .desktop-surface__menu a {
+  position: relative;
   color: inherit;
   text-decoration: none;
+  transition: color 180ms ease, opacity 180ms ease;
+}
+
+.desktop-surface__menu nav a {
+  color: rgb(244 248 252 / 78%);
+}
+
+.desktop-surface__menu nav a::after {
+  position: absolute;
+  right: 20%;
+  bottom: -5px;
+  left: 20%;
+  height: 2px;
+  border-radius: 999px;
+  background: #f7dd76;
+  content: "";
+  opacity: 0;
+  transform: scaleX(.5);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.desktop-surface__menu nav a:hover,
+.desktop-surface__menu nav a:focus-visible {
+  color: #fffdf6;
+}
+
+.desktop-surface__menu nav a:hover::after,
+.desktop-surface__menu nav a:focus-visible::after {
+  opacity: .85;
+  transform: scaleX(1);
 }
 
 .desktop-surface__menu a:focus-visible {
@@ -170,16 +242,19 @@ onBeforeUnmount(() => {
 
 .desktop-surface__menu .desktop-surface__brand {
   color: #F4D758;
+  font-family: "Comic Sans MS", "Bradley Hand", "Segoe Print", cursive;
+  font-size: 15px;
   font-weight: 700;
+  letter-spacing: .02em;
 }
 
 .desktop-surface__menu button {
   justify-self: start;
-  min-height: 24px;
-  padding: 2px 8px;
-  border: 1px solid rgb(255 255 255 / 38%);
-  border-radius: 4px;
-  background: transparent;
+  min-height: 28px;
+  padding: 3px 10px;
+  border: 1px solid rgb(255 255 255 / 24%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 8%);
   color: inherit;
   font: inherit;
   cursor: pointer;
@@ -192,41 +267,44 @@ onBeforeUnmount(() => {
 
 .desktop-surface__workspace {
   position: absolute;
-  inset: 30px 0 0;
-  height: calc(100vh - 30px);
-  height: calc(100dvh - 30px);
+  z-index: 1;
+  inset: 40px 0 0;
+  height: calc(100vh - 40px);
+  height: calc(100dvh - 40px);
   overflow: hidden;
+}
+
+.desktop-surface__menu time {
+  color: rgb(237 245 252 / 58%);
+  font: 10px/1 "JetBrains Mono", "Fira Code", Consolas, monospace;
 }
 
 @media (max-width: 767px) {
   .desktop-surface__menu {
-    grid-template-columns: auto 1fr auto;
-    gap: 8px;
-    padding: 0 8px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    height: 48px;
+    gap: 10px;
+    padding: 0 12px;
   }
 
   .desktop-surface__menu nav {
-    display: none;
+    justify-content: center;
+    gap: clamp(7px, 3vw, 14px);
   }
 
   .desktop-surface__menu button {
-    min-width: 44px;
-    min-height: 44px;
-    justify-self: end;
-    overflow: hidden;
-    max-width: 44px;
-    color: transparent;
-    white-space: nowrap;
-  }
-
-  .desktop-surface__menu button::after {
-    content: "Reset";
-    color: #fffdf7;
+    display: none;
   }
 
   .desktop-surface__menu time {
     min-width: 42px;
     text-align: right;
+  }
+
+  .desktop-surface__workspace {
+    inset: 48px 0 0;
+    height: calc(100vh - 48px);
+    height: calc(100dvh - 48px);
   }
 }
 

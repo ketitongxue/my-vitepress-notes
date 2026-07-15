@@ -19,6 +19,7 @@ test('Personal OS visual contract is exact, scoped, interactive, and responsive'
   const css = await read('docs/.vitepress/theme/custom.css')
   const home = await read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue')
   const componentStyles = (await Promise.all([
+    'DesktopSurface.vue', 'DesktopIcon.vue', 'WindowManager.vue', 'BottomOsNavigation.vue',
     'CanvasControls.vue', 'CanvasCard.vue', 'CanvasLayers.vue', 'CanvasMinimap.vue', 'InfiniteCanvas.vue',
   ].map((name) => read(`docs/.vitepress/theme/components/${name}`)))).join('\n')
   const scopedOs = css.match(/\/\* Personal OS start \*\/([\s\S]*?)\/\* Personal OS end \*\//)?.[1] ?? ''
@@ -28,21 +29,20 @@ test('Personal OS visual contract is exact, scoped, interactive, and responsive'
   assert.match(home, /class="personal-system-view__error"/)
   assert.match(scopedOs, /\.factory-home \.personal-system-view__error/)
   assert.match(scopedOs, /#F7F4EC/i)
-  assert.doesNotMatch(scopedOs,
-    /linear-gradient|radial-gradient|backdrop-filter|\bstars?\b|sparkle|particle|illustration|portrait|<img/i)
+  assert.doesNotMatch(scopedOs, /particle|illustration|portrait|<img/i)
 
   for (const color of [
     '#F7F4EC', '#FFFDF7', '#1E2430', '#69707D', '#315EFB',
-    '#F4D758', '#EF7B45', '#3FAE78', '#192232', '#2B7FD8',
+    '#F4D758', '#EF7B45', '#3FAE78', '#192232', '#2F83D6', '#2875C5', '#3B91E1',
   ]) assert.match(os, new RegExp(color, 'i'))
 
   for (const source of [
     'overflow-x: clip',
-    'height: 30px',
-    'height: calc(100vh - 30px)',
-    'height: calc(100dvh - 30px)',
-    'min-width: 280px',
-    'min-height: 200px',
+    'height: 40px',
+    'height: calc(100vh - 40px)',
+    'height: calc(100dvh - 40px)',
+    'min-width: 360px',
+    'min-height: 260px',
     '@media (max-width: 767px)',
     'min-width: 44px',
     'min-height: 44px',
@@ -57,7 +57,10 @@ test('Personal OS visual contract is exact, scoped, interactive, and responsive'
   ]) assert.match(os, new RegExp(`\\.factory-home \\.${selector}(?:\\s|,|\\{|:)`))
 
   assert.match(os, /\.factory-home\s*\{[^}]*font-family:\s*var\(--vp-font-family-base\)/)
-  assert.doesNotMatch(os, /linear-gradient|radial-gradient|backdrop-filter|\bstars?\b|sparkle|particle|illustration|character-art/i)
+  assert.match(os, new RegExp('linear-gradient', 'i'))
+  assert.match(os, new RegExp('radial-gradient', 'i'))
+  assert.match(os, new RegExp('backdrop-filter:\\s*blur\\(12px\\)', 'i'))
+  assert.doesNotMatch(os, /particle|illustration|character-art/i)
   for (const source of [
     '@media (max-width: 767px)',
     '@media (prefers-reduced-motion: reduce)',
@@ -164,7 +167,10 @@ test('final shell integrates exit, portfolio, and retryable lazy system view', a
   }
   assert.match(exit, /@media \(prefers-reduced-motion: reduce\)/)
   assert.match(exit, /min-height:\s*100vh;[\s\S]*min-height:\s*100dvh;/)
-  assert.doesNotMatch(exit, /linear-gradient|radial-gradient|backdrop-filter|\bstars?\b|sparkle|particle|illustration|<svg|<img/i)
+  assert.doesNotMatch(exit, new RegExp(
+    'linear-gradient|radial-gradient|backdrop-filter|\\bstars?\\b|sparkle|particle|illustration|<svg|<img',
+    'i',
+  ))
 })
 
 test('knowledge portfolio preserves the six-section content and navigation contract', async () => {

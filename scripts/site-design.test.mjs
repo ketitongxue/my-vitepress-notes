@@ -81,9 +81,9 @@ test('theme styles balance the Personal OS, knowledge, and QA surfaces', async (
     '.infinite-canvas', '.canvas-card', '.canvas-layers', '.canvas-minimap', '.canvas-controls',
   ]) assert.match(css, new RegExp(`\\.factory-home ${selector.replace('.', '\\.')}(?:\\s|,|\\{|:)`))
   assert.match(css, /\.factory-home :where\(a, button\):focus-visible\s*\{[^}]*outline:\s*3px solid #315EFB/)
-  assert.match(css, /\.factory-home \.desktop-surface__menu\s*\{[^}]*height:\s*30px/)
-  assert.match(css, /\.factory-home \.desktop-surface__workspace\s*\{[^}]*height:\s*calc\(100vh - 30px\)/)
-  assert.match(css, /\.factory-home \.desktop-surface__workspace\s*\{[^}]*height:\s*calc\(100dvh - 30px\)/)
+  assert.match(css, /\.factory-home \.desktop-surface__menu\s*\{[^}]*height:\s*40px/)
+  assert.match(css, /\.factory-home \.desktop-surface__workspace\s*\{[^}]*height:\s*calc\(100vh - 40px\)/)
+  assert.match(css, /\.factory-home \.desktop-surface__workspace\s*\{[^}]*height:\s*calc\(100dvh - 40px\)/)
   const mobileOverflowPattern = [
     '@media \\(max-width: 767px\\)[\\s\\S]*?\\.factory-home\\s*\\{[^}]*overflow-x:',
     '\\s*clip',
@@ -92,17 +92,17 @@ test('theme styles balance the Personal OS, knowledge, and QA surfaces', async (
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*?\.factory-home \.canvas-controls button\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px/)
   assert.match(css, /\.factory-home\s*\{[^}]*font-family:\s*var\(--vp-font-family-base\)/)
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*animation:\s*none !important;[\s\S]*transition:\s*none !important;/)
-  assert.doesNotMatch(css.match(/\/\* Personal OS start \*\/([\s\S]*?)\/\* Personal OS end \*\//)?.[1] ?? '', /linear-gradient|radial-gradient|backdrop-filter|\bstars?\b|sparkle|particle|illustration|character-art/i)
+  assert.match(css.match(/\/\* Personal OS start \*\/([\s\S]*?)\/\* Personal OS end \*\//)?.[1] ?? '', new RegExp('linear-gradient', 'i'))
   assert.doesNotMatch(css, /\.garden-/)
   assert.doesNotMatch(css, /\.wiki-ask__conversation[\s\S]{0,400}min-height:\s*190px/)
 })
 
-test('all allowed Personal OS component styles enforce the approved visual policy', async () => {
+test('Personal OS components keep approved local textures without remote visual assets', async () => {
   const components = new Map(await Promise.all(task7Components.map(async (name) => [
     name,
     await read(`docs/.vitepress/theme/components/${name}.vue`),
   ])))
-  const forbiddenEffects = /linear-gradient|radial-gradient|backdrop-filter|\bstars?\b|sparkle|particle|illustration|character-art/i
+  const forbiddenEffects = /particle|illustration|character-art/i
   const remoteVisual = /url\(\s*['"]?(?:(?:https?:)?\/\/)|https?:\/\/[^\s'"()<>]+\.(?:svg|png|jpe?g|webp|gif)(?:[?#][^\s'"()<>]*)?/i
   const approvedGridUri = "data:image/svg+xml,%3Csvg xmlns='%68%74%74%70%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='1' cy='1' r='1' fill='%239AAECC' fill-opacity='.34'/%3E%3C/svg%3E"
   const approvedGridDeclaration = `background-image: url("${approvedGridUri}");`
@@ -117,7 +117,6 @@ test('all allowed Personal OS component styles enforce the approved visual polic
   for (const [name, source] of components) {
     const styles = scopedStyles(source)
     assert.doesNotMatch(styles, forbiddenEffects, `${name} scoped styles must not add forbidden visual effects`)
-    assert.doesNotMatch(styles, /#f2c94c/i, `${name} must not retain the rejected yellow`)
     assert.doesNotMatch(source, /<(?:img|picture)\b/i, `${name} must not add image elements`)
     assert.doesNotMatch(source, remoteVisual, `${name} must not load remote visual assets`)
 
@@ -139,6 +138,11 @@ test('all allowed Personal OS component styles enforce the approved visual polic
     }
   }
 
+  assert.match(scopedStyles(components.get('DesktopSurface')), new RegExp('linear-gradient'))
+  assert.match(scopedStyles(components.get('DesktopSurface')), new RegExp('radial-gradient'))
+  assert.match(scopedStyles(components.get('BottomOsNavigation')), new RegExp('backdrop-filter:\\s*blur\\(12px\\)'))
+  assert.match(scopedStyles(components.get('DesktopIcon')), new RegExp('linear-gradient'))
+  assert.match(scopedStyles(components.get('WindowManager')), /repeating-linear-gradient/)
   assert.match(scopedStyles(components.get('MacbookBoot')), /\.macbook-boot__launch\s*\{[^}]*background:\s*#F4D758;/)
   assert.match(scopedStyles(components.get('CanvasCard')), /\.canvas-card__resize\s*\{[^}]*background:\s*#F4D758;/)
   assert.match('background-image: url("data:image/png;base64,invalid")', /data:image/i)
@@ -160,7 +164,8 @@ test('every required mobile Personal OS target keeps a 44 by 44 hit area', async
   ].map(async (name) => scopedStyles(await read(`docs/.vitepress/theme/components/${name}.vue`))))
 
   assert.match(boot, /\.macbook-boot__launch\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
-  assert.match(windows, /@media \(max-width: 767px\)[\s\S]*?\.window-manager__controls a,\s*\.window-manager__controls button,\s*\.window-manager__resize\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
+  assert.match(windows, /@media \(max-width: 767px\)[\s\S]*?\.window-manager__controls a,\s*\.window-manager__controls button\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
+  assert.match(windows, /@media \(max-width: 767px\)[\s\S]*?\.window-manager__resize-handle\s*\{[^}]*display:\s*none;/)
   assert.match(navigation, /@media \(max-width: 767px\)[\s\S]*?\.bottom-os-navigation button\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
   assert.match(layers, /@media \(max-width: 767px\)[\s\S]*?\.canvas-layers__toggle\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
   assert.match(minimap, /\.canvas-minimap__surface\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)

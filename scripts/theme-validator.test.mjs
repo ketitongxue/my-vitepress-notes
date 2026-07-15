@@ -43,19 +43,21 @@ function validTheme() {
   --os-orange: #EF7B45;
   --os-green: #3FAE78;
   --os-terminal: #192232;
-  --os-desktop: #2B7FD8;
+  --os-desktop: #2F83D6;
+  --os-desktop-deep: #2875C5;
+  --os-desktop-highlight: #3B91E1;
   font-family: var(--vp-font-family-base);
 }
 .factory-home .macbook-boot { background: #F7F4EC; color: #1E2430; }
-.factory-home .desktop-surface { overflow: hidden; background: #2B7FD8; }
-.factory-home .desktop-surface__menu { height: 30px; color: #F4D758; }
-.factory-home .desktop-surface__workspace { height: calc(100vh - 30px); }
-.factory-home .desktop-surface__workspace { height: calc(100dvh - 30px); }
+.factory-home .desktop-surface { overflow: hidden; background: linear-gradient(145deg, #3B91E1, #2F83D6 46%, #2875C5); }
+.factory-home .desktop-surface__menu { height: 40px; color: #F4D758; }
+.factory-home .desktop-surface__workspace { height: calc(100vh - 40px); }
+.factory-home .desktop-surface__workspace { height: calc(100dvh - 40px); }
 .factory-home .desktop-icon { color: #FFFDF7; }
-.factory-home .window-manager__window { min-width: 280px; min-height: 200px; background: #FFFDF7; }
+.factory-home .window-manager__window { min-width: 360px; min-height: 260px; background: #FFFDF7; }
 .factory-home .bottom-os-navigation { border-color: #69707D; }
 .factory-home .knowledge-portfolio { max-width: 72ch; color: #1E2430; }
-.factory-home .infinite-canvas { overflow: hidden; background: #2B7FD8; }
+.factory-home .infinite-canvas { overflow: hidden; background: #F7F4EC; }
 .factory-home .canvas-card { background: #FFFDF7; }
 .factory-home .canvas-layers { color: #192232; }
 .factory-home .canvas-minimap { border-color: #EF7B45; }
@@ -89,11 +91,11 @@ expectFailure(`/* ${valid} */`, 'commented CSS must fail', /exactly one :root ru
 expectFailure(valid.replace('.dark {', '.dark-missing {'), 'dark palette remains required', /exactly one \.dark rule/)
 expectFailure(valid.replace('--factory-focus: #123456;', ''), 'factory tokens remain required', /must declare --factory-focus/)
 
-expectFailure(valid.replaceAll('#2B7FD8', '#275DAD'), 'plain blue is exact', /palette must include #2B7FD8/)
-expectFailure(valid.replace('height: 30px;', 'height: 32px;'), 'menu height is exact', /menu must be exactly 30px/)
-expectFailure(valid.replace('.factory-home .desktop-surface__workspace { height: calc(100dvh - 30px); }', ''), 'dvh pair is required', /100vh and 100dvh geometry/)
-expectFailure(valid.replace('min-width: 280px;', 'min-width: 260px;'), 'window width minimum is fixed', /280 x 200 minimum/)
-expectFailure(valid.replace('min-height: 200px;', 'min-height: 180px;'), 'window height minimum is fixed', /280 x 200 minimum/)
+expectFailure(valid.replaceAll('#2F83D6', '#275DAD'), 'desktop blue is exact', /palette must include #2F83D6/)
+expectFailure(valid.replace('height: 40px;', 'height: 32px;'), 'menu height is exact', /menu must be exactly 40px/)
+expectFailure(valid.replace('.factory-home .desktop-surface__workspace { height: calc(100dvh - 40px); }', ''), 'dvh pair is required', /100vh and 100dvh geometry/)
+expectFailure(valid.replace('min-width: 360px;', 'min-width: 340px;'), 'window width minimum is fixed', /360 x 260 desktop minimum/)
+expectFailure(valid.replace('min-height: 260px;', 'min-height: 240px;'), 'window height minimum is fixed', /360 x 260 desktop minimum/)
 expectFailure(valid.replace('@media (max-width: 767px)', '@media (max-width: 700px)'), 'mobile query is exact', /max-width: 767px/)
 expectFailure(valid.replace('min-width: 44px;', 'min-width: 40px;'), 'mobile hit width is fixed', /44px hit area/)
 expectFailure(valid.replace('animation: none !important;', 'animation: fade 1s;'), 'reduced motion is required', /reduced-motion coverage/)
@@ -119,7 +121,7 @@ expectFailure(
   /must be homepage scoped/,
 )
 expectFailure(
-  valid.replace('/* Personal OS end */', '.window-manager__resize { width: 1px; }\n/* Personal OS end */'),
+  valid.replace('/* Personal OS end */', '.window-manager__resize-handle { width: 1px; }\n/* Personal OS end */'),
   'unscoped window resize handles cannot bypass homepage scope',
   /must be homepage scoped/,
 )
@@ -128,10 +130,12 @@ expectFailure(
   'unscoped structural canvas connections cannot bypass homepage scope',
   /must be homepage scoped/,
 )
-expectFailure(valid.replace('background: #FFFDF7;', 'background: linear-gradient(#FFFDF7, white);'), 'gradients are forbidden', /must not use gradients/)
-expectFailure(valid.replace('border-color: #69707D;', 'border-color: #69707D; backdrop-filter: blur(8px);'), 'backdrop blur is forbidden', /must not use gradients/)
-expectFailure(valid.replace('color: #FFFDF7;', 'color: #FFFDF7; --stars: visible;'), 'stars are forbidden', /must not use gradients/)
-expectFailure(valid.replace('color: #FFFDF7;', 'color: #FFFDF7; --illustration: visible;'), 'illustrations are forbidden', /must not use gradients/)
+const blurAllowed = runChecker(valid.replace('border-color: #69707D;', 'border-color: #69707D; backdrop-filter: blur(8px);'))
+assert.equal(blurAllowed.status, 0, `approved backdrop blur should pass: ${blurAllowed.stderr}`)
+const starsAllowed = runChecker(valid.replace('color: #FFFDF7;', 'color: #FFFDF7; --stars: visible;'))
+assert.equal(starsAllowed.status, 0, `approved star texture token should pass: ${starsAllowed.stderr}`)
+expectFailure(valid.replace('color: #FFFDF7;', 'color: #FFFDF7; --particle: visible;'), 'particles remain forbidden', /must not use particles/)
+expectFailure(valid.replace('color: #FFFDF7;', 'color: #FFFDF7; --illustration: visible;'), 'illustrations remain forbidden', /must not use particles/)
 expectFailure(valid.replace('background: #FFFDF7;', 'background: #FFFDF7; box-shadow: 18px 18px 0 #315EFB;'), 'strong colored shadow is forbidden', /strong or saturated box-shadow/)
 expectFailure(valid.replace('font-family: var(--vp-font-family-base);', 'font-family: var(--vp-font-family-base); touch-action: none;'), 'page-wide touch lock is forbidden', /must not disable touch action page-wide/)
 

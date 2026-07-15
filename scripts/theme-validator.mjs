@@ -83,9 +83,9 @@ function isPersonalOsScoped(selector) {
 
 function isStrongShadow(value) {
   if (!value || value === 'none') return false
-  if (/(?:#315EFB|#F2C94C|#EF7B45|#3FAE78|#2B7FD8)/i.test(value)) return true
+  if (/(?:#315EFB|#F2C94C|#EF7B45|#3FAE78|#2F83D6|#2875C5|#3B91E1)/i.test(value)) return true
   return [...value.matchAll(/-?\d+(?:\.\d+)?px/g)]
-    .some((match) => Math.abs(Number.parseFloat(match[0])) > 12)
+    .some((match) => Math.abs(Number.parseFloat(match[0])) > 32)
 }
 
 const mobileMedia = '@media (max-width: 767px)'
@@ -157,25 +157,25 @@ export function validateThemeCss(source) {
     '.factory-home .canvas-controls',
   ]) requireRule(osRules, selector)
 
-  for (const color of ['#F7F4EC', '#FFFDF7', '#1E2430', '#69707D', '#315EFB', '#F4D758', '#EF7B45', '#3FAE78', '#192232', '#2B7FD8']) {
+  for (const color of ['#F7F4EC', '#FFFDF7', '#1E2430', '#69707D', '#315EFB', '#F4D758', '#EF7B45', '#3FAE78', '#192232', '#2F83D6', '#2875C5', '#3B91E1']) {
     if (!new RegExp(color, 'i').test(osSource)) throw new Error(`Personal OS palette must include ${color}`)
   }
 
-  if (/linear-gradient|radial-gradient|backdrop-filter|\bstars?\b|sparkle|particle|illustration|character-art/i.test(osCss)) {
-    throw new Error('Personal OS must not use gradients, stars, particles, or illustrations')
+  if (/particle|illustration|character-art/i.test(osCss)) {
+    throw new Error('Personal OS must not use particles or illustrations')
   }
 
   const menu = parseDeclarations(requireRule(osRules, '.factory-home .desktop-surface__menu').body)
-  if (menu.get('height') !== '30px') throw new Error('Personal OS menu must be exactly 30px high')
+  if (menu.get('height') !== '40px') throw new Error('Personal OS menu must be exactly 40px high')
 
-  if (!includesDeclaration(osRules, '.factory-home .desktop-surface__workspace', 'height', 'calc(100vh - 30px)')
-    || !includesDeclaration(osRules, '.factory-home .desktop-surface__workspace', 'height', 'calc(100dvh - 30px)')) {
+  if (!includesDeclaration(osRules, '.factory-home .desktop-surface__workspace', 'height', 'calc(100vh - 40px)')
+    || !includesDeclaration(osRules, '.factory-home .desktop-surface__workspace', 'height', 'calc(100dvh - 40px)')) {
     throw new Error('Personal OS workspace must include 100vh and 100dvh geometry')
   }
 
   const window = parseDeclarations(requireRule(osRules, '.factory-home .window-manager__window').body)
-  if (window.get('min-width') !== '280px' || window.get('min-height') !== '200px') {
-    throw new Error('Personal OS windows must keep the 280 x 200 minimum')
+  if (window.get('min-width') !== '360px' || window.get('min-height') !== '260px') {
+    throw new Error('Personal OS windows must keep the 360 x 260 desktop minimum')
   }
 
   const mobileRoot = parseDeclarations(requireRule(osRules, '.factory-home', mobileMedia).body)

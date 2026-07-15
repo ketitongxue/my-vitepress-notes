@@ -112,6 +112,7 @@ function handleKeydown(event) {
   <button
     type="button"
     class="desktop-icon"
+    :data-icon-kind="entry.icon"
     @dblclick="handleDoubleClick"
     @keydown="handleKeydown"
     @pointerdown="handlePointerDown"
@@ -120,8 +121,10 @@ function handleKeydown(event) {
     @pointercancel="handlePointerCancel"
     @dragstart.prevent
   >
-    <component :is="iconComponent" aria-hidden="true" />
-    <span>{{ entry.label }}</span>
+    <span class="desktop-icon__tile" aria-hidden="true">
+      <component :is="iconComponent" />
+    </span>
+    <span class="desktop-icon__label">{{ entry.label }}</span>
   </button>
 </template>
 
@@ -131,12 +134,12 @@ function handleKeydown(event) {
   z-index: 2;
   display: grid;
   width: 88px;
-  min-height: 76px;
-  padding: 8px 4px;
+  min-height: 92px;
+  padding: 8px 4px 6px;
   place-items: center;
   gap: 4px;
   border: 1px solid transparent;
-  border-radius: 5px;
+  border-radius: 16px;
   background: transparent;
   color: #f6f7fb;
   font: inherit;
@@ -144,12 +147,19 @@ function handleKeydown(event) {
   touch-action: none;
   user-select: none;
   cursor: default;
+  transition: transform 180ms cubic-bezier(.16, 1, .3, 1), background-color 180ms ease,
+    border-color 180ms ease;
 }
 
 .desktop-icon:hover,
 .desktop-icon:focus-visible {
-  border-color: rgb(255 255 255 / 45%);
-  background: rgb(255 255 255 / 12%);
+  border-color: rgb(255 255 255 / 38%);
+  background: rgb(255 255 255 / 9%);
+  transform: translateY(-3px) scale(1.02);
+}
+
+.desktop-icon:active {
+  transform: translateY(-1px) scale(.98);
 }
 
 .desktop-icon:focus-visible {
@@ -157,33 +167,97 @@ function handleKeydown(event) {
   outline-offset: 2px;
 }
 
-.desktop-icon :deep(svg) {
-  width: 40px;
-  height: 40px;
-  stroke-width: 1.6;
+.desktop-icon__tile {
+  position: relative;
+  display: grid;
+  width: 56px;
+  height: 52px;
+  place-items: center;
+  overflow: visible;
+  border: 1px solid rgb(255 255 255 / 62%);
+  border-radius: 15px;
+  background: linear-gradient(145deg, #fffdf6, #e8f1fb);
+  color: #2d6fb5;
+  box-shadow: 0 7px 15px rgb(20 65 110 / 22%), inset 0 1px rgb(255 255 255 / 72%);
+  transition: box-shadow 180ms ease;
 }
 
-.desktop-icon span {
+.desktop-icon:hover .desktop-icon__tile,
+.desktop-icon:focus-visible .desktop-icon__tile {
+  box-shadow: 0 10px 19px rgb(20 65 110 / 28%), inset 0 1px rgb(255 255 255 / 82%);
+}
+
+.desktop-icon[data-icon-kind="folder"] .desktop-icon__tile {
+  border-color: rgb(255 240 177 / 72%);
+  background: linear-gradient(155deg, #ffe88d, #f2c94c);
+  color: #8b6500;
+}
+
+.desktop-icon[data-icon-kind="folder"] .desktop-icon__tile::before {
+  position: absolute;
+  top: -7px;
+  left: 8px;
+  width: 24px;
+  height: 10px;
+  border: 1px solid rgb(255 240 177 / 72%);
+  border-bottom: 0;
+  border-radius: 7px 7px 0 0;
+  background: #f8da68;
+  content: "";
+}
+
+.desktop-icon[data-icon-kind="terminal"] .desktop-icon__tile {
+  border-color: rgb(255 255 255 / 34%);
+  background: linear-gradient(155deg, #263858, #192232);
+  color: #f3f7fd;
+}
+
+.desktop-icon[data-icon-kind="file"] .desktop-icon__tile::after {
+  position: absolute;
+  right: 6px;
+  bottom: 5px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: #2f83d6;
+  color: #fff;
+  content: "DOC";
+  font: 700 7px/1.4 "JetBrains Mono", "Fira Code", Consolas, monospace;
+}
+
+.desktop-icon :deep(svg) {
+  width: 32px;
+  height: 32px;
+  stroke-width: 1.8;
+}
+
+.desktop-icon__label {
   max-width: 100%;
   overflow-wrap: anywhere;
-  font-size: 12px;
-  line-height: 1.2;
+  color: #fffdf6;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
   text-shadow: 0 1px 2px rgb(25 34 50 / 72%);
 }
 
 @media (max-width: 767px) {
   .desktop-icon {
     width: 68px;
-    min-height: 76px;
+    min-height: 86px;
     padding: 6px 2px;
   }
 
-  .desktop-icon :deep(svg) {
-    width: 42px;
-    height: 42px;
+  .desktop-icon__tile {
+    width: 52px;
+    height: 48px;
   }
 
-  .desktop-icon span {
+  .desktop-icon :deep(svg) {
+    width: 30px;
+    height: 30px;
+  }
+
+  .desktop-icon__label {
     font-size: 10px;
   }
 }
