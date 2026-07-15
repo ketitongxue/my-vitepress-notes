@@ -13,13 +13,19 @@ import {
   rebaseHistoryTransform, restoreCardGeometry, undoHistory,
 } from './canvasHistory.mjs'
 import { loadCanvasLayout, saveCanvasLayout } from './canvasPersistence.mjs'
-import { canvasCards, canvasConnections } from './personalOsContent.mjs'
+
+const props = defineProps({
+  configuration: { type: Object, required: true },
+})
 
 const SAVE_DELAY = 250
 const INITIAL_TRANSFORM = Object.freeze({ scale: 1, panX: 0, panY: 0 })
 const emit = defineEmits(['layout-change'])
 const viewport = ref(null)
-const cards = ref(canvasCards.map((card) => ({ ...card })))
+const sourceCards = props.configuration.config.cards
+const sourceConnections = props.configuration.config.connections
+const contentRevision = props.configuration.revision
+const cards = ref(sourceCards.map((card) => ({ ...card })))
 const transform = ref({ ...INITIAL_TRANSFORM })
 const selectedCardId = ref(null)
 const stackingOrder = ref(cards.value.map((card) => card.id))
@@ -27,8 +33,9 @@ const viewportSize = ref({ width: 1, height: 1 })
 const ready = ref(false)
 
 const defaultLayout = {
-  cards: canvasCards.map((card) => ({ ...card })),
-  order: canvasCards.map(({ id }) => id),
+  contentRevision,
+  cards: sourceCards.map((card) => ({ ...card })),
+  order: sourceCards.map(({ id }) => id),
   transform: { ...INITIAL_TRANSFORM },
 }
 const history = ref(createHistory(defaultLayout))
@@ -58,6 +65,7 @@ const worldStyle = computed(() => ({
 
 function currentLayout() {
   return {
+    contentRevision,
     cards: cards.value.map((card) => ({ ...card })),
     order: [...stackingOrder.value],
     transform: { ...transform.value },
@@ -498,7 +506,7 @@ onBeforeUnmount(() => {
       @lostpointercapture.capture="cancelCardGesture"
     >
       <div class="infinite-canvas__world" :style="worldStyle">
-        <CanvasConnections :cards="cards" :connections="canvasConnections" />
+        <CanvasConnections :cards="cards" :connections="sourceConnections" />
         <CanvasCard
           v-for="(card, index) in cards"
           :key="card.id"

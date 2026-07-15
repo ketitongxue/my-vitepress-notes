@@ -29,6 +29,7 @@
     "wrangler": "4.107.0"
   },
   "dependencies": {
-    "@tabler/icons-vue": "^3.44.0"
+    "@tabler/icons-vue": "^3.44.0",
+    "jose": "^6.2.3"
   }
 }

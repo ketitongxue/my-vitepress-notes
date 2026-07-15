@@ -9,6 +9,7 @@ import {
   hasCompletedHomeEntry, hashForOsView, initialOsView, normalizeOsHash,
 } from './personalOsRouter.mjs'
 import { loadSystemCanvasModule } from './systemCanvasLoader.mjs'
+import { loadPersonalOsConfiguration } from './personalOsConfigClient.mjs'
 
 const SYSTEM_ACTIVE_CLASS = 'personal-os-system-active'
 const claimedView = typeof document === 'undefined'
@@ -21,6 +22,7 @@ const bootDisabled = ref(typeof document !== 'undefined'
   && document.documentElement.dataset.personalSiteAccess === 'fallback')
 const systemLoadState = ref('idle')
 const InfiniteCanvas = shallowRef(null)
+const systemConfiguration = shallowRef(null)
 const systemImporters = Object.freeze({
   initial: () => import('./InfiniteCanvas.vue'),
   retry: () => import('./InfiniteCanvas.vue?retry=1'),
@@ -43,9 +45,13 @@ async function requestSystem() {
   const currentRequest = ++requestId
   systemLoadState.value = 'loading'
   try {
-    const module = await loadSystemCanvasModule(systemImportAttempt, systemImporters)
+    const [module, configuration] = await Promise.all([
+      loadSystemCanvasModule(systemImportAttempt, systemImporters),
+      loadPersonalOsConfiguration(),
+    ])
     if (currentRequest !== requestId) return
     InfiniteCanvas.value = markRaw(module.default)
+    systemConfiguration.value = configuration
     systemLoadState.value = 'loaded'
   } catch {
     if (currentRequest !== requestId) return
@@ -104,6 +110,7 @@ async function handleHomeEntered() {
 function retrySystem() {
   if (systemLoadState.value === 'loading') return
   InfiniteCanvas.value = null
+  systemConfiguration.value = null
   systemImportAttempt = 1
   void requestSystem()
 }
@@ -156,7 +163,11 @@ onBeforeUnmount(() => {
       aria-label="我的 OS 系统视图"
       data-os-view="system"
     >
-      <component v-if="InfiniteCanvas" :is="InfiniteCanvas" />
+      <component
+        v-if="InfiniteCanvas && systemConfiguration"
+        :is="InfiniteCanvas"
+        :configuration="systemConfiguration"
+      />
       <div
         v-else-if="systemLoadState === 'loading'"
         class="personal-system-view__status"

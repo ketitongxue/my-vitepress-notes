@@ -1,4 +1,4 @@
-export const CANVAS_LAYOUT_KEY = 'juzx-personal-os-layout-v2'
+export const CANVAS_LAYOUT_KEY = 'juzx-personal-os-layout-v3'
 
 const MIN_SCALE = 0.15
 const MAX_SCALE = 3
@@ -63,7 +63,8 @@ function validOrder(order, ids) {
 }
 
 function validLayout(layout, requireTrustedMinimums = false) {
-  if (!isObject(layout) || !validTransform(layout.transform)) return false
+  if (!isObject(layout) || !Number.isSafeInteger(layout.contentRevision)
+    || layout.contentRevision < 0 || !validTransform(layout.transform)) return false
   if (!Array.isArray(layout.cards) || layout.cards.length === 0) return false
   const ids = new Set()
   for (const card of layout.cards) {
@@ -80,7 +81,8 @@ function validLayout(layout, requireTrustedMinimums = false) {
 function serializableEnvelope(layout) {
   if (!validLayout(layout)) return null
   return {
-    version: 2,
+    version: 3,
+    contentRevision: layout.contentRevision,
     transform: {
       scale: layout.transform.scale,
       panX: layout.transform.panX,
@@ -104,7 +106,8 @@ export function parseCanvasLayout(raw, defaults) {
 
   try {
     const stored = JSON.parse(raw)
-    if (!isObject(stored) || stored.version !== 2) return null
+    if (!isObject(stored) || stored.version !== 3) return null
+    if (stored.contentRevision !== defaults.contentRevision) return null
     if (!validTransform(stored.transform) || !Array.isArray(stored.cards)) return null
     if (stored.cards.length !== defaults.cards.length) return null
 
@@ -123,6 +126,7 @@ export function parseCanvasLayout(raw, defaults) {
     if (!hasFiniteLayoutBounds([...storedById.values()])) return null
 
     return {
+      contentRevision: defaults.contentRevision,
       cards: defaults.cards.map((trusted) => {
         const geometry = storedById.get(trusted.id)
         return {

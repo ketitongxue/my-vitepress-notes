@@ -43,6 +43,29 @@ npm test
 公开问答限制为每个 IP 3 次/分钟、5 次/天，全站 10 次/天。每日配额由单例
 SQLite Durable Object 原子计数，并按 UTC 日期重置。
 
+## D1 个人 OS 内容管理
+
+个人 OS 的节点与连线使用 D1 保存不可变版本。公开页面访问
+`/api/personal-os/config` 读取最新已发布版本；D1 请求失败时，浏览器自动使用仓库内的
+`personalOsContent.mjs` 默认配置，因此数据库异常不会让首页白屏。
+
+首次部署前创建并迁移数据库：
+
+```bash
+npx wrangler d1 migrations apply personal-os-config --remote
+```
+
+管理页位于 `/admin/personal-os`，不会出现在站点导航或搜索中。必须在 Cloudflare Zero
+Trust 中创建 Self-hosted Access application，同时保护：
+
+- `juzxailab.com/admin/*`
+- `juzxailab.com/api/admin/*`
+
+只允许站点所有者邮箱，并将 Access application 的团队域名和 AUD 写入 Worker 变量
+`ACCESS_TEAM_DOMAIN`、`ACCESS_AUD`。Worker 会再次校验 `Cf-Access-Jwt-Assertion` 的签名、
+issuer、audience 和 `ADMIN_EMAIL`，不能只依赖页面地址隐藏。保存采用 `baseRevision`
+乐观锁；发布新 revision 后，旧浏览器布局会自动失效并以新版默认位置重新初始化。
+
 ## Cloudflare Workers Git 部署
 
 Cloudflare Workers 连接此 GitHub 仓库，并在 `main` 分支更新后自动构建和发布到 `workers.dev`。
