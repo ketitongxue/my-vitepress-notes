@@ -29,20 +29,24 @@ export const closeWindow = (state, id) => ({
 })
 
 export function moveWindow(state, id, point, bounds) {
+  const item = state.windows.find((window) => window.id === id)
+  if (!item || item.maximized) return state
   return {
     ...state,
-    windows: state.windows.map((item) => item.id === id
-      ? { ...item, ...constrainWindow({ ...item, x: point.x, y: point.y }, bounds) }
-      : item),
+    windows: state.windows.map((window) => window.id === id
+      ? { ...window, ...constrainWindow({ ...window, x: point.x, y: point.y }, bounds) }
+      : window),
   }
 }
 
 export function resizeWindow(state, id, size, bounds) {
+  const item = state.windows.find((window) => window.id === id)
+  if (!item || item.maximized) return state
   return {
     ...state,
-    windows: state.windows.map((item) => item.id === id
-      ? { ...item, ...constrainWindow({ ...item, width: size.width, height: size.height }, bounds) }
-      : item),
+    windows: state.windows.map((window) => window.id === id
+      ? { ...window, ...constrainWindow({ ...window, width: size.width, height: size.height }, bounds) }
+      : window),
   }
 }
 
@@ -50,7 +54,7 @@ const clamp = (value, minimum, maximum) => Math.max(minimum, Math.min(value, max
 
 export function resizeWindowFromEdge(state, id, edge, delta, bounds) {
   const item = state.windows.find((window) => window.id === id)
-  if (!item || !/^(?:n|s|e|w|ne|nw|se|sw)$/.test(edge)) return state
+  if (!item || item.maximized || !/^(?:n|s|e|w|ne|nw|se|sw)$/.test(edge)) return state
 
   const minimum = minimumWindowSize(bounds)
   let left = item.x
@@ -79,10 +83,56 @@ export function resizeWindowByKey(state, id, key, shiftKey, bounds) {
     ArrowUp: { width: 0, height: -1 },
     ArrowDown: { width: 0, height: 1 },
   }[key]
-  if (!item || !direction) return state
+  if (!item || item.maximized || !direction) return state
   const step = shiftKey ? 32 : 8
   return resizeWindow(state, id, {
     width: item.width + direction.width * step,
     height: item.height + direction.height * step,
   }, bounds)
+}
+
+export function toggleMaximizeWindow(state, id, bounds) {
+  const item = state.windows.find((window) => window.id === id)
+  if (!item) return state
+  const nextZ = state.nextZ + 1
+
+  return {
+    ...state,
+    nextZ,
+    windows: state.windows.map((window) => {
+      if (window.id !== id) return window
+      if (window.maximized) {
+        const { maximized, restoreRect, ...restored } = window
+        return {
+          ...restored,
+          ...constrainWindow(restoreRect ?? restored, bounds),
+          z: nextZ,
+        }
+      }
+      return {
+        ...window,
+        restoreRect: {
+          x: window.x,
+          y: window.y,
+          width: window.width,
+          height: window.height,
+        },
+        maximized: true,
+        x: 0,
+        y: 0,
+        width: bounds.width,
+        height: bounds.height,
+        z: nextZ,
+      }
+    }),
+  }
+}
+
+export function constrainWindowState(state, bounds) {
+  return {
+    ...state,
+    windows: state.windows.map((item) => item.maximized
+      ? { ...item, x: 0, y: 0, width: bounds.width, height: bounds.height }
+      : { ...item, ...constrainWindow(item, bounds) }),
+  }
 }

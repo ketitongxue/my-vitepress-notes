@@ -5,6 +5,7 @@ import {
   focusWindow,
   moveWindow,
   resizeWindowFromEdge,
+  toggleMaximizeWindow,
 } from './windowManagerState.mjs'
 
 const props = defineProps({
@@ -19,7 +20,7 @@ let pendingPoint = null
 let frameId = null
 
 const closeLabel = (title) => `关闭 ${title}`
-const externalLabel = (title) => `在新页面打开 ${title}`
+const maximizeLabel = (item) => `${item.maximized ? '还原' : '放大'} ${titleFor(item)}`
 const resizeEdges = Object.freeze([
   { edge: 'n', label: '顶部' },
   { edge: 'e', label: '右侧' },
@@ -47,6 +48,10 @@ function close(id) {
   updateState(closeWindow(props.state, id))
 }
 
+function toggleMaximize(id) {
+  updateState(toggleMaximizeWindow(props.state, id, props.bounds))
+}
+
 function handleResizeKey(item, edge, event) {
   const direction = {
     ArrowLeft: { x: -1, y: 0 },
@@ -70,6 +75,7 @@ function handleResizeKey(item, edge, event) {
 
 function beginManipulation(kind, item, event, edge = null) {
   if (event.pointerType === 'mouse' && event.button !== 0) return
+  if (item.maximized) return
   const target = event.currentTarget
   target.setPointerCapture(event.pointerId)
   manipulation.value = {
@@ -172,7 +178,10 @@ onBeforeUnmount(() => {
       v-for="item in state.windows"
       :key="item.id"
       class="window-manager__window"
-      :class="{ 'window-manager__window--project': item.id === 'projects' }"
+      :class="{
+        'window-manager__window--project': item.id === 'projects',
+        'is-maximized': item.maximized,
+      }"
       :style="{
         left: `${item.x}px`,
         top: `${item.y}px`,
@@ -197,28 +206,16 @@ onBeforeUnmount(() => {
             @pointerdown.stop="focus(item.id)"
             @click="close(item.id)"
           ><span aria-hidden="true">×</span></button>
-          <i
-            class="window-manager__traffic-control window-manager__traffic-control--minimize"
-            aria-hidden="true"
-            @pointerdown.stop="focus(item.id)"
-          ><span>−</span></i>
-          <i
+          <button
+            type="button"
             class="window-manager__traffic-control window-manager__traffic-control--zoom"
-            aria-hidden="true"
+            :aria-label="maximizeLabel(item)"
+            :aria-pressed="Boolean(item.maximized)"
             @pointerdown.stop="focus(item.id)"
-          ><span>＋</span></i>
+            @click="toggleMaximize(item.id)"
+          ><span aria-hidden="true">{{ item.maximized ? '↙' : '＋' }}</span></button>
         </span>
         <strong>{{ titleFor(item) }}</strong>
-        <span class="window-manager__controls">
-          <a
-            v-if="item.entry.window.href"
-            :href="item.entry.window.href"
-            :aria-label="externalLabel(titleFor(item))"
-            target="_blank"
-            rel="noopener noreferrer"
-            @pointerdown.stop="focus(item.id)"
-          >打开</a>
-        </span>
       </header>
 
       <span class="window-manager__tape" aria-hidden="true"></span>
@@ -238,7 +235,7 @@ onBeforeUnmount(() => {
       </div>
 
       <span
-        v-for="handle in resizeEdges"
+        v-for="handle in item.maximized ? [] : resizeEdges"
         :key="handle.edge"
         class="window-manager__resize-handle"
         :class="`window-manager__resize-handle--${handle.edge}`"
@@ -267,6 +264,7 @@ onBeforeUnmount(() => {
 
 .window-manager__window {
   position: absolute;
+  box-sizing: border-box;
   display: grid;
   grid-template-rows: 54px 1fr;
   overflow: hidden;
@@ -280,6 +278,11 @@ onBeforeUnmount(() => {
   color: #1e2430;
   box-shadow: 0 12px 30px rgb(20 65 110 / 25%);
   pointer-events: auto;
+}
+
+.window-manager__window.is-maximized {
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .window-manager__titlebar {
@@ -347,7 +350,7 @@ onBeforeUnmount(() => {
 }
 
 .window-manager__traffic-lights:hover .window-manager__traffic-control span,
-.window-manager__traffic-control--close:focus-visible span {
+.window-manager__traffic-control:focus-visible span {
   opacity: .72;
 }
 
@@ -356,37 +359,11 @@ button.window-manager__traffic-control {
 }
 
 .window-manager__traffic-control--close::before { background: #ef6b62; }
-.window-manager__traffic-control--minimize::before { background: #f2c94c; }
 .window-manager__traffic-control--zoom::before { background: #57ba78; }
 
-.window-manager__controls {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.window-manager__controls a,
 .window-manager__preview a {
   color: #1e4dc0;
   font: inherit;
-}
-
-.window-manager__controls a {
-  min-width: 40px;
-  min-height: 40px;
-  padding: 6px 10px;
-  border: 1px solid rgb(49 94 138 / 22%);
-  border-radius: 999px;
-  background: rgb(255 255 255 / 68%);
-  font-size: 12px;
-  line-height: 18px;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.window-manager__controls a:hover {
-  border-color: rgb(45 111 181 / 46%);
-  background: #fff;
 }
 
 .window-manager__preview {
@@ -536,14 +513,19 @@ button.window-manager__traffic-control {
     border-radius: 18px;
   }
 
+  .window-manager__window.is-maximized {
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none;
+    max-height: none;
+    border-radius: 0;
+  }
+
   .window-manager__traffic-control {
     width: 44px;
     height: 44px;
-  }
-
-  .window-manager__controls a {
-    min-width: 44px;
-    min-height: 44px;
   }
 
   .window-manager__preview {

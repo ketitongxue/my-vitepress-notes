@@ -468,7 +468,6 @@ html.personal-os-system-active .VPFooter {
     height: 42px;
   }
 
-  .factory-home .window-manager__controls :where(a, button),
   .factory-home .bottom-os-navigation button,
   .factory-home .canvas-layers__toggle,
   .factory-home .canvas-minimap__surface,
