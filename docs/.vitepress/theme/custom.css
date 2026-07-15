@@ -126,7 +126,9 @@
   --os-orange: #EF7B45;
   --os-green: #3FAE78;
   --os-terminal: #192232;
-  --os-desktop: #2B7FD8;
+  --os-desktop: #2F83D6;
+  --os-desktop-deep: #2875C5;
+  --os-desktop-highlight: #3B91E1;
   width: 100%;
   max-width: 100vw;
   min-width: 0;
@@ -165,20 +167,20 @@
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  background: #2B7FD8;
+  background: linear-gradient(145deg, #3B91E1, #2F83D6 46%, #2875C5);
 }
 
 .factory-home .desktop-surface__menu {
-  height: 30px;
+  height: 40px;
   color: #FFFDF7;
 }
 
 .factory-home .desktop-surface__workspace {
-  height: calc(100vh - 30px);
+  height: calc(100vh - 40px);
 }
 
 .factory-home .desktop-surface__workspace {
-  height: calc(100dvh - 30px);
+  height: calc(100dvh - 40px);
 }
 
 .factory-home .desktop-icon {
@@ -186,9 +188,9 @@
 }
 
 .factory-home .window-manager__window {
-  min-width: 280px;
-  min-height: 200px;
-  background: #FFFDF7;
+  min-width: 360px;
+  min-height: 260px;
+  background: #FFFDF6;
   color: #1E2430;
 }
 
@@ -467,13 +469,26 @@ html.personal-os-system-active .VPFooter {
   }
 
   .factory-home .window-manager__controls :where(a, button),
-  .factory-home .window-manager__resize,
   .factory-home .bottom-os-navigation button,
   .factory-home .canvas-layers__toggle,
   .factory-home .canvas-minimap__surface,
   .factory-home .macbook-boot__launch {
     min-width: 44px;
     min-height: 44px;
+  }
+
+  .factory-home .desktop-surface__menu {
+    height: 48px;
+  }
+
+  .factory-home .desktop-surface__workspace {
+    height: calc(100vh - 48px);
+    height: calc(100dvh - 48px);
+  }
+
+  .factory-home .window-manager__window {
+    min-width: 0;
+    min-height: 220px;
   }
 
   .factory-home .knowledge-portfolio {
@@ -557,8 +572,8 @@ html[data-personal-os-view] .factory-home .bottom-os-navigation button {
 html[data-personal-os-view="home"] .factory-home [data-os-nav-target="home"],
 html[data-personal-os-view="knowledge"] .factory-home [data-os-nav-target="knowledge"],
 html[data-personal-os-view="system"] .factory-home [data-os-nav-target="system"] {
-  border: 1px solid #1E2430 !important;
-  background: #2B7FD8 !important;
+  border: 1px solid rgb(38 101 164 / 24%) !important;
+  background: #2F83D6 !important;
   color: #FFFDF7 !important;
 }
 

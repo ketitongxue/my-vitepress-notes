@@ -62,3 +62,43 @@ Final result: passed for all executable desktop and mobile browser scenarios.
   - [`qa-artifacts/my-os-ui-refinement/mobile-390x844.png`](qa-artifacts/my-os-ui-refinement/mobile-390x844.png)
   - [`qa-artifacts/my-os-ui-refinement/mobile-drawer-390x844.png`](qa-artifacts/my-os-ui-refinement/mobile-drawer-390x844.png)
 - Final browser console result: `warn = []`, `error = []`.
+
+---
+
+# Retro Journal Desktop — Design QA
+
+## Reference and scope
+
+- Scope: `01 主页` desktop surface only; existing routes, desktop entries, links, boot flow, and three-view navigation were preserved.
+- Direction: bright-blue star texture, cream paper windows, restrained handwritten accents, tactile file icons, and a cream pill Dock.
+- Desktop viewport: `1440 × 900`.
+- Mobile viewport: `390 × 844`.
+- Evidence:
+  - [`design-qa/retro-journal-desktop/desktop-1440x900.png`](design-qa/retro-journal-desktop/desktop-1440x900.png)
+  - [`design-qa/retro-journal-desktop/mobile-390x844.png`](design-qa/retro-journal-desktop/mobile-390x844.png)
+
+## Desktop verification
+
+- The desktop background renders a blue gradient with low-contrast dots and isolated diamond highlights; the rejected large lattice pattern was removed during visual QA.
+- The project window opens as a `580 × 360` cream paper surface with traffic-light dots, tape, dashed content inset, status labels, and a labelled close control.
+- All eight edge and corner resize handles are present. The old visible `调整大小` button count is `0`.
+- The cream Dock remains centred and fixed. Desktop icons retain their labels and activation behavior while using folder, document, terminal, and world tile treatments.
+- Document geometry passed: `scrollWidth = clientWidth = 1425` in the selected browser viewport.
+
+## Mobile verification
+
+- The open project window measured `x = 16`, `width = 358` within a `390` CSS-pixel viewport and did not create horizontal overflow.
+- Fine edge handles are hidden on mobile (`visibleHandles = 0`); the layout remains adaptive and the Dock respects the bottom safe-area treatment.
+- Document geometry passed: `scrollWidth = clientWidth = 375` in the selected browser viewport.
+
+## Interaction, accessibility, and recovery
+
+- Desktop keyboard resizing changed the project window dimensions through the labelled southeast separator.
+- Closing the project window removed it from the DOM (`remainingWindows = 0`).
+- Deterministic reducer tests cover all eight resize directions, anchored opposite edges, minimum size, and viewport constraints.
+- Reduced-motion behavior is covered by source-level regression tests because the selected browser surface does not expose media-preference emulation.
+- Final browser console result: `warn = []`, `error = []`.
+
+## Final result
+
+Final result: passed for the executable desktop and mobile browser scenarios.

@@ -54,10 +54,22 @@ export function resolveIconPosition(position, bounds, size = DEFAULT_ICON_SIZE) 
   }
 }
 
-export function constrainWindow(rect, bounds, min = { width: 280, height: 200 }) {
-  const x = Math.max(0, Math.min(rect.x, Math.max(0, bounds.width - min.width)))
-  const y = Math.max(0, Math.min(rect.y, Math.max(0, bounds.height - min.height)))
-  const width = Math.max(min.width, Math.min(rect.width, bounds.width - x))
-  const height = Math.max(min.height, Math.min(rect.height, bounds.height - y))
+export function minimumWindowSize(bounds) {
+  const desktop = bounds.width >= 768
+  const preferredWidth = desktop ? 360 : Math.min(360, Math.max(280, bounds.width - 32))
+  const preferredHeight = desktop ? 260 : Math.min(260, Math.max(220, bounds.height - 64))
+  return {
+    width: Math.min(preferredWidth, Math.max(0, bounds.width)),
+    height: Math.min(preferredHeight, Math.max(0, bounds.height)),
+  }
+}
+
+export function constrainWindow(rect, bounds, min = minimumWindowSize(bounds)) {
+  const minWidth = Math.min(min.width, bounds.width)
+  const minHeight = Math.min(min.height, bounds.height)
+  const x = Math.max(0, Math.min(rect.x, Math.max(0, bounds.width - minWidth)))
+  const y = Math.max(0, Math.min(rect.y, Math.max(0, bounds.height - minHeight)))
+  const width = Math.max(minWidth, Math.min(rect.width, bounds.width - x))
+  const height = Math.max(minHeight, Math.min(rect.height, bounds.height - y))
   return { x, y, width, height }
 }

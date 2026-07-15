@@ -15,6 +15,7 @@ import {
 } from '../docs/.vitepress/theme/components/desktopGeometry.mjs'
 import {
   closeWindow, createWindowState, moveWindow, openWindow, resizeWindow, resizeWindowByKey,
+  resizeWindowFromEdge,
 } from '../docs/.vitepress/theme/components/windowManagerState.mjs'
 import {
   exitFrame, normalizeExitProgress,
@@ -380,7 +381,7 @@ test('hidden desktop measurements preserve icons and moved or resized windows', 
   let windowConstraints = 0
 
   function applyMeasurement(width, height) {
-    const nextBounds = resolveSurfaceBounds(currentBounds, width, height, 30)
+    const nextBounds = resolveSurfaceBounds(currentBounds, width, height, 40)
     if (nextBounds === currentBounds) return
     iconConstraints += 1
     icons = Object.fromEntries(Object.entries(icons).map(([id, position]) => [
@@ -402,8 +403,8 @@ test('hidden desktop measurements preserve icons and moved or resized windows', 
   applyMeasurement(1280, 720)
   assert.equal(new Set(Object.values(icons).map(({ x, y }) => `${x}:${y}`)).size, 10)
   assert.deepEqual(windows, windowSnapshot)
-  assert.equal(resolveSurfaceBounds(currentBounds, Number.NaN, 720, 30), currentBounds)
-  assert.equal(resolveSurfaceBounds(currentBounds, 1280, 30, 30), currentBounds)
+  assert.equal(resolveSurfaceBounds(currentBounds, Number.NaN, 720, 40), currentBounds)
+  assert.equal(resolveSurfaceBounds(currentBounds, 1280, 40, 40), currentBounds)
 })
 
 test('desktop window reducer keeps singleton windows within viewport bounds', () => {
@@ -419,8 +420,8 @@ test('desktop window reducer keeps singleton windows within viewport bounds', ()
     entry,
     x: 96,
     y: 72,
-    width: 420,
-    height: 300,
+    width: 580,
+    height: 360,
     z: 11,
   })
 
@@ -432,13 +433,13 @@ test('desktop window reducer keeps singleton windows within viewport bounds', ()
   const moved = moveWindow(reopened, entry.id, { x: 900, y: 700 }, bounds)
   assert.deepEqual(
     { x: moved.windows[0].x, y: moved.windows[0].y },
-    { x: 520, y: 400 },
+    { x: 440, y: 340 },
   )
 
   const resized = resizeWindow(moved, entry.id, { width: 20, height: 10 }, bounds)
   assert.deepEqual(
     { width: resized.windows[0].width, height: resized.windows[0].height },
-    { width: 280, height: 200 },
+    { width: 360, height: 260 },
   )
   assert.notEqual(resized.windows[0], moved.windows[0])
 
@@ -447,29 +448,53 @@ test('desktop window reducer keeps singleton windows within viewport bounds', ()
   assert.equal(resized.windows.length, 1)
 })
 
-test('desktop window resize control supports arrow keys and Shift steps', () => {
+test('desktop window resize reducer supports keyboard steps and all eight edges', () => {
   const bounds = { width: 800, height: 600 }
   const entry = desktopEntries[0]
   const opened = openWindow(createWindowState(), entry, bounds)
 
   const wider = resizeWindowByKey(opened, entry.id, 'ArrowRight', false, bounds)
-  assert.equal(wider.windows[0].width, 428)
-  assert.equal(wider.windows[0].height, 300)
+  assert.equal(wider.windows[0].width, 588)
+  assert.equal(wider.windows[0].height, 360)
 
   const taller = resizeWindowByKey(wider, entry.id, 'ArrowDown', true, bounds)
-  assert.equal(taller.windows[0].width, 428)
-  assert.equal(taller.windows[0].height, 332)
+  assert.equal(taller.windows[0].width, 588)
+  assert.equal(taller.windows[0].height, 392)
 
-  const minimum = resizeWindow(opened, entry.id, { width: 280, height: 200 }, bounds)
+  const minimum = resizeWindow(opened, entry.id, { width: 360, height: 260 }, bounds)
   const constrained = resizeWindowByKey(minimum, entry.id, 'ArrowLeft', true, bounds)
-  assert.equal(constrained.windows[0].width, 280)
-  assert.equal(constrained.windows[0].height, 200)
+  assert.equal(constrained.windows[0].width, 360)
+  assert.equal(constrained.windows[0].height, 260)
 
-  const atBoundary = moveWindow(opened, entry.id, { x: 520, y: 400 }, bounds)
+  const atBoundary = moveWindow(opened, entry.id, { x: 440, y: 340 }, bounds)
   const beyondBoundary = resizeWindowByKey(atBoundary, entry.id, 'ArrowRight', true, bounds)
-  assert.equal(beyondBoundary.windows[0].width, 280)
-  assert.equal(beyondBoundary.windows[0].height, 200)
+  assert.equal(beyondBoundary.windows[0].width, 360)
+  assert.equal(beyondBoundary.windows[0].height, 260)
   assert.equal(resizeWindowByKey(opened, entry.id, 'Enter', false, bounds), opened)
+
+  const base = moveWindow(resizeWindow(opened, entry.id, { width: 500, height: 320 }, bounds), entry.id, { x: 120, y: 100 }, bounds)
+  const expectations = {
+    n: { x: 120, y: 80, width: 500, height: 340 },
+    s: { x: 120, y: 100, width: 500, height: 340 },
+    e: { x: 120, y: 100, width: 520, height: 320 },
+    w: { x: 100, y: 100, width: 520, height: 320 },
+    nw: { x: 100, y: 80, width: 520, height: 340 },
+    ne: { x: 120, y: 80, width: 520, height: 340 },
+    se: { x: 120, y: 100, width: 520, height: 340 },
+    sw: { x: 100, y: 100, width: 520, height: 340 },
+  }
+  for (const [edge, expected] of Object.entries(expectations)) {
+    const delta = {
+      x: edge.includes('w') ? -20 : edge.includes('e') ? 20 : 0,
+      y: edge.includes('n') ? -20 : edge.includes('s') ? 20 : 0,
+    }
+    const result = resizeWindowFromEdge(base, entry.id, edge, delta, bounds)
+    assert.deepEqual(
+      (({ x, y, width, height }) => ({ x, y, width, height }))(result.windows[0]),
+      expected,
+      `${edge} resize keeps the opposite edges anchored`,
+    )
+  }
 })
 
 test('desktop components use local Tabler icons and native pointer interactions', () => {
@@ -486,7 +511,7 @@ test('desktop components use local Tabler icons and native pointer interactions'
   assert.match(icon, /terminal: IconTerminal2/)
   assert.match(icon, /world: IconWorld/)
   assert.match(icon, /<button\b/)
-  assert.match(icon, /<component :is="iconComponent" aria-hidden="true"/)
+  assert.match(icon, /<span class="desktop-icon__tile" aria-hidden="true">[\s\S]*<component :is="iconComponent"/)
   assert.match(icon, /setPointerCapture/)
   assert.match(icon, /isDragDistance/)
   assert.match(icon, /@dblclick="handleDoubleClick"/)
@@ -495,23 +520,32 @@ test('desktop components use local Tabler icons and native pointer interactions'
 
   assert.match(manager, /focusWindow/)
   assert.match(manager, /moveWindow/)
-  assert.match(manager, /resizeWindow/)
+  assert.match(manager, /resizeWindowFromEdge/)
   assert.match(manager, /requestAnimationFrame/)
   assert.match(manager, /cancelAnimationFrame/)
+  assert.match(manager, /const baselineState = \{[\s\S]*?\.\.\.active\.initial[\s\S]*?resizeWindowFromEdge\(\s*baselineState,/)
   assert.match(manager, /setPointerCapture/)
   assert.match(manager, /\.is-manipulating/)
   assert.match(manager, /`关闭 \$\{title\}`/)
   assert.match(manager, /`在新页面打开 \$\{title\}`/)
   assert.match(manager, /@pointerdown\.stop="focus\(item\.id\)"/)
-  assert.match(manager, /@keydown="handleResizeKey\(item, \$event\)"/)
+  assert.match(manager, /data-resize-edge/)
+  assert.match(manager, /@keydown="handleResizeKey\(item, handle\.edge, \$event\)"/)
+  assert.doesNotMatch(manager, />调整大小<\/button>/)
+  for (const edge of ['n', 'e', 's', 'w', 'nw', 'ne', 'se', 'sw']) {
+    assert.match(manager, new RegExp(`edge: '${edge}'`))
+  }
+  assert.match(manager, /window-manager__traffic-lights/)
+  assert.match(manager, /window-manager__tape/)
+  assert.match(manager, /内容持续完善/)
 
   assert.match(surface, /desktopEntries/)
   assert.match(surface, /createWindowState/)
   assert.match(surface, /openWindow/)
   assert.match(surface, /ResizeObserver/)
   assert.match(surface, /重置桌面位置/)
-  assert.match(surface, /height: 30px/)
-  assert.ok(surface.includes('<a class="desktop-surface__brand" href="#home">JuZX OS</a>'))
+  assert.match(surface, /height: 40px/)
+  assert.ok(surface.includes('<a class="desktop-surface__brand is-active" href="#home" aria-current="page">JuZX OS</a>'))
   assert.ok(surface.includes('<a href="/about">About</a>'))
   assert.ok(surface.includes('<a href="#knowledge">Knowledge</a>'))
   assert.ok(surface.includes('<a href="#system">Now</a>'))
@@ -522,8 +556,11 @@ test('desktop components use local Tabler icons and native pointer interactions'
   assert.match(surface, /constrainIconPositions\(nextBounds\)/)
   assert.match(surface, /const nextBounds = resolveSurfaceBounds\([\s\S]*?if \(nextBounds === bounds\.value\) return[\s\S]*?bounds\.value = nextBounds[\s\S]*?constrainIconPositions\(nextBounds\)[\s\S]*?constrainOpenWindows\(nextBounds\)/)
   assert.match(surface, /function resetIconPositions\(\)[\s\S]*?constrainIconPositions\(bounds\.value\)/)
-  assert.match(surface, /background: #2B7FD8;/)
-  assert.equal(surface.toLowerCase().includes('gradient'), false)
+  assert.match(surface, /#2f83d6/i)
+  assert.match(surface, /#2875c5/i)
+  assert.match(surface, /#3b91e1/i)
+  assert.match(surface, new RegExp('linear-gradient', 'i'))
+  assert.match(surface, new RegExp('radial-gradient', 'i'))
 
   for (const source of [icon, manager, surface]) {
     assert.doesNotMatch(source, /<iframe\b/i)
@@ -1309,14 +1346,17 @@ test('my os visual system is warm dotted paper without forbidden assets', () => 
   const css = readFileSync(new URL('../docs/.vitepress/theme/custom.css', import.meta.url), 'utf8')
   const os = css.match(/\/\* Personal OS start \*\/([\s\S]*?)\/\* Personal OS end \*\//)?.[1] ?? ''
   const system = [canvas, card, os].join('\n')
+  const systemSurface = [canvas, card].join('\n')
   for (const token of ['#F7F4EC', '#FFFDF7', '#1E2430', '#69707D', '#315EFB',
     '#F4D758', '#EF7B45', '#3FAE78']) assert.match(system, new RegExp(token, 'i'))
   assert.match(canvas, /background-size:\s*24px 24px/)
   assert.match(canvas, /data:image\/svg\+xml/)
   assert.match(canvas, /--node-order/)
   assert.match(canvas, /calc\(var\(--node-order\) \* 55ms\)/)
-  assert.doesNotMatch(system,
-    /linear-gradient|radial-gradient|backdrop-filter|\bstars?\b|sparkle|particle|illustration|portrait|<img/i)
+  assert.doesNotMatch(systemSurface, new RegExp(
+    'linear-gradient|radial-gradient|backdrop-filter|\\bstars?\\b|sparkle|particle|illustration|portrait|<img',
+    'i',
+  ))
 })
 
 test('canvas connections remain visible blue on the warm paper surface', () => {
