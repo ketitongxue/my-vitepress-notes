@@ -35,6 +35,15 @@ function validCard(card) {
     && typeof card.visible === 'boolean'
 }
 
+function withTrustedDimensions(card, trusted) {
+  if (!isObject(card)) return null
+  const hasWidth = Object.hasOwn(card, 'width')
+  const hasHeight = Object.hasOwn(card, 'height')
+  if (hasWidth !== hasHeight) return null
+  if (hasWidth) return { ...card }
+  return { ...card, width: trusted.width, height: trusted.height }
+}
+
 function hasFiniteLayoutBounds(cards) {
   const minX = Math.min(...cards.map(({ x }) => x))
   const minY = Math.min(...cards.map(({ y }) => y))
@@ -103,13 +112,15 @@ export function parseCanvasLayout(raw, defaults) {
     if (!validOrder(stored.order, trustedIds)) return null
     const storedById = new Map()
     for (const card of stored.cards) {
-      if (!validCard(card) || !trustedIds.has(card.id) || storedById.has(card.id)) return null
+      if (!isObject(card) || !trustedIds.has(card.id) || storedById.has(card.id)) return null
       const trusted = defaults.cards.find(({ id }) => id === card.id)
-      if (card.width < trusted.minWidth || card.height < trusted.minHeight) return null
-      storedById.set(card.id, card)
+      const geometry = withTrustedDimensions(card, trusted)
+      if (!validCard(geometry)) return null
+      if (geometry.width < trusted.minWidth || geometry.height < trusted.minHeight) return null
+      storedById.set(card.id, geometry)
     }
     if (storedById.size !== trustedIds.size) return null
-    if (!hasFiniteLayoutBounds(stored.cards)) return null
+    if (!hasFiniteLayoutBounds([...storedById.values()])) return null
 
     return {
       cards: defaults.cards.map((trusted) => {

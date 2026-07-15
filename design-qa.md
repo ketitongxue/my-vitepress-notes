@@ -102,3 +102,44 @@ Final result: passed for all executable desktop and mobile browser scenarios.
 ## Final result
 
 Final result: passed for the executable desktop and mobile browser scenarios.
+
+---
+
+# Knowledge Map Border Resize — Design QA
+
+## Scope and evidence
+
+- Scope: `03 我的 OS` knowledge map only. Node content, relationships, routes, pan, zoom, Layers, toolbar actions, persistence, history, and the bottom Dock were retained.
+- Desktop viewport: `1440 × 900`.
+- Mobile viewport: `390 × 844`.
+- Evidence:
+  - [`design-qa/knowledge-map-border-resize/desktop-1440x900.png`](design-qa/knowledge-map-border-resize/desktop-1440x900.png)
+  - [`design-qa/knowledge-map-border-resize/mobile-390x844.png`](design-qa/knowledge-map-border-resize/mobile-390x844.png)
+
+## Desktop verification
+
+- All 11 nodes rendered on the warm `#FAF8F1` paper canvas with a restrained 28 px blue dot grid.
+- The former `.canvas-card__resize` button count was `0`; the identity card exposed eight semantic edge and corner separators with the correct `n/e/s/w/nw/ne/se/sw-resize` cursors.
+- Keyboard resizing changed the identity card from `360 × 260` to `384 × 260`. Its first SVG connection endpoint moved from `x1 = 480` to `x1 = 504`, exactly following the resized right edge.
+- Undo restored the card to `360 × 260` and restored the endpoint to `x1 = 480`.
+- The pointer-driven southeast resize zone was hit successfully in the browser. Deterministic geometry tests additionally cover all eight pointer directions, anchored opposite edges, and minimum readable sizes.
+- Save followed by reload restored the committed `384 × 260` geometry. Confirmed Reset followed by reload restored `360 × 260` and the default order.
+- Document horizontal overflow was `0`. The toolbar, Layers rail, and Dock stayed operational.
+
+## Mobile verification
+
+- Document horizontal overflow was `0` at `390 × 844`.
+- The simplified mobile resize contract exposed only the east, south, and southeast zones; north, west, northwest, northeast, and southwest were absent from hit testing.
+- The toolbar occupied `y = 714…768` and the Dock occupied `y = 778…834`; their hit areas did not overlap.
+- The legacy yellow resize button count remained `0`.
+
+## Accessibility, persistence, and recovery
+
+- Resize zones use labelled separators and remain keyboard operable after selecting a node. Arrow keys resize in 8 px steps and Shift+Arrow resizes in 24 px steps.
+- Node links remain native links and stop card pointer ownership before navigation.
+- Old version-2 layouts containing only `x/y/visible` are accepted and receive trusted default dimensions; half-present or untrusted dimensions remain rejected.
+- Browser console result: `warn = []`, `error = []`.
+
+## Final result
+
+Final result: passed for all executable desktop and mobile browser scenarios.

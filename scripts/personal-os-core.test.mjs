@@ -25,7 +25,8 @@ import {
 } from '../docs/.vitepress/theme/components/systemCanvasLoader.mjs'
 import {
   canvasUsableViewport, canvasWheelTransform, clampScale, computeWorldBounds, connectionEndpoints,
-  fitWorldBounds, initialFitCards, resolveTouchOwner, screenToWorld, touchGesture, zoomAtPoint,
+  fitWorldBounds, initialFitCards, resizeCardGeometry, resolveTouchOwner, screenToWorld, touchGesture,
+  zoomAtPoint,
 } from '../docs/.vitepress/theme/components/canvasGeometry.mjs'
 import {
   CANVAS_LAYOUT_KEY, loadCanvasLayout, parseCanvasLayout, saveCanvasLayout, serializeCanvasLayout,
@@ -607,9 +608,26 @@ test('canvas geometry is deterministic, immutable, and pointer centered', () => 
 
   const fromCard = Object.freeze({ x: 10, y: 20, width: 100, height: 80 })
   const toCard = Object.freeze({ x: 250, y: 100, width: 120, height: 60 })
-  assert.deepEqual(connectionEndpoints(fromCard, toCard), {
-    x1: 60, y1: 60, x2: 310, y2: 130,
-  })
+  const diagonal = connectionEndpoints(fromCard, toCard)
+  approximately(diagonal.x1, 110)
+  approximately(diagonal.y1, 74)
+  approximately(diagonal.x2, 250)
+  approximately(diagonal.y2, 113.2)
+
+  assert.deepEqual(
+    connectionEndpoints(
+      { x: 0, y: 0, width: 100, height: 100 },
+      { x: 200, y: 0, width: 100, height: 100 },
+    ),
+    { x1: 100, y1: 50, x2: 200, y2: 50 },
+  )
+  assert.deepEqual(
+    connectionEndpoints(
+      { x: 0, y: 0, width: 100, height: 100 },
+      { x: 0, y: 200, width: 100, height: 100 },
+    ),
+    { x1: 50, y1: 100, x2: 50, y2: 200 },
+  )
 
   assert.deepEqual(transform, { scale: 2, panX: 40, panY: -20 })
   assert.deepEqual(point, { x: 400, y: 300 })
@@ -618,6 +636,34 @@ test('canvas geometry is deterministic, immutable, and pointer centered', () => 
   assert.deepEqual(touches, [{ clientX: 100, clientY: 100 }, { clientX: 160, clientY: 180 }])
   assert.deepEqual(fromCard, { x: 10, y: 20, width: 100, height: 80 })
   assert.deepEqual(toCard, { x: 250, y: 100, width: 120, height: 60 })
+})
+
+test('card resize geometry supports eight anchored edges and minimum readable sizes', () => {
+  const initial = Object.freeze({ x: 400, y: 300, width: 240, height: 160 })
+  const minimum = Object.freeze({ minWidth: 180, minHeight: 100 })
+  const delta = Object.freeze({ x: 20, y: 20 })
+  const expected = {
+    n: { x: 400, y: 320, width: 240, height: 140 },
+    e: { x: 400, y: 300, width: 260, height: 160 },
+    s: { x: 400, y: 300, width: 240, height: 180 },
+    w: { x: 420, y: 300, width: 220, height: 160 },
+    nw: { x: 420, y: 320, width: 220, height: 140 },
+    ne: { x: 400, y: 320, width: 260, height: 140 },
+    se: { x: 400, y: 300, width: 260, height: 180 },
+    sw: { x: 420, y: 300, width: 220, height: 180 },
+  }
+  for (const [edge, geometry] of Object.entries(expected)) {
+    assert.deepEqual(resizeCardGeometry(initial, edge, delta, minimum), geometry, edge)
+  }
+  assert.deepEqual(resizeCardGeometry(initial, 'w', { x: 999, y: 0 }, minimum), {
+    x: 460, y: 300, width: 180, height: 160,
+  })
+  assert.deepEqual(resizeCardGeometry(initial, 'n', { x: 0, y: 999 }, minimum), {
+    x: 400, y: 360, width: 240, height: 100,
+  })
+  assert.deepEqual(resizeCardGeometry(initial, 'invalid', delta, minimum), initial)
+  assert.deepEqual(initial, { x: 400, y: 300, width: 240, height: 160 })
+  assert.deepEqual(minimum, { minWidth: 180, minHeight: 100 })
 })
 
 test('canvas touch ownership isolates mixed interactive and blank sequences', () => {
@@ -733,9 +779,27 @@ test('canvas persistence strictly rejects malformed and untrusted layouts', () =
   assert.equal(parse((candidate) => { candidate.order.pop() }), null)
   assert.equal(parse((candidate) => { candidate.order.push(candidate.order[0]) }), null)
   assert.equal(parse((candidate) => { candidate.order[0] = 'unknown' }), null)
-  for (const field of ['x', 'y', 'width', 'height', 'visible']) {
+  for (const field of ['x', 'y', 'visible']) {
     assert.equal(parse((candidate) => { delete candidate.cards[0][field] }), null, field)
   }
+  assert.equal(parse((candidate) => { delete candidate.cards[0].width }), null, 'width without height')
+  assert.equal(parse((candidate) => { delete candidate.cards[0].height }), null, 'height without width')
+
+  const legacyPositionOnly = structuredClone(valid)
+  for (const card of legacyPositionOnly.cards) {
+    delete card.width
+    delete card.height
+  }
+  const migrated = parseCanvasLayout(JSON.stringify(legacyPositionOnly), defaults)
+  assert.ok(migrated)
+  assert.deepEqual(
+    migrated.cards.map(({ width, height }) => ({ width, height })),
+    defaults.cards.map(({ width, height }) => ({ width, height })),
+  )
+  assert.deepEqual(
+    migrated.cards.map(({ x, y }) => ({ x, y })),
+    defaults.cards.map(({ x, y }) => ({ x, y })),
+  )
   for (const value of [null, '1', Number.NaN, Number.POSITIVE_INFINITY]) {
     assert.equal(parse((candidate) => { candidate.transform.panX = value }), null)
     assert.equal(parse((candidate) => { candidate.cards[0].x = value }), null)
@@ -1017,8 +1081,14 @@ test('CanvasCard renders eight read-only semantic variants', () => {
   assert.match(card, /class="canvas-card__mark"[\s\S]*\{\{ card\.mark \}\}/)
   assert.match(card, /v-for="item in card\.items"/)
   assert.match(card, /v-for="link in card\.links"[\s\S]*:href="link\.href"/)
-  assert.match(card, /Math\.max\(props\.card\.minWidth/)
-  assert.match(card, /Math\.max\(props\.card\.minHeight/)
+  assert.match(card, /import \{ resizeCardGeometry \} from '\.\/canvasGeometry\.mjs'/)
+  assert.match(card, /v-for="handle in resizeEdges"/)
+  assert.match(card, /data-resize-edge/)
+  assert.doesNotMatch(card, /canvas-card__resize(?:"|\s|\{)/)
+  for (const edge of ['n', 'e', 's', 'w', 'nw', 'ne', 'se', 'sw']) {
+    assert.match(card, new RegExp(`edge: '${edge}'`))
+    assert.match(card, new RegExp(`canvas-card__resize-handle--${edge}`))
+  }
   assert.doesNotMatch(card, /contenteditable|<textarea|<input|<img|picture|illustration|portrait/i)
 })
 
@@ -1038,12 +1108,11 @@ test('identity anchor is one rounded JZ rectangle without geometry shift', () =>
     { width: 360, height: 260, minWidth: 300, minHeight: 220 },
   )
   assert.match(card, /\.canvas-card--identity\s*\{[\s\S]*border-radius:\s*16px/)
-  assert.match(card, /\.canvas-card\.is-selected\s*\{[\s\S]*outline:/)
-  assert.match(card, /outline-offset:/)
+  assert.match(card, /\.canvas-card\.is-selected\s*\{[\s\S]*border-width:\s*2px/)
+  assert.match(card, /\.canvas-card\.is-selected\s*\{[\s\S]*box-shadow:/)
   assert.match(card, /\.canvas-card--identity \.canvas-card__titlebar\s*\{[^}]*padding:\s*14px 20px 8px;/)
-  assert.match(card, /\.canvas-card--identity \.canvas-card__body\s*\{[^}]*padding:\s*0 64px 14px 20px;/)
+  assert.match(card, /\.canvas-card--identity \.canvas-card__body\s*\{[^}]*padding:\s*0 20px 16px;/)
   assert.match(card, /\.canvas-card--identity \.canvas-card__copy\s*\{[^}]*margin:\s*0;[^}]*font-size:\s*13px;[^}]*line-height:\s*1\.45;/)
-  assert.doesNotMatch(card, /\.canvas-card\.is-selected\s*\{[^}]*border-width:/)
   assert.doesNotMatch(card, /\.canvas-card--identity \.canvas-card__body\s*\{[^}]*overflow:\s*auto/)
 })
 
@@ -1099,13 +1168,16 @@ test('infinite canvas components preserve interaction and source contracts', () 
   assert.match(card, /lostpointercapture/)
   assert.match(card, /onBeforeUnmount\(\(\) => \{[\s\S]*?hasPointerCapture/)
   assert.match(card, /\/ props\.scale/)
-  assert.match(card, /Math\.max\(props\.card\.minWidth,/)
-  assert.match(card, /Math\.max\(props\.card\.minHeight,/)
+  assert.match(card, /resizeCardGeometry\(active\.initial, active\.edge/)
+  assert.match(card, /requestAnimationFrame\(applyPoint\)/)
+  assert.match(card, /@keydown="handleResizeKey\(handle\.edge, \$event\)"/)
+  assert.match(card, /@media \(max-width: 767px\)[\s\S]*?canvas-card__resize-handle--nw[\s\S]*?display:\s*none/)
+  assert.match(card, /class="canvas-card__body"[\s\S]{0,260}@pointerdown="beginGesture\('move', \$event\)"[\s\S]{0,260}@pointerup="finishGesture"/)
   assert.match(card, /v-for="link in card\.links"/)
   assert.match(card, /:href="link\.href"/)
   assert.match(card, /gesture-complete/)
   assert.doesNotMatch(card, /v-html/)
-  assert.doesNotMatch(card, /:hover\s*\{[^}]*transform:/)
+  assert.doesNotMatch(card, /\.canvas-card:hover\s*\{[^}]*transform:/)
 
   assert.match(connections, /import \{ connectionEndpoints \} from '\.\/canvasGeometry\.mjs'/)
   assert.match(connections, /fromCard\.visible === false \|\| toCard\.visible === false/)
@@ -1284,9 +1356,10 @@ test('reset Escape recovery is conditional and covers focus outside canvas contr
 
 test('system canvas is read-only content with alternate navigation paths', () => {
   const canvas = readComponent('InfiniteCanvas.vue')
-  const nonViewportComponents = ['CanvasCard.vue', 'CanvasLayers.vue', 'CanvasControls.vue']
+  const card = readComponent('CanvasCard.vue')
+  const nonViewportComponents = ['CanvasLayers.vue', 'CanvasControls.vue']
     .map(readComponent).join('\n')
-  const sources = [canvas, nonViewportComponents].join('\n')
+  const sources = [canvas, card, nonViewportComponents].join('\n')
   assert.doesNotMatch(sources,
     /contenteditable|<textarea|type="file"|new card|新建|删除卡片|上传|自由连线|createConnection/i)
   assert.match(sources, /aria-label="JuZX OS 无限画布"/)
@@ -1297,6 +1370,7 @@ test('system canvas is read-only content with alternate navigation paths', () =>
   assert.match(sources, /\[data-canvas-card\], a, button, \[data-canvas-control\]/)
   assert.match(readComponent('CanvasConnections.vue'), /aria-hidden="true"/)
   assert.match(canvas, /\.infinite-canvas__viewport\s*\{[\s\S]*?touch-action:\s*none;/)
+  assert.match(card, /\.canvas-card__resize-handle\s*\{[\s\S]*?touch-action:\s*none;/)
   assert.doesNotMatch(nonViewportComponents, /touch-action:\s*none;/)
   assert.match(canvas, /max-width:\s*100vw;[\s\S]*?overflow:\s*hidden;/)
   assert.match(canvas, /animation-duration:\s*1ms !important;/)
@@ -1337,7 +1411,7 @@ test('mobile canvas controls clear the Layers trigger and drawer', () => {
   assert.match(controls, /\.canvas-controls::-webkit-scrollbar\s*\{[\s\S]*display:\s*none;/)
   assert.match(mobileLayers, /\.canvas-layers\.is-open\s*\{[\s\S]*z-index:\s*32;/)
   assert.match(mobileLayers,
-    /\.canvas-layers\.is-open \.canvas-layers__rail\s*\{[\s\S]*background:\s*#fffdf7;[\s\S]*pointer-events:\s*auto;/i)
+    /\.canvas-layers\.is-open \.canvas-layers__rail\s*\{[\s\S]*background:\s*rgb\(255 253 247 \/ 96%\);[\s\S]*pointer-events:\s*auto;/i)
 })
 
 test('my os visual system is warm dotted paper without forbidden assets', () => {
@@ -1347,9 +1421,9 @@ test('my os visual system is warm dotted paper without forbidden assets', () => 
   const os = css.match(/\/\* Personal OS start \*\/([\s\S]*?)\/\* Personal OS end \*\//)?.[1] ?? ''
   const system = [canvas, card, os].join('\n')
   const systemSurface = [canvas, card].join('\n')
-  for (const token of ['#F7F4EC', '#FFFDF7', '#1E2430', '#69707D', '#315EFB',
+  for (const token of ['#FAF8F1', '#FFFDF7', '#1E2430', '#69707D', '#315EFB',
     '#F4D758', '#EF7B45', '#3FAE78']) assert.match(system, new RegExp(token, 'i'))
-  assert.match(canvas, /background-size:\s*24px 24px/)
+  assert.match(canvas, /background-size:\s*28px 28px/)
   assert.match(canvas, /data:image\/svg\+xml/)
   assert.match(canvas, /--node-order/)
   assert.match(canvas, /calc\(var\(--node-order\) \* 55ms\)/)
@@ -1362,6 +1436,6 @@ test('my os visual system is warm dotted paper without forbidden assets', () => 
 test('canvas connections remain visible blue on the warm paper surface', () => {
   const connections = readComponent('CanvasConnections.vue')
   assert.match(connections,
-    /\.canvas-connections line\s*\{[^}]*stroke:\s*#315efb;[^}]*stroke-opacity:\s*\.(?:5[5-9]|[6-9]\d);/i)
+    /\.canvas-connections line\s*\{[^}]*stroke:\s*#4169e1;[^}]*stroke-opacity:\s*\.65;[^}]*stroke-width:\s*1\.25;/i)
   assert.doesNotMatch(connections, /\.canvas-connections line\s*\{[^}]*stroke:\s*#fffdf7;/i)
 })
