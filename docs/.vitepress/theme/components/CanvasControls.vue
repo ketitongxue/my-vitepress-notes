@@ -104,11 +104,12 @@ onBeforeUnmount(stopEscapeListener)
 .canvas-controls__confirm {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px;
-  border: 1px solid #1e2430;
-  border-radius: 5px;
-  background: #fffdf7;
+  gap: 0;
+  padding: 4px;
+  border: 1px solid rgb(40 70 100 / 65%);
+  border-radius: 9px;
+  background: rgb(255 253 247 / 94%);
+  box-shadow: 0 6px 18px rgb(35 75 120 / 14%);
 }
 
 .canvas-controls__confirm {
@@ -122,14 +123,28 @@ onBeforeUnmount(stopEscapeListener)
   min-width: 44px;
   min-height: 44px;
   padding: 0 10px;
-  border: 1px solid #69707d;
-  background: #f7f4ec;
+  border: 0;
+  border-left: 1px solid rgb(40 70 100 / 16%);
+  background: transparent;
   color: inherit;
   cursor: pointer;
+  transition: background-color 170ms ease, opacity 170ms ease, transform 170ms ease;
+}
+
+.canvas-controls button:first-child {
+  border-left: 0;
+}
+
+.canvas-controls button:hover:not(:disabled) {
+  background: #eaf3ff;
+}
+
+.canvas-controls button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .canvas-controls button:disabled {
-  color: #9a9da4;
+  opacity: .42;
   cursor: not-allowed;
 }
 
@@ -140,6 +155,8 @@ onBeforeUnmount(stopEscapeListener)
 
 .canvas-controls output {
   min-width: 48px;
+  padding-inline: 7px;
+  color: #334a63;
   text-align: center;
 }
 

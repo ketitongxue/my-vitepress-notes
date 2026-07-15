@@ -555,7 +555,7 @@ onBeforeUnmount(() => {
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  background-color: #f7f4ec;
+  background-color: #faf8f1;
   color: #1e2430;
 }
 
@@ -573,8 +573,9 @@ onBeforeUnmount(() => {
   overflow: hidden;
   cursor: grab;
   touch-action: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='%68%74%74%70%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='1' cy='1' r='1' fill='%239AAECC' fill-opacity='.34'/%3E%3C/svg%3E");
-  background-size: 24px 24px;
+  background-color: #faf8f1;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='%68%74%74%70%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='28' height='28' viewBox='0 0 28 28'%3E%3Ccircle cx='1.2' cy='1.2' r='1.2' fill='%235087BE' fill-opacity='.16'/%3E%3C/svg%3E");
+  background-size: 28px 28px;
 }
 
 .infinite-canvas__viewport:active {

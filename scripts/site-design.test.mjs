@@ -104,7 +104,7 @@ test('Personal OS components keep approved local textures without remote visual 
   ])))
   const forbiddenEffects = /particle|illustration|character-art/i
   const remoteVisual = /url\(\s*['"]?(?:(?:https?:)?\/\/)|https?:\/\/[^\s'"()<>]+\.(?:svg|png|jpe?g|webp|gif)(?:[?#][^\s'"()<>]*)?/i
-  const approvedGridUri = "data:image/svg+xml,%3Csvg xmlns='%68%74%74%70%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='1' cy='1' r='1' fill='%239AAECC' fill-opacity='.34'/%3E%3C/svg%3E"
+  const approvedGridUri = "data:image/svg+xml,%3Csvg xmlns='%68%74%74%70%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='28' height='28' viewBox='0 0 28 28'%3E%3Ccircle cx='1.2' cy='1.2' r='1.2' fill='%235087BE' fill-opacity='.16'/%3E%3C/svg%3E"
   const approvedGridDeclaration = `background-image: url("${approvedGridUri}");`
   const inlineImageDeclarations = (source) => source.match(
     /background-image:\s*url\("data:image[^\"]+"\);/gi,
@@ -124,7 +124,7 @@ test('Personal OS components keep approved local textures without remote visual 
     if (name === 'InfiniteCanvas') {
       assert.equal(inlineImageCount, 1, 'InfiniteCanvas keeps one approved inline grid primitive')
       assert.equal(hasOnlyApprovedGrid(styles), true)
-      assert.match(styles, /background-size:\s*24px 24px/)
+      assert.match(styles, /background-size:\s*28px 28px/)
     } else {
       assert.equal(inlineImageCount, 0, `${name} must not add inline image data`)
     }
@@ -144,16 +144,19 @@ test('Personal OS components keep approved local textures without remote visual 
   assert.match(scopedStyles(components.get('DesktopIcon')), new RegExp('linear-gradient'))
   assert.match(scopedStyles(components.get('WindowManager')), /repeating-linear-gradient/)
   assert.match(scopedStyles(components.get('MacbookBoot')), /\.macbook-boot__launch\s*\{[^}]*background:\s*#F4D758;/)
-  assert.match(scopedStyles(components.get('CanvasCard')), /\.canvas-card__resize\s*\{[^}]*background:\s*#F4D758;/)
+  const canvasCard = scopedStyles(components.get('CanvasCard'))
+  assert.doesNotMatch(canvasCard, /\.canvas-card__resize\s*\{/)
+  assert.match(canvasCard, /\.canvas-card__resize-handle--nw\s*\{[^}]*cursor:\s*nw-resize;/)
+  assert.match(canvasCard, /\.canvas-card__resize-handle--se\s*\{[^}]*cursor:\s*se-resize;/)
   assert.match('background-image: url("data:image/png;base64,invalid")', /data:image/i)
   assert.match('background-image: url("https://example.invalid/remote.png")', remoteVisual)
   assert.match('background-image: url("//cdn.example.invalid/remote.png")', remoteVisual)
   assert.doesNotMatch('background-image: url("/assets/local.png")', remoteVisual)
   assert.equal(hasOnlyApprovedGrid(
-    `background-image: url("data:image/svg+xml,%3Csvg xmlns='%68%74%74%70%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M0 0h24v24H0z'/%3E%3Ccircle cx='1' cy='1' r='1' fill='%239AAECC' fill-opacity='.34'/%3E%3C/svg%3E");`),
+    `background-image: url("data:image/svg+xml,%3Csvg xmlns='%68%74%74%70%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M0 0h28v28H0z'/%3E%3Ccircle cx='1.2' cy='1.2' r='1.2' fill='%235087BE' fill-opacity='.16'/%3E%3C/svg%3E");`),
   false)
   assert.equal(hasOnlyApprovedGrid(
-    `background-image: url("data:image/svg+xml,%3Csvg xmlns='%68%74%74%70%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cimage href='remote.png'/%3E%3Ccircle cx='1' cy='1' r='1' fill='%239AAECC' fill-opacity='.34'/%3E%3C/svg%3E");`),
+    `background-image: url("data:image/svg+xml,%3Csvg xmlns='%68%74%74%70%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cimage href='remote.png'/%3E%3Ccircle cx='1.2' cy='1.2' r='1.2' fill='%235087BE' fill-opacity='.16'/%3E%3C/svg%3E");`),
   false)
 })
 
@@ -170,7 +173,10 @@ test('every required mobile Personal OS target keeps a 44 by 44 hit area', async
   assert.match(layers, /@media \(max-width: 767px\)[\s\S]*?\.canvas-layers__toggle\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
   assert.match(minimap, /\.canvas-minimap__surface\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
   assert.match(controls, /@media \(max-width: 767px\)[\s\S]*?\.canvas-controls button\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
-  assert.match(card, /\.canvas-card__resize\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/)
+  assert.doesNotMatch(card, /\.canvas-card__resize\s*\{/)
+  assert.match(card, /@media \(max-width: 767px\)[\s\S]*?\.canvas-card__resize-handle--e\s*\{[^}]*width:\s*14px;/)
+  assert.match(card, /@media \(max-width: 767px\)[\s\S]*?\.canvas-card__resize-handle--s\s*\{[^}]*height:\s*14px;/)
+  assert.match(card, /@media \(max-width: 767px\)[\s\S]*?\.canvas-card__resize-handle--se\s*\{[^}]*width:\s*18px;[^}]*height:\s*18px;/)
 })
 
 test('MacBook splash and hash shell preserve homepage discovery', async () => {

@@ -103,8 +103,8 @@ function closePanel() {
   align-items: center;
   gap: 12px;
   padding: 12px 2px;
-  border-right: 1px solid #b9c7db;
-  background: #fffdf7;
+  border-right: 1px solid rgb(50 105 180 / 28%);
+  background: rgb(255 253 247 / 94%);
 }
 
 .canvas-layers__toggle,
@@ -131,8 +131,8 @@ function closePanel() {
 
 .canvas-layers__toggle:hover,
 .canvas-layers__toggle[aria-expanded="true"] {
-  border-color: #b9c7db;
-  background: #f7f4ec;
+  border-color: rgb(50 105 180 / 38%);
+  background: #eaf3ff;
 }
 
 .canvas-layers__rail output {
@@ -140,7 +140,7 @@ function closePanel() {
   width: 28px;
   height: 28px;
   place-items: center;
-  border: 1px solid #b9c7db;
+  border: 1px solid rgb(49 94 251 / 48%);
   border-radius: 50%;
   color: #315efb;
   font-weight: 700;
@@ -155,8 +155,8 @@ function closePanel() {
   width: 220px;
   flex-direction: column;
   overflow: auto;
-  border-right: 1px solid #b9c7db;
-  background: #fffdf7;
+  border-right: 1px solid rgb(50 105 180 / 28%);
+  background: rgb(255 253 247 / 96%);
 }
 
 .canvas-layers:not(.is-open) .canvas-layers__panel {
@@ -170,7 +170,7 @@ function closePanel() {
   align-items: center;
   justify-content: space-between;
   padding: 8px 10px 8px 14px;
-  border-bottom: 1px solid #d8d3c8;
+  border-bottom: 1px solid rgb(50 105 180 / 18%);
   letter-spacing: .08em;
 }
 
@@ -197,7 +197,7 @@ function closePanel() {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 44px;
   align-items: center;
-  border-bottom: 1px solid #e2ded4;
+  border-bottom: 1px solid rgb(50 105 180 / 14%);
 }
 
 .canvas-layers__focus {
@@ -216,6 +216,11 @@ function closePanel() {
 .canvas-layers__focus[aria-current="true"] {
   color: #315efb;
   font-weight: 700;
+}
+
+.canvas-layers__focus:hover:not(:disabled),
+.canvas-layers__visibility:hover {
+  background: #edf4ff;
 }
 
 .canvas-layers__focus:disabled {
@@ -272,14 +277,14 @@ function closePanel() {
   }
 
   .canvas-layers.is-open .canvas-layers__rail {
-    background: #fffdf7;
+    background: rgb(255 253 247 / 96%);
     pointer-events: auto;
   }
 
   .canvas-layers__toggle {
     min-width: 44px;
     min-height: 44px;
-    border: 1px solid #1e2430;
+    border: 1px solid rgb(40 70 100 / 65%);
     background: #fffdf7;
     pointer-events: auto;
     writing-mode: horizontal-tb;
@@ -300,9 +305,9 @@ function closePanel() {
     max-height: min(62dvh, 520px);
     padding-bottom: env(safe-area-inset-bottom);
     overflow: auto;
-    border: 1px solid #b9c7db;
+    border: 1px solid rgb(50 105 180 / 32%);
     border-radius: 16px 16px 0 0;
-    background: #fffdf7;
+    background: rgb(255 253 247 / 98%);
     pointer-events: auto;
   }
 

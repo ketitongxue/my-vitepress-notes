@@ -124,11 +124,75 @@ export function touchGesture(touches) {
   }
 }
 
-export function connectionEndpoints(fromCard, toCard) {
+const RESIZE_EDGES = new Set(['n', 'e', 's', 'w', 'nw', 'ne', 'se', 'sw'])
+
+export function resizeCardGeometry(initial, edge, delta, minimum) {
+  if (!RESIZE_EDGES.has(edge)) return { ...initial }
+
+  const minWidth = Math.max(1, minimum.minWidth)
+  const minHeight = Math.max(1, minimum.minHeight)
+  const right = initial.x + initial.width
+  const bottom = initial.y + initial.height
+  let x = initial.x
+  let y = initial.y
+  let width = initial.width
+  let height = initial.height
+
+  if (edge.includes('w')) {
+    width = Math.max(minWidth, initial.width - delta.x)
+    x = right - width
+  } else if (edge.includes('e')) {
+    width = Math.max(minWidth, initial.width + delta.x)
+  }
+
+  if (edge.includes('n')) {
+    height = Math.max(minHeight, initial.height - delta.y)
+    y = bottom - height
+  } else if (edge.includes('s')) {
+    height = Math.max(minHeight, initial.height + delta.y)
+  }
+
+  return { x, y, width, height }
+}
+
+function rectangleEdgePoint(card, direction) {
+  const center = {
+    x: card.x + card.width / 2,
+    y: card.y + card.height / 2,
+  }
+  const halfWidth = Math.max(card.width / 2, Number.EPSILON)
+  const halfHeight = Math.max(card.height / 2, Number.EPSILON)
+  const denominator = Math.max(
+    Math.abs(direction.x) / halfWidth,
+    Math.abs(direction.y) / halfHeight,
+  )
+  if (!Number.isFinite(denominator) || denominator <= Number.EPSILON) return center
+  const distance = 1 / denominator
   return {
-    x1: fromCard.x + fromCard.width / 2,
-    y1: fromCard.y + fromCard.height / 2,
-    x2: toCard.x + toCard.width / 2,
-    y2: toCard.y + toCard.height / 2,
+    x: center.x + direction.x * distance,
+    y: center.y + direction.y * distance,
+  }
+}
+
+export function connectionEndpoints(fromCard, toCard) {
+  const fromCenter = {
+    x: fromCard.x + fromCard.width / 2,
+    y: fromCard.y + fromCard.height / 2,
+  }
+  const toCenter = {
+    x: toCard.x + toCard.width / 2,
+    y: toCard.y + toCard.height / 2,
+  }
+  const direction = {
+    x: toCenter.x - fromCenter.x,
+    y: toCenter.y - fromCenter.y,
+  }
+  const fromEdge = rectangleEdgePoint(fromCard, direction)
+  const toEdge = rectangleEdgePoint(toCard, { x: -direction.x, y: -direction.y })
+  return {
+    x1: fromEdge.x,
+    y1: fromEdge.y,
+    x2: toEdge.x,
+    y2: toEdge.y,
   }
 }
