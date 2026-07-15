@@ -24,6 +24,9 @@ import {
   loadSystemCanvasModule,
 } from '../docs/.vitepress/theme/components/systemCanvasLoader.mjs'
 import {
+  loadPersonalOsConfiguration, staticPersonalOsConfiguration,
+} from '../docs/.vitepress/theme/components/personalOsConfigClient.mjs'
+import {
   canvasUsableViewport, canvasWheelTransform, clampScale, computeWorldBounds, connectionEndpoints,
   fitWorldBounds, initialFitCards, resizeCardGeometry, resolveTouchOwner, screenToWorld, touchGesture,
   zoomAtPoint,
@@ -132,6 +135,28 @@ test('growth-axis relationships and native destinations are exact', () => {
     assert.ok(ids.has(edge.from), edge.from)
     assert.ok(ids.has(edge.to), edge.to)
   }
+})
+
+test('Personal OS configuration client validates D1 data and falls back to trusted static content', async () => {
+  const remote = await loadPersonalOsConfiguration({
+    fetchImpl: async (path) => {
+      assert.equal(path, '/api/personal-os/config')
+      return Response.json({
+        revision: 12,
+        config: { cards: canvasCards, connections: canvasConnections },
+      })
+    },
+  })
+  assert.equal(remote.revision, 12)
+  assert.equal(remote.source, 'd1')
+  assert.deepEqual(remote.config.connections, canvasConnections)
+
+  const fallback = await loadPersonalOsConfiguration({
+    fetchImpl: async () => new Response(null, { status: 503 }),
+  })
+  assert.deepEqual(fallback, staticPersonalOsConfiguration())
+  assert.equal(fallback.revision, 0)
+  assert.equal(fallback.source, 'static')
 })
 
 test('MacBook boot accepts one launch and computes viewport cover', () => {
@@ -747,15 +772,17 @@ test('canvas wheel zoom remains pointer centered over an interactive target', ()
 })
 
 const trustedCanvasDefaults = () => ({
+  contentRevision: 7,
   cards: canvasCards.map((card) => ({ ...card })),
   order: canvasCards.map(({ id }) => id),
   transform: { scale: 1, panX: 24, panY: -18 },
 })
 
-test('canvas persistence uses only complete trusted v2 geometry', () => {
-  assert.equal(CANVAS_LAYOUT_KEY, 'juzx-personal-os-layout-v2')
+test('canvas persistence uses only complete trusted revision-aware v3 geometry', () => {
+  assert.equal(CANVAS_LAYOUT_KEY, 'juzx-personal-os-layout-v3')
   const defaults = trustedCanvasDefaults()
   const layout = {
+    contentRevision: defaults.contentRevision,
     cards: defaults.cards.map((card, index) => ({
       ...card,
       x: card.x + index,
@@ -768,8 +795,9 @@ test('canvas persistence uses only complete trusted v2 geometry', () => {
   }
   const raw = serializeCanvasLayout(layout)
   const envelope = JSON.parse(raw)
-  assert.deepEqual(Object.keys(envelope), ['version', 'transform', 'order', 'cards'])
-  assert.equal(envelope.version, 2)
+  assert.deepEqual(Object.keys(envelope), ['version', 'contentRevision', 'transform', 'order', 'cards'])
+  assert.equal(envelope.version, 3)
+  assert.equal(envelope.contentRevision, defaults.contentRevision)
   assert.deepEqual(Object.keys(envelope.transform), ['scale', 'panX', 'panY'])
   assert.deepEqual(Object.keys(envelope.cards[0]), ['id', 'x', 'y', 'width', 'height', 'visible'])
   for (const forbidden of ['title', 'body', 'href', 'links', 'accent', 'arbitrary']) {
@@ -813,6 +841,8 @@ test('canvas persistence strictly rejects malformed and untrusted layouts', () =
   }
   assert.equal(parse((candidate) => { candidate.version = 1 }), null)
   assert.equal(parse((candidate) => { delete candidate.version }), null)
+  assert.equal(parse((candidate) => { candidate.contentRevision += 1 }), null)
+  assert.equal(parse((candidate) => { delete candidate.contentRevision }), null)
   assert.equal(parse((candidate) => { candidate.cards.pop() }), null)
   assert.equal(parse((candidate) => { candidate.cards.push({ ...candidate.cards[0] }) }), null)
   assert.equal(parse((candidate) => { candidate.cards[0].id = 'unknown' }), null)
@@ -850,8 +880,12 @@ test('canvas persistence strictly rejects malformed and untrusted layouts', () =
   assert.equal(parse((candidate) => { candidate.cards[0].height = defaults.cards[0].minHeight - 1 }), null)
   assert.equal(parse((candidate) => { candidate.transform.scale = 9 }), null)
   assert.equal(parse((candidate) => { candidate.transform.scale = 0.14 }), null)
-  assert.equal(parseCanvasLayout(JSON.stringify(valid), { cards: [], order: [], transform: defaults.transform }), null)
-  assert.equal(parseCanvasLayout(JSON.stringify(valid), { cards: defaults.cards, transform: { scale: null, panX: 0, panY: 0 } }), null)
+  assert.equal(parseCanvasLayout(JSON.stringify(valid), {
+    contentRevision: 7, cards: [], order: [], transform: defaults.transform,
+  }), null)
+  assert.equal(parseCanvasLayout(JSON.stringify(valid), {
+    contentRevision: 7, cards: defaults.cards, transform: { scale: null, panX: 0, panY: 0 },
+  }), null)
 })
 
 test('canvas persistence rejects finite geometry whose derived bounds overflow', () => {
@@ -923,7 +957,9 @@ test('storage denial is silent and v1 is never accessed', () => {
   assert.equal(saveCanvasLayout(undefined, defaults), false)
   assert.equal(loadCanvasLayout({ getItem() { throw new Error('denied') } }, defaults), null)
   assert.equal(saveCanvasLayout({ setItem() { throw new Error('quota') } }, defaults), false)
-  assert.equal(saveCanvasLayout(storage, { cards: [], order: [], transform: defaults.transform }), false)
+  assert.equal(saveCanvasLayout(storage, {
+    contentRevision: 7, cards: [], order: [], transform: defaults.transform,
+  }), false)
   const deniedCalls = []
   const denied = {
     getItem(key) { deniedCalls.push(key); throw new Error('denied') },
@@ -931,7 +967,7 @@ test('storage denial is silent and v1 is never accessed', () => {
   }
   assert.equal(loadCanvasLayout(denied, defaults), null)
   assert.equal(saveCanvasLayout(denied, defaults), false)
-  assert.deepEqual(deniedCalls, ['juzx-personal-os-layout-v2'])
+  assert.deepEqual(deniedCalls, ['juzx-personal-os-layout-v3'])
 })
 
 test('dynamic bounds measure visible cards and share one Fit rectangle', () => {
@@ -1169,12 +1205,14 @@ test('infinite canvas components preserve interaction and source contracts', () 
   const card = readComponent('CanvasCard.vue')
   const connections = readComponent('CanvasConnections.vue')
 
-  assert.match(canvas, /import \{ canvasCards, canvasConnections \} from '\.\/personalOsContent\.mjs'/)
+  assert.match(canvas, /const props = defineProps\(/)
+  assert.match(canvas, /const sourceCards = props\.configuration\.config\.cards/)
+  assert.match(canvas, /const sourceConnections = props\.configuration\.config\.connections/)
   assert.match(canvas, /from '\.\/canvasGeometry\.mjs'/)
   assert.match(canvas, /import CanvasCard from '\.\/CanvasCard\.vue'/)
   assert.match(canvas, /import CanvasConnections from '\.\/CanvasConnections\.vue'/)
-  assert.match(canvas, /canvasCards\.map\(\(card\) => \(\{ \.\.\.card \}\)\)/)
-  assert.match(canvas, /order: canvasCards\.map\(\(\{ id \}\) => id\)/)
+  assert.match(canvas, /sourceCards\.map\(\(card\) => \(\{ \.\.\.card \}\)\)/)
+  assert.match(canvas, /order: sourceCards\.map\(\(\{ id \}\) => id\)/)
   assert.match(canvas, /order: \[\.\.\.stackingOrder\.value\]/)
   assert.match(canvas, /translate\(\$\{transform\.value\.panX\}px, \$\{transform\.value\.panY\}px\) scale\(\$\{transform\.value\.scale\}\)/)
   assert.match(canvas, /transform-origin: 0 0/)
@@ -1407,6 +1445,8 @@ test('system lazy boundary keeps navigation usable and retries a distinct chunk'
   assert.match(home, />\s*重新加载我的 OS\s*</)
   assert.match(home, /\(\) => import\('\.\/InfiniteCanvas\.vue'\)/)
   assert.match(home, /\(\) => import\('\.\/InfiniteCanvas\.vue\?retry=1'\)/)
+  assert.match(home, /loadPersonalOsConfiguration\(\)/)
+  assert.match(home, /:configuration="systemConfiguration"/)
   assert.equal([...home.matchAll(/<BottomOsNavigation\b/g)].length, 1)
   assert.doesNotMatch(home, /@vite-ignore|location\.reload|<iframe|<object|<embed/i)
 })

@@ -1,5 +1,6 @@
 function cloneLayout(layout) {
   return {
+    contentRevision: layout.contentRevision,
     cards: layout.cards.map((card) => ({ ...card })),
     order: [...layout.order],
     transform: { ...layout.transform },
@@ -13,7 +14,8 @@ function withTransform(layout, transform) {
 }
 
 function layoutsEqual(left, right) {
-  if (!left || !right || left.cards.length !== right.cards.length
+  if (!left || !right || left.contentRevision !== right.contentRevision
+    || left.cards.length !== right.cards.length
     || left.order.length !== right.order.length) return false
   const transformEqual = left.transform.scale === right.transform.scale
     && left.transform.panX === right.transform.panX

@@ -13,10 +13,21 @@
   },
   "vars": {
     "ALLOWED_ORIGIN": "https://juzxailab.com",
+    "ADMIN_EMAIL": "wo_sakura@163.com",
+    "ACCESS_TEAM_DOMAIN": "https://wo-sakura.cloudflareaccess.com",
+    "ACCESS_AUD": "dd8c890ba8cf86790fa4c508e9b0b575959ce7c0c8299690e62288abff5d012d",
     "DEEPSEEK_MODEL": "deepseek-v4-flash",
     "DAILY_PER_IP_LIMIT": "5",
     "DAILY_GLOBAL_LIMIT": "10"
   },
+  "d1_databases": [
+    {
+      "binding": "PERSONAL_OS_DB",
+      "database_name": "personal-os-config",
+      "database_id": "6e539519-8dae-458f-b47e-367f9a7aef83",
+      "migrations_dir": "migrations"
+    }
+  ],
   "ratelimits": [
     {
       "name": "QA_RATE_LIMITER",
