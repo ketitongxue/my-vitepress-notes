@@ -8,7 +8,7 @@ const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const task7Components = [
   'MacbookBoot', 'MacbookExit', 'BottomOsNavigation', 'DesktopSurface', 'DesktopIcon', 'WindowManager',
   'KnowledgePortfolio', 'InfiniteCanvas', 'CanvasCard', 'CanvasConnections', 'CanvasLayers',
-  'CanvasMinimap', 'CanvasControls',
+  'CanvasControls',
 ]
 
 function scopedStyles(source) {
@@ -78,7 +78,7 @@ test('theme styles balance the Personal OS, knowledge, and QA surfaces', async (
   for (const selector of [
     '.macbook-boot', '.desktop-surface', '.desktop-surface__menu', '.desktop-icon',
     '.window-manager__window', '.bottom-os-navigation', '.knowledge-portfolio',
-    '.infinite-canvas', '.canvas-card', '.canvas-layers', '.canvas-minimap', '.canvas-controls',
+    '.infinite-canvas', '.canvas-card', '.canvas-layers', '.canvas-controls',
   ]) assert.match(css, new RegExp(`\\.factory-home ${selector.replace('.', '\\.')}(?:\\s|,|\\{|:)`))
   assert.match(css, /\.factory-home :where\(a, button\):focus-visible\s*\{[^}]*outline:\s*3px solid #315EFB/)
   assert.match(css, /\.factory-home \.desktop-surface__menu\s*\{[^}]*height:\s*40px/)
@@ -130,7 +130,7 @@ test('Personal OS components keep approved local textures without remote visual 
     }
 
     const inlineSvgCount = [...source.matchAll(/<svg\b/gi)].length
-    if (name === 'CanvasConnections' || name === 'CanvasMinimap') {
+    if (name === 'CanvasConnections') {
       assert.equal(inlineSvgCount, 1, `${name} keeps exactly one approved structural SVG`)
       assert.doesNotMatch(source, /<(?:path|image|foreignObject)\b/i, `${name} SVG must stay structural`)
     } else {
@@ -161,8 +161,8 @@ test('Personal OS components keep approved local textures without remote visual 
 })
 
 test('every required mobile Personal OS target keeps a 44 by 44 hit area', async () => {
-  const [boot, windows, navigation, layers, minimap, controls, card] = await Promise.all([
-    'MacbookBoot', 'WindowManager', 'BottomOsNavigation', 'CanvasLayers', 'CanvasMinimap',
+  const [boot, windows, navigation, layers, controls, card] = await Promise.all([
+    'MacbookBoot', 'WindowManager', 'BottomOsNavigation', 'CanvasLayers',
     'CanvasControls', 'CanvasCard',
   ].map(async (name) => scopedStyles(await read(`docs/.vitepress/theme/components/${name}.vue`))))
 
@@ -172,7 +172,6 @@ test('every required mobile Personal OS target keeps a 44 by 44 hit area', async
   assert.match(windows, /@media \(max-width: 767px\)[\s\S]*?\.window-manager__resize-handle\s*\{[^}]*display:\s*none;/)
   assert.match(navigation, /@media \(max-width: 767px\)[\s\S]*?\.bottom-os-navigation button\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
   assert.match(layers, /@media \(max-width: 767px\)[\s\S]*?\.canvas-layers__toggle\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
-  assert.match(minimap, /\.canvas-minimap__surface\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
   assert.match(controls, /@media \(max-width: 767px\)[\s\S]*?\.canvas-controls button\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/)
   assert.doesNotMatch(card, /\.canvas-card__resize\s*\{/)
   assert.match(card, /@media \(max-width: 767px\)[\s\S]*?\.canvas-card__resize-handle--e\s*\{[^}]*width:\s*14px;/)

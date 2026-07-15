@@ -1243,25 +1243,23 @@ test('infinite canvas components preserve interaction and source contracts', () 
   }
 })
 
-test('canvas chrome wires layers, minimap, controls, persistence, and bounded history', () => {
+test('canvas chrome wires layers, controls, persistence, and bounded history', () => {
   const canvas = readComponent('InfiniteCanvas.vue')
   const layers = readComponent('CanvasLayers.vue')
-  const minimap = readComponent('CanvasMinimap.vue')
   const controls = readComponent('CanvasControls.vue')
 
   for (const name of ['CanvasLayers', 'CanvasControls']) {
     assert.match(canvas, new RegExp(`import ${name} from './${name}\\.vue'`))
     assert.match(canvas, new RegExp(`<${name}\\b`))
   }
-  assert.match(layers, /import CanvasMinimap from '.\/CanvasMinimap\.vue'/)
-  assert.match(layers, /<CanvasMinimap\b/)
+  assert.doesNotMatch(layers, /CanvasMinimap|canvas-minimap|navigate/)
   assert.doesNotMatch(canvas, /import CanvasMinimap/)
   assert.doesNotMatch(canvas, /<CanvasMinimap\b/)
+  assert.doesNotMatch(canvas, /navigateToPoint|@navigate=/)
   assert.match(canvas, /from '\.\/canvasPersistence\.mjs'/)
   assert.match(canvas, /from '\.\/canvasHistory\.mjs'/)
   assert.match(canvas, /@focus="focusCard"/)
   assert.match(canvas, /@visibility="changeVisibility"/)
-  assert.match(canvas, /@navigate="navigateToPoint"/)
   for (const [event, handler] of [
     ['zoom-in', 'zoomIn'], ['zoom-out', 'zoomOut'], ['fit', 'fitCanvas'],
     ['undo', 'undoCanvas'], ['save', 'saveNow'], ['reset', 'restoreDefaults'],
@@ -1274,7 +1272,6 @@ test('canvas chrome wires layers, minimap, controls, persistence, and bounded hi
   assert.match(canvas, /const usableViewport = computed\(\(\) => canvasUsableViewport\(viewportSize\.value, mobileViewport\.value\)\)/)
   assert.match(canvas, /initialFitCards\(cards\.value, mobileViewport\.value\)/)
   assert.match(canvas, /fitWorldBounds\(worldBounds\.value, usableViewport\.value, 24\)/)
-  assert.match(canvas, /:world-bounds="worldBounds"/)
   assert.match(canvas, /clearTimeout\(saveTimer\)/)
   assert.match(canvas, /:can-undo="history\.past\.length > 0"/)
   assert.match(canvas, /@gesture-complete="completeCardGesture"/)
@@ -1288,13 +1285,13 @@ test('canvas chrome wires layers, minimap, controls, persistence, and bounded hi
   assert.match(canvas, /function updateCardGeometry[\s\S]*?cancelScheduledSave\(\)/)
   assert.match(canvas, /function cancelCardGesture[\s\S]*?saveNow\(\)/)
   assert.match(canvas, /saveCanvasLayout\(storage, getCommittedLayout\(history\.value\)\)/)
-  for (const handler of ['updateCardGeometry', 'applyTransform', 'selectCard', 'focusCard', 'navigateToPoint']) {
+  for (const handler of ['updateCardGeometry', 'applyTransform', 'selectCard', 'focusCard']) {
     const match = canvas.match(new RegExp(`function ${handler}[^]*?(?=\\nfunction |\\nonMounted)`))
     assert.ok(match, handler)
     assert.doesNotMatch(match[0], /pushHistory\(/, handler)
   }
 
-  assert.match(layers, /defineEmits\(\['focus', 'visibility', 'navigate'\]\)/)
+  assert.match(layers, /defineEmits\(\['focus', 'visibility'\]\)/)
   assert.match(layers, /<aside\s+[\s\S]*?class="canvas-layers"/)
   assert.match(layers, /v-for="card in cards"/)
   assert.match(layers, /:key="card\.id"/)
@@ -1304,20 +1301,6 @@ test('canvas chrome wires layers, minimap, controls, persistence, and bounded hi
   assert.match(layers, /:aria-pressed="card\.visible !== false"/)
   assert.match(layers, /min-width: 44px/)
   assert.match(layers, /@media \(max-width: 767px\)/)
-
-  assert.match(minimap, /defineEmits\(\['navigate'\]\)/)
-  for (const prop of ['cards', 'transform', 'viewport', 'worldBounds']) assert.match(minimap, new RegExp(`${prop}:`))
-  assert.match(minimap, /v-for="card in visibleCards"/)
-  assert.match(minimap, /:key="card\.id"/)
-  assert.match(minimap, /-props\.transform\.panX \/ props\.transform\.scale/)
-  assert.match(minimap, /getBoundingClientRect\(\)/)
-  assert.match(minimap, /props\.worldBounds\.x/)
-  assert.match(minimap, /emit\('navigate', \{ x, y \}\)/)
-  assert.match(minimap, /<svg\b/)
-  assert.match(minimap, /<rect\b/)
-  assert.match(minimap, /position: static/)
-  assert.match(minimap, /width: 100%/)
-  assert.doesNotMatch(minimap, /position: absolute/)
 
   assert.match(controls, /defineEmits\(\['zoom-in', 'zoom-out', 'fit', 'undo', 'save', 'reset'\]\)/)
   for (const label of ['缩小画布', '放大画布', '适应全部内容', '撤销上一步', '保存画布布局', '恢复默认布局']) {
@@ -1330,20 +1313,19 @@ test('canvas chrome wires layers, minimap, controls, persistence, and bounded hi
   assert.match(controls, /emit\('reset'\)/)
   assert.doesNotMatch(controls, /window\.confirm/)
 
-  for (const source of [canvas, layers, minimap, controls]) {
+  for (const source of [canvas, layers, controls]) {
     assert.doesNotMatch(source, /contenteditable|v-html|<iframe\b|<object\b|<embed\b|sessionStorage|window\.confirm/i)
     assert.doesNotMatch(source, /upload|create-card|delete-card|sparkle|particle|illustration|https?:\/\//i)
   }
 })
 
-test('Layers is a 48px rail, 220px overlay, and mobile bottom drawer', () => {
+test('Layers is a 48px rail, 220px overlay, and mobile bottom drawer without a minimap', () => {
   const layers = readComponent('CanvasLayers.vue')
   const canvas = readComponent('InfiniteCanvas.vue')
-  assert.match(layers, /import CanvasMinimap from '.\/CanvasMinimap\.vue'/)
+  assert.doesNotMatch(layers, /CanvasMinimap|canvas-minimap|navigate/)
   assert.match(layers, /aria-controls="canvas-layers-panel"/)
   assert.match(layers, /:aria-expanded="expanded"/)
   assert.match(layers, /id="canvas-layers-panel"/)
-  assert.match(layers, /<CanvasMinimap[\s\S]*:world-bounds="worldBounds"/)
   assert.match(layers, /width:\s*48px/)
   assert.match(layers, /width:\s*220px/)
   assert.match(layers, /@media \(max-width:\s*767px\)[\s\S]*position:\s*fixed[\s\S]*bottom:/)

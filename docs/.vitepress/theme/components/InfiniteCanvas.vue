@@ -368,15 +368,6 @@ function focusCard(id) {
   ))
 }
 
-function navigateToPoint(worldPoint) {
-  const scale = clampScale(transform.value.scale)
-  applyTransform({
-    scale,
-    panX: viewportSize.value.width / 2 - worldPoint.x * scale,
-    panY: viewportSize.value.height / 2 - worldPoint.y * scale,
-  })
-}
-
 function zoomBy(multiplier) {
   const point = { x: viewportSize.value.width / 2, y: viewportSize.value.height / 2 }
   applyTransform(zoomAtPoint(transform.value, transform.value.scale * multiplier, point))
@@ -526,12 +517,8 @@ onBeforeUnmount(() => {
     <CanvasLayers
       :cards="cards"
       :selected-card-id="selectedCardId"
-      :transform="transform"
-      :viewport="viewportSize"
-      :world-bounds="worldBounds"
       @focus="focusCard"
       @visibility="changeVisibility"
-      @navigate="navigateToPoint"
     />
     <CanvasControls
       :scale="transform.scale"

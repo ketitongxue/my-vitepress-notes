@@ -20,7 +20,7 @@ test('Personal OS visual contract is exact, scoped, interactive, and responsive'
   const home = await read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue')
   const componentStyles = (await Promise.all([
     'DesktopSurface.vue', 'DesktopIcon.vue', 'WindowManager.vue', 'BottomOsNavigation.vue',
-    'CanvasControls.vue', 'CanvasCard.vue', 'CanvasLayers.vue', 'CanvasMinimap.vue', 'InfiniteCanvas.vue',
+    'CanvasControls.vue', 'CanvasCard.vue', 'CanvasLayers.vue', 'InfiniteCanvas.vue',
   ].map((name) => read(`docs/.vitepress/theme/components/${name}`)))).join('\n')
   const scopedOs = css.match(/\/\* Personal OS start \*\/([\s\S]*?)\/\* Personal OS end \*\//)?.[1] ?? ''
   assert.ok(scopedOs, 'homepage OS styles must have an auditable scoped block')
@@ -53,7 +53,7 @@ test('Personal OS visual contract is exact, scoped, interactive, and responsive'
   for (const selector of [
     'macbook-boot', 'desktop-surface', 'desktop-surface__menu', 'desktop-icon',
     'window-manager__window', 'bottom-os-navigation', 'knowledge-portfolio',
-    'infinite-canvas', 'canvas-card', 'canvas-layers', 'canvas-minimap', 'canvas-controls',
+    'infinite-canvas', 'canvas-card', 'canvas-layers', 'canvas-controls',
   ]) assert.match(os, new RegExp(`\\.factory-home \\.${selector}(?:\\s|,|\\{|:)`))
 
   assert.match(os, /\.factory-home\s*\{[^}]*font-family:\s*var\(--vp-font-family-base\)/)

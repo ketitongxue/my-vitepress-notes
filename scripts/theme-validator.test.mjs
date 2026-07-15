@@ -60,7 +60,6 @@ function validTheme() {
 .factory-home .infinite-canvas { overflow: hidden; background: #F7F4EC; }
 .factory-home .canvas-card { background: #FFFDF7; }
 .factory-home .canvas-layers { color: #192232; }
-.factory-home .canvas-minimap { border-color: #EF7B45; }
 .factory-home .canvas-controls { color: #3FAE78; }
 .factory-home :where(a, button):focus-visible { outline: 3px solid #315EFB; }
 @media (max-width: 767px) {
