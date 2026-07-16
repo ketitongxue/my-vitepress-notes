@@ -4,7 +4,6 @@ import BottomOsNavigation from './BottomOsNavigation.vue'
 import DesktopSurface from './DesktopSurface.vue'
 import KnowledgePortfolio from './KnowledgePortfolio.vue'
 import MacbookBoot from './MacbookBoot.vue'
-import MacbookExit from './MacbookExit.vue'
 import {
   hasCompletedHomeEntry, hashForOsView, initialOsView, normalizeOsHash,
 } from './personalOsRouter.mjs'
@@ -158,7 +157,6 @@ onBeforeUnmount(() => {
       data-os-view="home"
     >
       <DesktopSurface :configuration="homeConfiguration.config" />
-      <MacbookExit :configuration="homeConfiguration.config" />
     </main>
     <section
       v-show="!hydrated || activeView === 'knowledge'"

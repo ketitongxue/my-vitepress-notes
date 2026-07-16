@@ -18,9 +18,6 @@ import {
   resizeWindowByKey, resizeWindowFromEdge, toggleMaximizeWindow,
 } from '../docs/.vitepress/theme/components/windowManagerState.mjs'
 import {
-  exitFrame, normalizeExitProgress,
-} from '../docs/.vitepress/theme/components/homeExitState.mjs'
-import {
   loadSystemCanvasModule,
 } from '../docs/.vitepress/theme/components/systemCanvasLoader.mjs'
 import {
@@ -173,34 +170,6 @@ test('MacBook boot accepts one launch and computes viewport cover', () => {
   ), { scale: 2.5, translateX: 120, translateY: 70 })
 })
 
-test('home exit progress is finite, clamped, and follows the three approved phases', () => {
-  assert.equal(normalizeExitProgress(-20, 100, 500), 0)
-  assert.equal(normalizeExitProgress(300, 100, 500), 0.5)
-  assert.equal(normalizeExitProgress(900, 100, 500), 1)
-  assert.equal(normalizeExitProgress(100, 100, 100), 1)
-  assert.equal(normalizeExitProgress(80, 100, 100), 0)
-  assert.equal(normalizeExitProgress(100, 200, 100), 0)
-  assert.equal(normalizeExitProgress(200, 200, 100), 1)
-  assert.equal(Number.isFinite(normalizeExitProgress(Number.NaN, 0, 0)), true)
-
-  assert.deepEqual(exitFrame(0), {
-    panelScale: 1,
-    computerOpacity: 0,
-    terminalOpacity: 0,
-  })
-  assert.deepEqual(exitFrame(0.55), {
-    panelScale: 0.42,
-    computerOpacity: 1,
-    terminalOpacity: 0,
-  })
-  assert.deepEqual(exitFrame(1), {
-    panelScale: 0.42,
-    computerOpacity: 1,
-    terminalOpacity: 1,
-  })
-  assert.deepEqual(exitFrame(-1), exitFrame(0))
-  assert.deepEqual(exitFrame(2), exitFrame(1))
-})
 
 test('system canvas loader switches module identity after the first failed attempt', async () => {
   const calls = []

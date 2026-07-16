@@ -560,6 +560,10 @@ html[data-personal-os-view="system"] .factory-home [data-os-view="knowledge"] {
   display: none !important;
 }
 
+html[data-personal-os-view="home"] .knowledge-factory-page .VPFooter {
+  display: none !important;
+}
+
 html[data-personal-os-view] .factory-home .bottom-os-navigation button {
   border: 0 !important;
   background: transparent !important;

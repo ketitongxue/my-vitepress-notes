@@ -85,10 +85,11 @@ test('reduced motion preserves functional Personal OS transforms in the effectiv
 })
 
 test('Personal OS view components expose exact navigation and desktop menu labels', async () => {
-  const [home, desktop, navigation] = await Promise.all([
+  const [home, desktop, navigation, css] = await Promise.all([
     read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue'),
     read('docs/.vitepress/theme/components/DesktopSurface.vue'),
     read('docs/.vitepress/theme/components/BottomOsNavigation.vue'),
+    read('docs/.vitepress/theme/custom.css'),
   ])
   assert.match(home, /import MacbookBoot from '.\/MacbookBoot\.vue'/)
   assert.match(home, /import BottomOsNavigation from '.\/BottomOsNavigation\.vue'/)
@@ -109,7 +110,10 @@ test('Personal OS view components expose exact navigation and desktop menu label
     assert.match(home, new RegExp(`data-os-view="${view}"`))
   }
   assert.match(home, /<MacbookBoot[\s\S]*v-if="!hydrated \|\| \(activeView === 'home' && !homeEntered\)"[\s\S]*:active="activeView === 'home'"[\s\S]*:disabled="bootDisabled"[\s\S]*@entered="handleHomeEntered"[\s\S]*\/>/)
-  assert.match(home, /<DesktopSurface :configuration="homeConfiguration\.config" \/>[\s\S]*<MacbookExit :configuration="homeConfiguration\.config" \/>/)
+  assert.equal([...home.matchAll(/<DesktopSurface\b/g)].length, 1)
+  assert.doesNotMatch(home, /MacbookExit/)
+  assert.match(css, /html\[data-personal-os-view="home"\] \.knowledge-factory-page \.VPFooter\s*\{[^}]*display:\s*none !important;/)
+  assert.doesNotMatch(css, /html\[data-personal-os-view="home"\] \.VPFooter\s*\{/)
   assert.match(home, /<KnowledgePortfolio\s*\/>/)
   assert.match(home, /<BottomOsNavigation[\s\S]*:active-view="activeView"[\s\S]*@select="selectView"[\s\S]*\/>/)
   assert.match(desktop, /configuration\.desktop\.brand/)
@@ -121,20 +125,18 @@ test('Personal OS view components expose exact navigation and desktop menu label
   ])
 })
 
-test('final shell integrates exit, portfolio, and retryable lazy system view', async () => {
-  const [home, exit, navigation] = await Promise.all([
+test('final shell keeps home viewport-bounded with portfolio and retryable lazy system view', async () => {
+  const [home, navigation] = await Promise.all([
     read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue'),
-    read('docs/.vitepress/theme/components/MacbookExit.vue'),
     read('docs/.vitepress/theme/components/BottomOsNavigation.vue'),
   ])
 
-  for (const component of ['MacbookBoot', 'DesktopSurface', 'MacbookExit', 'KnowledgePortfolio', 'BottomOsNavigation']) {
+  for (const component of ['MacbookBoot', 'DesktopSurface', 'KnowledgePortfolio', 'BottomOsNavigation']) {
     assert.match(home, new RegExp(`import ${component} from './${component}\\.vue'`))
   }
   assert.equal([...home.matchAll(/<DesktopSurface\b/g)].length, 1)
-  assert.equal([...home.matchAll(/<MacbookExit\b/g)].length, 1)
   assert.equal([...home.matchAll(/<KnowledgePortfolio\s*\/>/g)].length, 1)
-  assert.match(home, /<DesktopSurface :configuration="homeConfiguration\.config" \/>[\s\S]*<MacbookExit :configuration="homeConfiguration\.config" \/>/)
+  assert.doesNotMatch(home, /MacbookExit/)
   assert.match(home, /\(\) => import\('\.\/InfiniteCanvas\.vue'\)/)
   assert.match(home, /\(\) => import\('\.\/InfiniteCanvas\.vue\?retry=1'\)/)
   assert.doesNotMatch(home, /@vite-ignore|infiniteCanvasUrl|<iframe|<object|<embed/i)
@@ -153,24 +155,6 @@ test('final shell integrates exit, portfolio, and retryable lazy system view', a
   assert.match(navigation, /data-os-nav-target="home"/)
   assert.match(navigation, /data-os-nav-target="knowledge"/)
   assert.match(navigation, /data-os-nav-target="system"/)
-
-  assert.match(exit, /import \{ exitFrame, normalizeExitProgress \} from '.\/homeExitState\.mjs'/)
-  assert.match(exit, /window\.addEventListener\('scroll', scheduleFrame, \{ passive: true \}\)/)
-  assert.match(exit, /requestAnimationFrame/)
-  assert.match(exit, /cancelAnimationFrame/)
-  assert.match(exit, /window\.removeEventListener\('scroll', scheduleFrame\)/)
-  assert.match(exit, /window\.removeEventListener\('resize', scheduleFrame\)/)
-  for (const variable of ['--exit-panel-scale', '--exit-computer-opacity', '--exit-terminal-opacity']) {
-    assert.match(exit, new RegExp(variable))
-  }
-  assert.match(exit, /configuration\.exit\.title/)
-  assert.match(exit, /v-for="\(line, index\) in configuration\.exit\.lines"/)
-  assert.match(exit, /@media \(prefers-reduced-motion: reduce\)/)
-  assert.match(exit, /min-height:\s*100vh;[\s\S]*min-height:\s*100dvh;/)
-  assert.doesNotMatch(exit, new RegExp(
-    'linear-gradient|radial-gradient|backdrop-filter|\\bstars?\\b|sparkle|particle|illustration|<svg|<img',
-    'i',
-  ))
 })
 
 test('knowledge portfolio preserves the six-section content and navigation contract', async () => {
