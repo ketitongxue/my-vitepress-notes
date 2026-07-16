@@ -88,6 +88,30 @@ test('Personal OS public and admin API paths route to their dedicated handlers',
   assert.deepEqual(calls, [['public', 'GET'], ['admin', 'GET']])
 })
 
+test('home public and admin API paths route to their dedicated handlers', async () => {
+  const calls = []
+  const worker = createWorker({
+    askHandler: assert.fail,
+    homePublicHandler(request) {
+      calls.push(['public', request.method])
+      return Response.json({ revision: 2 })
+    },
+    homeAdminHandler(request) {
+      calls.push(['admin', request.method])
+      return Response.json({ versions: [] })
+    },
+  })
+  const env = { ASSETS: { fetch: assert.fail } }
+
+  const publicResponse = await worker.fetch(new Request('https://example.com/api/home/config'), env)
+  const adminResponse = await worker.fetch(new Request('https://example.com/api/admin/home/config'), env)
+
+  assert.equal((await publicResponse.json()).revision, 2)
+  assert.deepEqual(await adminResponse.json(), { versions: [] })
+  assert.equal(adminResponse.headers.get('cache-control'), 'no-store')
+  assert.deepEqual(calls, [['public', 'GET'], ['admin', 'GET']])
+})
+
 test('all non-API paths are delegated to env.ASSETS.fetch', async () => {
   const assetResponse = new Response('from assets', { status: 203 })
   const worker = createWorker({ askHandler: assert.fail })
@@ -124,4 +148,14 @@ test('default worker fails closed when the Personal OS database binding is absen
 
   assert.equal(response.status, 503)
   assert.deepEqual(await response.json(), { error: 'PERSONAL_OS_CONFIG_UNAVAILABLE' })
+})
+
+test('default worker fails closed when the home database binding is absent', async () => {
+  const response = await worker.fetch(
+    new Request('https://example.com/api/home/config'),
+    { ASSETS: { fetch: assert.fail } },
+  )
+
+  assert.equal(response.status, 503)
+  assert.deepEqual(await response.json(), { error: 'HOME_CONFIG_UNAVAILABLE' })
 })

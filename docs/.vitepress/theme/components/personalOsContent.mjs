@@ -1,25 +1,7 @@
-export const bootLines = Object.freeze([
-  'JuZX@digital-factory ~ zsh',
-  '$ whoami',
-  'Product Manager / Industrial Digitalization Explorer',
-  '$ open juzx-os',
-])
+import { DEFAULT_HOME_CONFIG } from '../../../../shared/home-config.mjs'
 
-const entry = (id, label, icon, x, y, title, summary, href, external = false) =>
-  Object.freeze({ id, label, icon, position: Object.freeze({ x, y }), window: Object.freeze({ title, summary, href, external }) })
-
-export const desktopEntries = Object.freeze([
-  entry('llm-wiki', 'LLM Wiki', 'folder', 80, 84, 'LLM Wiki', 'AI、Agent 与知识工程的结构化知识库。', '/wiki/'),
-  entry('finance-wiki', 'Finance Wiki', 'folder', 176, 84, 'Finance Wiki', '金融、量化与市场结构知识库。', '/finance/'),
-  entry('ask', '知识问答', 'terminal', 80, 176, '知识问答', '基于 LLM Wiki 检索结果回答问题。', '/ask/'),
-  entry('skill', 'llm-wiki Skill', 'file', 176, 176, 'llm-wiki Skill', '公开的知识库构建方法、流程与安装指南。', '/llm-wiki/'),
-  entry('experiments', 'AI 实验', 'folder', 80, 268, 'AI 实验', '个人 AI 工具、Agent 与工作流实验。'),
-  entry('projects', '项目档案', 'folder', 176, 268, '项目档案', 'MES 与工业数字化项目实践。'),
-  entry('about', '关于我', 'file', 80, 360, '关于我', 'JuZX 的角色、关注方向与当前实践。', '/about'),
-  entry('contact', '联系方式', 'terminal', 176, 360, '联系方式', 'GitHub: ketitongxue'),
-  entry('github', 'GitHub', 'world', 80, 452, 'GitHub', '查看公开项目与提交记录。', 'https://github.com/ketitongxue', true),
-  entry('changelog', '网站更新记录', 'file', 176, 452, '网站更新记录', 'AI 纪元的内容与系统更新。', '/notes/sustainable-ai-workflow'),
-])
+export const bootLines = DEFAULT_HOME_CONFIG.boot.lines
+export const desktopEntries = DEFAULT_HOME_CONFIG.desktop.entries
 
 const section = (id, label, title, summary, cardIds) =>
   Object.freeze({ id, label, title, summary, cardIds: Object.freeze(cardIds) })

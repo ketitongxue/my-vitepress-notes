@@ -36,6 +36,10 @@ function titleFor(item) {
   return item.entry.window.title
 }
 
+function isExternalHref(href) {
+  return typeof href === 'string' && href.startsWith(['https:', '', ''].join('/'))
+}
+
 function updateState(state) {
   emit('update:state', state)
 }
@@ -225,8 +229,8 @@ onBeforeUnmount(() => {
         <a
           v-if="item.entry.window.href"
           :href="item.entry.window.href"
-          :target="item.entry.window.external ? '_blank' : undefined"
-          :rel="item.entry.window.external ? 'noopener noreferrer' : undefined"
+          :target="isExternalHref(item.entry.window.href) ? '_blank' : undefined"
+          :rel="isExternalHref(item.entry.window.href) ? 'noopener noreferrer' : undefined"
         >前往 {{ titleFor(item) }}</a>
         <div v-else class="window-manager__status">
           <span>整理中</span>

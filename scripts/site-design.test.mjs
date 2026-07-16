@@ -49,11 +49,13 @@ test('Q&A clearly limits retrieval to the AI knowledge base', async () => {
 })
 
 test('Personal OS menu destinations and local routes resolve', async () => {
-  const desktop = await read('docs/.vitepress/theme/components/DesktopSurface.vue')
+  const [desktop, config] = await Promise.all([
+    read('docs/.vitepress/theme/components/DesktopSurface.vue'),
+    read('shared/home-config.mjs'),
+  ])
   assert.match(desktop, /href="#home"/)
-  assert.match(desktop, /href="#knowledge"/)
-  assert.match(desktop, /href="#system"/)
-  assert.match(desktop, /href="\/about"/)
+  assert.match(desktop, /configuration\.desktop\.menuLinks/)
+  for (const href of ['#knowledge', '#system', '/about']) assert.match(config, new RegExp(escapeRegex(href)))
   await assert.doesNotReject(access(new URL('docs/about.md', root)), '/about must resolve')
 })
 
@@ -186,7 +188,7 @@ test('MacBook splash and hash shell preserve homepage discovery', async () => {
     'home', 'knowledge', 'system',
   ])
   assert.match(home, /<BottomOsNavigation[\s\S]*:active-view="activeView"[\s\S]*@select="selectView"[\s\S]*\/>/)
-  assert.match(home, /<DesktopSurface\s*\/>[\s\S]*<MacbookExit\s*\/>/)
+  assert.match(home, /<DesktopSurface :configuration="homeConfiguration\.config" \/>[\s\S]*<MacbookExit :configuration="homeConfiguration\.config" \/>/)
   assert.match(home, /<KnowledgePortfolio\s*\/>/)
   assert.match(home, /\(\) => import\('\.\/InfiniteCanvas\.vue'\)/)
   assert.match(home, /\(\) => import\('\.\/InfiniteCanvas\.vue\?retry=1'\)/)
