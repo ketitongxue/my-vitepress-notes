@@ -1,14 +1,18 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import DesktopIcon from './DesktopIcon.vue'
 import WindowManager from './WindowManager.vue'
 import { constrainIconPosition, resolveSurfaceBounds } from './desktopGeometry.mjs'
-import { desktopEntries } from './personalOsContent.mjs'
 import {
   constrainWindowState,
   createWindowState,
   openWindow,
 } from './windowManagerState.mjs'
+
+const props = defineProps({
+  configuration: { type: Object, required: true },
+})
+const desktopEntries = computed(() => props.configuration.desktop.entries)
 
 const surface = ref(null)
 const menu = ref(null)
@@ -19,8 +23,8 @@ const clock = ref('00:00')
 let resizeObserver
 let clockTimer
 
-function createIconPositions() {
-  return Object.fromEntries(desktopEntries.map((entry) => [entry.id, {
+function createIconPositions(entries = desktopEntries.value) {
+  return Object.fromEntries(entries.map((entry) => [entry.id, {
     anchor: 'right',
     ...entry.position,
   }]))
@@ -88,6 +92,12 @@ onMounted(() => {
   window.addEventListener('resize', measureSurface)
 })
 
+watch(desktopEntries, (entries) => {
+  iconPositions.value = createIconPositions(entries)
+  windowState.value = createWindowState()
+  void nextTick(measureSurface)
+})
+
 onBeforeUnmount(() => {
   resizeObserver?.disconnect()
   window.clearInterval(clockTimer)
@@ -98,13 +108,13 @@ onBeforeUnmount(() => {
 <template>
   <section ref="surface" class="desktop-surface" aria-label="JuZX OS 桌面">
     <header ref="menu" class="desktop-surface__menu">
-      <a class="desktop-surface__brand is-active" href="#home" aria-current="page">JuZX OS</a>
+      <a class="desktop-surface__brand is-active" href="#home" aria-current="page">{{ configuration.desktop.brand }}</a>
       <nav aria-label="JuZX OS 菜单">
-        <a href="/about">About</a>
-        <a href="#knowledge">Knowledge</a>
-        <a href="#system">Now</a>
+        <a v-for="link in configuration.desktop.menuLinks" :key="`${link.label}-${link.href}`" :href="link.href">
+          {{ link.label }}
+        </a>
       </nav>
-      <button type="button" @click="resetIconPositions">重置桌面位置</button>
+      <button type="button" @click="resetIconPositions">{{ configuration.desktop.resetLabel }}</button>
       <time :datetime="clock">{{ clock }}</time>
     </header>
 

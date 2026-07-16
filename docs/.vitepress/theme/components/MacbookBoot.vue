@@ -1,6 +1,5 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { bootLines } from './personalOsContent.mjs'
 import {
   computeCoverTransform,
   createMacbookBootRuntime,
@@ -16,6 +15,7 @@ import {
 const props = defineProps({
   active: { type: Boolean, default: true },
   disabled: { type: Boolean, default: false },
+  configuration: { type: Object, required: true },
 })
 const emit = defineEmits(['entered'])
 const screen = ref(null)
@@ -29,7 +29,8 @@ let runtime
 let entered = false
 let started = false
 
-const visibleLines = computed(() => bootLines.slice(0, visibleLineCount.value))
+const bootLines = computed(() => props.configuration.boot.lines)
+const visibleLines = computed(() => bootLines.value.slice(0, visibleLineCount.value))
 const liveMessage = computed(() => {
   if (state.value === 'launching') return `正在启动 ${progress.value} / 12`
   if (state.value === 'ready') return '系统已就绪，按 Enter 启动'
@@ -110,7 +111,7 @@ function handleKeydown(event) {
 function revealNextLine() {
   if (state.value !== 'typing') return
   visibleLineCount.value += 1
-  if (visibleLineCount.value < bootLines.length) {
+  if (visibleLineCount.value < bootLines.value.length) {
     schedule(revealNextLine, 220)
     return
   }
@@ -142,7 +143,7 @@ function startBoot() {
   }
 
   visibleLineCount.value = 1
-  if (bootLines.length === 1) state.value = transitionMacbookBoot(state.value, 'TYPING_COMPLETE')
+  if (bootLines.value.length === 1) state.value = transitionMacbookBoot(state.value, 'TYPING_COMPLETE')
   else schedule(revealNextLine, 220)
 }
 
@@ -185,7 +186,7 @@ onBeforeUnmount(() => {
           class="macbook-boot__launch"
           @click="activate"
         >
-          启动 JuZX OS
+          {{ configuration.boot.launchLabel }}
         </button>
       </div>
       <div class="macbook-boot__base" aria-hidden="true"></div>

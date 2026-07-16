@@ -109,12 +109,13 @@ test('Personal OS view components expose exact navigation and desktop menu label
     assert.match(home, new RegExp(`data-os-view="${view}"`))
   }
   assert.match(home, /<MacbookBoot[\s\S]*v-if="!hydrated \|\| \(activeView === 'home' && !homeEntered\)"[\s\S]*:active="activeView === 'home'"[\s\S]*:disabled="bootDisabled"[\s\S]*@entered="handleHomeEntered"[\s\S]*\/>/)
-  assert.match(home, /<DesktopSurface\s*\/>[\s\S]*<MacbookExit\s*\/>/)
+  assert.match(home, /<DesktopSurface :configuration="homeConfiguration\.config" \/>[\s\S]*<MacbookExit :configuration="homeConfiguration\.config" \/>/)
   assert.match(home, /<KnowledgePortfolio\s*\/>/)
   assert.match(home, /<BottomOsNavigation[\s\S]*:active-view="activeView"[\s\S]*@select="selectView"[\s\S]*\/>/)
-  for (const label of ['JuZX OS', 'About', 'Knowledge', 'Now']) assert.match(desktop, new RegExp(`>${label}<`))
+  assert.match(desktop, /configuration\.desktop\.brand/)
+  assert.match(desktop, /v-for="link in configuration\.desktop\.menuLinks"/)
+  assert.match(desktop, /configuration\.desktop\.resetLabel/)
   assert.match(desktop, /<time :datetime="clock">\{\{ clock \}\}<\/time>/)
-  assert.match(desktop, />重置桌面位置<\/button>/)
   assert.deepEqual([...navigation.matchAll(/>\s*(0[1-3] (?:主页|知识库|我的 OS))\s*<\/button>/g)].map((match) => match[1]), [
     '01 主页', '02 知识库', '03 我的 OS',
   ])
@@ -130,10 +131,10 @@ test('final shell integrates exit, portfolio, and retryable lazy system view', a
   for (const component of ['MacbookBoot', 'DesktopSurface', 'MacbookExit', 'KnowledgePortfolio', 'BottomOsNavigation']) {
     assert.match(home, new RegExp(`import ${component} from './${component}\\.vue'`))
   }
-  assert.equal([...home.matchAll(/<DesktopSurface\s*\/>/g)].length, 1)
-  assert.equal([...home.matchAll(/<MacbookExit\s*\/>/g)].length, 1)
+  assert.equal([...home.matchAll(/<DesktopSurface\b/g)].length, 1)
+  assert.equal([...home.matchAll(/<MacbookExit\b/g)].length, 1)
   assert.equal([...home.matchAll(/<KnowledgePortfolio\s*\/>/g)].length, 1)
-  assert.match(home, /<DesktopSurface\s*\/>[\s\S]*<MacbookExit\s*\/>/)
+  assert.match(home, /<DesktopSurface :configuration="homeConfiguration\.config" \/>[\s\S]*<MacbookExit :configuration="homeConfiguration\.config" \/>/)
   assert.match(home, /\(\) => import\('\.\/InfiniteCanvas\.vue'\)/)
   assert.match(home, /\(\) => import\('\.\/InfiniteCanvas\.vue\?retry=1'\)/)
   assert.doesNotMatch(home, /@vite-ignore|infiniteCanvasUrl|<iframe|<object|<embed/i)
@@ -162,9 +163,8 @@ test('final shell integrates exit, portfolio, and retryable lazy system view', a
   for (const variable of ['--exit-panel-scale', '--exit-computer-opacity', '--exit-terminal-opacity']) {
     assert.match(exit, new RegExp(variable))
   }
-  for (const line of ['JuZX@digital-factory ~ zsh', '$ logout', 'Session complete.']) {
-    assert.match(exit, new RegExp(line.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
-  }
+  assert.match(exit, /configuration\.exit\.title/)
+  assert.match(exit, /v-for="\(line, index\) in configuration\.exit\.lines"/)
   assert.match(exit, /@media \(prefers-reduced-motion: reduce\)/)
   assert.match(exit, /min-height:\s*100vh;[\s\S]*min-height:\s*100dvh;/)
   assert.doesNotMatch(exit, new RegExp(
@@ -242,7 +242,8 @@ test('MacBook boot and bottom navigation expose the timed accessible shell contr
   assert.match(boot, /createMacbookBootRuntime\(window, handleKeydown, disabled\)/)
   assert.match(boot, /if \(disabled\)[\s\S]*terminateBoot\(\)[\s\S]*return/)
   assert.match(boot, /function terminateBoot\(\)[\s\S]*runtime\?\.stop\(\)[\s\S]*state\.value = 'desktop'[\s\S]*visible\.value = false/)
-  assert.match(boot, /import \{ bootLines \} from '.\/personalOsContent\.mjs'/)
+  assert.match(boot, /configuration:\s*\{ type: Object, required: true \}/)
+  assert.match(boot, /props\.configuration\.boot\.lines/)
   assert.match(boot, /class="macbook-boot__computer"/)
   assert.match(boot, /class="macbook-boot__screen"/)
   assert.equal([...boot.matchAll(/aria-live="polite"/g)].length, 1)
@@ -363,9 +364,9 @@ test('MacBook boot is one exact accessible fullscreen replacement', async () => 
     read('docs/.vitepress/theme/components/KnowledgeFactoryHome.vue'),
     read('docs/.vitepress/theme/components/macbookBootState.mjs'),
   ])
-  assert.match(boot, /bootLines\.slice\(0, visibleLineCount\.value\)/)
+  assert.match(boot, /bootLines\.value\.slice\(0, visibleLineCount\.value\)/)
   assert.match(boot, /aria-label="个人系统启动页"/)
-  assert.match(boot, />\s*启动 JuZX OS\s*<\/button>/)
+  assert.match(boot, /\{\{ configuration\.boot\.launchLabel \}\}/)
   assert.doesNotMatch(`${boot}\n${state}`, /启动知识系统|跳过启动|Loading knowledge archives|Connecting Ask Console|ai-era:knowledge-factory:booted|localStorage/)
   assert.match(home, /<MacbookBoot[\s\S]*v-if="!hydrated \|\| \(activeView === 'home' && !homeEntered\)"[\s\S]*:active="activeView === 'home'"[\s\S]*:disabled="bootDisabled"[\s\S]*@entered="handleHomeEntered"[\s\S]*\/>/)
   assert.match(boot, /active:\s*\{ type: Boolean, default: true \}/)

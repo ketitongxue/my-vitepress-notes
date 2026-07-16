@@ -10,6 +10,7 @@ import {
 } from './personalOsRouter.mjs'
 import { loadSystemCanvasModule } from './systemCanvasLoader.mjs'
 import { loadPersonalOsConfiguration } from './personalOsConfigClient.mjs'
+import { loadHomeConfiguration, staticHomeConfiguration } from './homeConfigClient.mjs'
 
 const SYSTEM_ACTIVE_CLASS = 'personal-os-system-active'
 const claimedView = typeof document === 'undefined'
@@ -23,12 +24,20 @@ const bootDisabled = ref(typeof document !== 'undefined'
 const systemLoadState = ref('idle')
 const InfiniteCanvas = shallowRef(null)
 const systemConfiguration = shallowRef(null)
+const homeConfiguration = shallowRef(staticHomeConfiguration())
 const systemImporters = Object.freeze({
   initial: () => import('./InfiniteCanvas.vue'),
   retry: () => import('./InfiniteCanvas.vue?retry=1'),
 })
 let systemImportAttempt = 0
 let requestId = 0
+let homeRequestId = 0
+
+async function requestHome() {
+  const currentRequest = ++homeRequestId
+  const configuration = await loadHomeConfiguration()
+  if (currentRequest === homeRequestId) homeConfiguration.value = configuration
+}
 
 function setSystemChromeIsolation(active) {
   if (typeof document === 'undefined') return
@@ -119,12 +128,14 @@ onMounted(() => {
   const accessState = document.documentElement.dataset.personalSiteAccess
   homeEntered.value = hasCompletedHomeEntry(accessState)
   hydrated.value = true
+  void requestHome()
   void applyHash({ scroll: false })
   window.addEventListener('hashchange', handleHashChange)
 })
 
 onBeforeUnmount(() => {
   requestId += 1
+  homeRequestId += 1
   setSystemChromeIsolation(false)
   window.removeEventListener('hashchange', handleHashChange)
 })
@@ -135,6 +146,7 @@ onBeforeUnmount(() => {
     v-if="!hydrated || (activeView === 'home' && !homeEntered)"
     :active="activeView === 'home'"
     :disabled="bootDisabled"
+    :configuration="homeConfiguration.config"
     @entered="handleHomeEntered"
   />
   <div class="factory-home">
@@ -145,8 +157,8 @@ onBeforeUnmount(() => {
       aria-label="JuZX OS 主页"
       data-os-view="home"
     >
-      <DesktopSurface />
-      <MacbookExit />
+      <DesktopSurface :configuration="homeConfiguration.config" />
+      <MacbookExit :configuration="homeConfiguration.config" />
     </main>
     <section
       v-show="!hydrated || activeView === 'knowledge'"

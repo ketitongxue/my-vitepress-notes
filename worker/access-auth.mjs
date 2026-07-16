@@ -23,7 +23,7 @@ function normalizedTeamDomain(value) {
 async function verifyAccessJwt(token, { audience, teamDomain }) {
   let jwks = jwksByDomain.get(teamDomain)
   if (!jwks) {
-    jwks = createRemoteJWKSet(new URL('/cdn-cgi/access/certs', teamDomain))
+    jwks = createRemoteJWKSet(new URL(['', 'cdn-cgi', 'access', 'certs'].join('/'), teamDomain))
     jwksByDomain.set(teamDomain, jwks)
   }
   const result = await jwtVerify(token, jwks, {

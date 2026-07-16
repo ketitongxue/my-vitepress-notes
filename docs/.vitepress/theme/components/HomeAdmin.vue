@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { normalizePersonalOsConfig } from '../../../../shared/personal-os-config.mjs'
+import { normalizeHomeConfig } from '../../../../shared/home-config.mjs'
 
 const editor = ref('')
 const versions = ref([])
@@ -40,14 +40,14 @@ function parseEditor() {
   } catch {
     throw new Error('JSON 格式不正确')
   }
-  return normalizePersonalOsConfig(parsed)
+  return normalizeHomeConfig(parsed)
 }
 
 async function loadVersions({ keepEditor = false } = {}) {
   loading.value = true
   error.value = ''
   try {
-    const payload = await api('/api/admin/personal-os/config')
+    const payload = await api('/api/admin/home/config')
     versions.value = payload.versions ?? []
     if (!keepEditor && versions.value[0]?.config) setEditor(versions.value[0].config)
   } catch (caught) {
@@ -63,7 +63,7 @@ async function saveDraft() {
   message.value = ''
   try {
     const config = parseEditor()
-    const result = await api('/api/admin/personal-os/config', {
+    const result = await api('/api/admin/home/config', {
       method: 'PUT',
       body: JSON.stringify({
         schemaVersion: 1,
@@ -92,11 +92,11 @@ async function publishLatest() {
   error.value = ''
   message.value = ''
   try {
-    const result = await api('/api/admin/personal-os/publish', {
+    const result = await api('/api/admin/home/publish', {
       method: 'POST',
       body: JSON.stringify({ revision: latestRevision.value }),
     })
-    message.value = `revision ${result.revision} 已发布，网站将在一分钟内读取新配置。`
+    message.value = `revision ${result.revision} 已发布，主页将在一分钟内读取新配置。`
     await loadVersions({ keepEditor: true })
   } catch (caught) {
     error.value = caught.message
@@ -111,7 +111,7 @@ async function rollback(version) {
   error.value = ''
   message.value = ''
   try {
-    const result = await api('/api/admin/personal-os/rollback', {
+    const result = await api('/api/admin/home/rollback', {
       method: 'POST',
       body: JSON.stringify({ revision: version.revision }),
     })
@@ -145,42 +145,45 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnUnsaved))
 </script>
 
 <template>
-  <main class="os-admin">
-    <header class="os-admin__header">
+  <main class="home-admin">
+    <header class="home-admin__header">
       <div>
         <p>JUZx OS / D1</p>
-        <h1>个人 OS 内容管理</h1>
+        <h1>01 主页内容管理</h1>
         <span>草稿 {{ latestRevision }} · 已发布 {{ publishedRevision ?? '无' }}</span>
       </div>
       <nav aria-label="内容管理导航">
-        <a href="/admin/home">管理 01 主页</a>
-        <a href="/#system">返回个人 OS</a>
+        <a href="/admin/personal-os">管理 03 我的 OS</a>
+        <a href="/#home">返回主页</a>
       </nav>
     </header>
 
-    <p v-if="message" class="os-admin__notice" role="status">{{ message }}</p>
-    <p v-if="error" class="os-admin__error" role="alert">{{ error }}</p>
+    <p v-if="message" class="home-admin__notice" role="status">{{ message }}</p>
+    <p v-if="error" class="home-admin__error" role="alert">{{ error }}</p>
 
-    <div class="os-admin__workspace">
-      <section class="os-admin__editor" aria-labelledby="config-editor-title">
-        <div class="os-admin__section-heading">
+    <div class="home-admin__workspace">
+      <section class="home-admin__editor" aria-labelledby="home-config-editor-title">
+        <div class="home-admin__section-heading">
           <div>
             <small>CONFIGURATION</small>
-            <h2 id="config-editor-title">节点与连线 JSON</h2>
+            <h2 id="home-config-editor-title">启动页、桌面与退出页 JSON</h2>
           </div>
           <button type="button" :disabled="loading || saving" @click="loadVersions()">重新载入</button>
         </div>
+        <p class="home-admin__hint">
+          可修改启动文案、品牌和顶部菜单、桌面图标的名称/默认位置/窗口内容/链接，以及退出页文案。发布后刷新主页生效。
+        </p>
         <textarea
           v-model="editor"
-          aria-label="个人 OS 配置 JSON"
+          aria-label="01 主页配置 JSON"
           spellcheck="false"
           @input="dirty = true"
         ></textarea>
         <label>
           版本说明
-          <input v-model="note" maxlength="240" placeholder="例如：更新 AI 工作流节点" />
+          <input v-model="note" maxlength="240" placeholder="例如：更新首页项目入口" />
         </label>
-        <div class="os-admin__actions">
+        <div class="home-admin__actions">
           <button type="button" :disabled="loading || saving" @click="saveDraft">保存草稿</button>
           <button class="is-primary" type="button" :disabled="loading || saving || !latestRevision" @click="publishLatest">
             发布最新草稿
@@ -188,11 +191,11 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnUnsaved))
         </div>
       </section>
 
-      <aside class="os-admin__versions" aria-labelledby="version-title">
-        <div class="os-admin__section-heading">
+      <aside class="home-admin__versions" aria-labelledby="home-version-title">
+        <div class="home-admin__section-heading">
           <div>
             <small>VERSIONS</small>
-            <h2 id="version-title">最近版本</h2>
+            <h2 id="home-version-title">最近版本</h2>
           </div>
         </div>
         <p v-if="loading">正在读取 D1…</p>
@@ -204,7 +207,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnUnsaved))
             </div>
             <p>{{ version.note || '无版本说明' }}</p>
             <time>{{ version.createdAt }}</time>
-            <div class="os-admin__version-actions">
+            <div class="home-admin__version-actions">
               <button type="button" @click="useVersion(version)">载入</button>
               <button type="button" :disabled="saving" @click="rollback(version)">回滚到此版本</button>
             </div>
@@ -216,7 +219,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnUnsaved))
 </template>
 
 <style scoped>
-.os-admin {
+.home-admin {
   min-height: 100vh;
   min-height: 100dvh;
   padding: 32px;
@@ -225,15 +228,15 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnUnsaved))
   font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
-.os-admin__header,
-.os-admin__workspace,
-.os-admin__notice,
-.os-admin__error {
+.home-admin__header,
+.home-admin__workspace,
+.home-admin__notice,
+.home-admin__error {
   width: min(1200px, 100%);
   margin-inline: auto;
 }
 
-.os-admin__header {
+.home-admin__header {
   display: flex;
   align-items: end;
   justify-content: space-between;
@@ -241,33 +244,33 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnUnsaved))
   margin-bottom: 28px;
 }
 
-.os-admin__header p,
-.os-admin__section-heading small {
+.home-admin__header p,
+.home-admin__section-heading small {
   margin: 0 0 6px;
   color: #315efb;
   font: 700 12px/1.4 "JetBrains Mono", monospace;
   letter-spacing: .08em;
 }
 
-.os-admin__header h1,
-.os-admin__section-heading h2 {
-  margin: 0;
-}
+.home-admin__header h1,
+.home-admin__section-heading h2 { margin: 0; }
 
-.os-admin__header span,
-.os-admin__versions time {
+.home-admin__header span,
+.home-admin__versions time {
   color: #69707d;
   font: 12px/1.5 "JetBrains Mono", monospace;
 }
 
-.os-admin__header nav {
+.home-admin__header nav,
+.home-admin__actions,
+.home-admin__version-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
 }
 
-.os-admin__header a,
-.os-admin button {
+.home-admin__header a,
+.home-admin button {
   min-height: 40px;
   border: 1px solid rgb(49 94 251 / 35%);
   border-radius: 8px;
@@ -276,32 +279,32 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnUnsaved))
   cursor: pointer;
 }
 
-.os-admin__header a {
+.home-admin__header a {
   display: inline-flex;
   align-items: center;
   padding: 0 16px;
   text-decoration: none;
 }
 
-.os-admin__notice,
-.os-admin__error {
+.home-admin__notice,
+.home-admin__error {
   box-sizing: border-box;
   margin-bottom: 16px;
   padding: 12px 16px;
   border-radius: 8px;
 }
 
-.os-admin__notice { background: #e9f7ee; color: #226b43; }
-.os-admin__error { background: #fff0eb; color: #9b3e23; }
+.home-admin__notice { background: #e9f7ee; color: #226b43; }
+.home-admin__error { background: #fff0eb; color: #9b3e23; }
 
-.os-admin__workspace {
+.home-admin__workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
   gap: 24px;
 }
 
-.os-admin__editor,
-.os-admin__versions {
+.home-admin__editor,
+.home-admin__versions {
   box-sizing: border-box;
   padding: 24px;
   border: 1px solid rgb(40 90 135 / 28%);
@@ -310,7 +313,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnUnsaved))
   box-shadow: 0 8px 24px rgb(20 65 110 / 9%);
 }
 
-.os-admin__section-heading {
+.home-admin__section-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -318,13 +321,13 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnUnsaved))
   margin-bottom: 16px;
 }
 
-.os-admin__section-heading button,
-.os-admin__actions button,
-.os-admin__version-actions button {
-  padding: 8px 13px;
-}
+.home-admin__section-heading button,
+.home-admin__actions button,
+.home-admin__version-actions button { padding: 8px 13px; }
 
-.os-admin textarea {
+.home-admin__hint { margin: -4px 0 14px; color: #69707d; line-height: 1.7; }
+
+.home-admin textarea {
   box-sizing: border-box;
   width: 100%;
   min-height: 540px;
@@ -338,7 +341,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnUnsaved))
   tab-size: 2;
 }
 
-.os-admin label {
+.home-admin label {
   display: grid;
   gap: 7px;
   margin-top: 16px;
@@ -346,7 +349,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnUnsaved))
   font-size: 13px;
 }
 
-.os-admin input {
+.home-admin input {
   min-height: 42px;
   padding-inline: 12px;
   border: 1px solid rgb(40 90 135 / 35%);
@@ -355,62 +358,28 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnUnsaved))
   color: #1e2430;
 }
 
-.os-admin__actions,
-.os-admin__version-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 16px;
-}
+.home-admin__actions,
+.home-admin__version-actions { margin-top: 16px; }
+.home-admin button.is-primary { background: #315efb; color: #fff; }
+.home-admin button:disabled { cursor: not-allowed; opacity: .5; }
+.home-admin button:hover:not(:disabled), .home-admin__header a:hover { background: #eaf0ff; }
+.home-admin button.is-primary:hover:not(:disabled) { background: #2349c7; }
+.home-admin :where(button, a, textarea, input):focus-visible { outline: 3px solid rgb(49 94 251 / 35%); outline-offset: 2px; }
 
-.os-admin button.is-primary {
-  background: #315efb;
-  color: #fff;
-}
-
-.os-admin button:disabled { cursor: not-allowed; opacity: .5; }
-.os-admin button:hover:not(:disabled), .os-admin__header a:hover { background: #eaf0ff; }
-.os-admin button.is-primary:hover:not(:disabled) { background: #2349c7; }
-.os-admin button:focus-visible, .os-admin a:focus-visible, .os-admin textarea:focus-visible, .os-admin input:focus-visible {
-  outline: 3px solid rgb(49 94 251 / 35%);
-  outline-offset: 2px;
-}
-
-.os-admin__versions ol {
-  display: grid;
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.os-admin__versions li {
-  padding: 14px;
-  border: 1px dashed rgb(49 94 251 / 30%);
-  border-radius: 9px;
-}
-
-.os-admin__versions li > div:first-child {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.os-admin__versions li > div:first-child span {
-  color: #28734b;
-  font-size: 12px;
-}
-
-.os-admin__versions p { margin: 8px 0 4px; color: #69707d; font-size: 13px; }
+.home-admin__versions ol { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.home-admin__versions li { padding: 14px; border: 1px dashed rgb(49 94 251 / 30%); border-radius: 9px; }
+.home-admin__versions li > div:first-child { display: flex; justify-content: space-between; gap: 8px; }
+.home-admin__versions li > div:first-child span { color: #28734b; font-size: 12px; }
+.home-admin__versions p { margin: 8px 0 4px; color: #69707d; font-size: 13px; }
 
 @media (max-width: 800px) {
-  .os-admin { padding: 20px 16px 40px; }
-  .os-admin__header { align-items: start; }
-  .os-admin__workspace { grid-template-columns: 1fr; }
-  .os-admin textarea { min-height: 420px; }
+  .home-admin { padding: 20px 16px 40px; }
+  .home-admin__header { align-items: start; flex-direction: column; }
+  .home-admin__workspace { grid-template-columns: 1fr; }
+  .home-admin textarea { min-height: 420px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .os-admin * { scroll-behavior: auto !important; transition-duration: 1ms !important; }
+  .home-admin * { scroll-behavior: auto !important; transition-duration: 1ms !important; }
 }
 </style>

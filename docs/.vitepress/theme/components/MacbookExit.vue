@@ -2,6 +2,10 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { exitFrame, normalizeExitProgress } from './homeExitState.mjs'
 
+defineProps({
+  configuration: { type: Object, required: true },
+})
+
 const section = ref(null)
 let frameId = 0
 let mounted = false
@@ -63,9 +67,8 @@ onBeforeUnmount(() => {
     <div class="macbook-exit__sticky">
       <div class="macbook-exit__panel">
         <div class="macbook-exit__terminal">
-          <h2 id="macbook-exit-title">JuZX@digital-factory ~ zsh</h2>
-          <p>$ logout</p>
-          <p>Session complete.</p>
+          <h2 id="macbook-exit-title">{{ configuration.exit.title }}</h2>
+          <p v-for="(line, index) in configuration.exit.lines" :key="`${index}-${line}`">{{ line }}</p>
         </div>
       </div>
       <div class="macbook-exit__frame" aria-hidden="true"></div>
