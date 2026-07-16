@@ -6,7 +6,7 @@ const root = new URL('../', import.meta.url)
 const read = (path) => readFile(new URL(path, root), 'utf8')
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const task7Components = [
-  'MacbookBoot', 'MacbookExit', 'BottomOsNavigation', 'DesktopSurface', 'DesktopIcon', 'WindowManager',
+  'MacbookBoot', 'BottomOsNavigation', 'DesktopSurface', 'DesktopIcon', 'WindowManager',
   'KnowledgePortfolio', 'InfiniteCanvas', 'CanvasCard', 'CanvasConnections', 'CanvasLayers',
   'CanvasControls',
 ]
@@ -188,7 +188,8 @@ test('MacBook splash and hash shell preserve homepage discovery', async () => {
     'home', 'knowledge', 'system',
   ])
   assert.match(home, /<BottomOsNavigation[\s\S]*:active-view="activeView"[\s\S]*@select="selectView"[\s\S]*\/>/)
-  assert.match(home, /<DesktopSurface :configuration="homeConfiguration\.config" \/>[\s\S]*<MacbookExit :configuration="homeConfiguration\.config" \/>/)
+  assert.equal([...home.matchAll(/<DesktopSurface\b/g)].length, 1)
+  assert.doesNotMatch(home, /MacbookExit/)
   assert.match(home, /<KnowledgePortfolio\s*\/>/)
   assert.match(home, /\(\) => import\('\.\/InfiniteCanvas\.vue'\)/)
   assert.match(home, /\(\) => import\('\.\/InfiniteCanvas\.vue\?retry=1'\)/)
