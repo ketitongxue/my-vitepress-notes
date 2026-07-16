@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   consumeSse,
   getSessionStorage,
@@ -16,6 +16,10 @@ type Role = 'user' | 'assistant'
 type Citation = { id: string; number: number; title: string; section?: string; url: string }
 type ChatMessage = { role: Role; content: string; sources?: Citation[] }
 
+const props = defineProps({
+  embedded: { type: Boolean, default: false },
+})
+
 const STORAGE_KEY = 'wiki-ask:v1:history'
 const MAX_HISTORY_ITEMS = 6
 
@@ -30,6 +34,9 @@ let conversationVersion = 0
 
 const busy = computed(() => state.value === 'retrieving' || state.value === 'streaming')
 const canSend = computed(() => question.value.trim().length > 0 && !busy.value)
+const titleId = computed(() => props.embedded ? 'wiki-ask-window-title' : 'wiki-ask-title')
+const questionId = computed(() => props.embedded ? 'wiki-ask-window-question' : 'wiki-ask-question')
+const headingTag = computed(() => props.embedded ? 'h2' : 'h1')
 
 const errorMessages: Record<string, string> = {
   INVALID_QUESTION: '请输入一个有效问题。',
@@ -183,13 +190,22 @@ function handleKeydown(event: KeyboardEvent) {
 }
 
 onMounted(loadHistory)
+onBeforeUnmount(() => {
+  conversationVersion += 1
+  activeController?.abort()
+  activeController = null
+})
 </script>
 
 <template>
-  <section class="wiki-ask" aria-labelledby="wiki-ask-title">
+  <section
+    class="wiki-ask"
+    :class="{ 'wiki-ask--embedded': props.embedded }"
+    :aria-labelledby="titleId"
+  >
     <header class="wiki-ask__intro">
       <p class="wiki-ask__eyebrow">知识库问答</p>
-      <h1 id="wiki-ask-title">向知识库提问</h1>
+      <component :is="headingTag" :id="titleId">向知识库提问</component>
       <p>回答仅基于 AI 知识库中已发布的中文页面，并附上可继续阅读的站内引用。</p>
       <a class="wiki-ask__browse" href="/wiki/">浏览 AI 知识库</a>
       <div class="wiki-ask__examples" aria-label="示例问题">
@@ -220,9 +236,9 @@ onMounted(loadHistory)
     <p v-if="errorText" class="wiki-ask__error" role="alert">{{ errorText }}</p>
 
     <form class="wiki-ask__composer" @submit.prevent="submitQuestion">
-      <label for="wiki-ask-question">你的问题</label>
+      <label :for="questionId">你的问题</label>
       <textarea
-        id="wiki-ask-question"
+        :id="questionId"
         v-model="question"
         rows="3"
         maxlength="500"
@@ -239,3 +255,160 @@ onMounted(loadHistory)
     </form>
   </section>
 </template>
+
+<style scoped>
+.wiki-ask.wiki-ask--embedded {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 18px 20px 20px;
+  overflow: auto;
+  background: #fffdf7;
+  color: #252b36;
+}
+
+.wiki-ask--embedded .wiki-ask__intro {
+  max-width: none;
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.wiki-ask--embedded .wiki-ask__intro :is(h1, h2) {
+  margin: 2px 0 7px;
+  color: #1e2430;
+  font-size: clamp(22px, 3vw, 30px);
+  line-height: 1.15;
+}
+
+.wiki-ask--embedded .wiki-ask__intro > p:not(.wiki-ask__eyebrow) {
+  margin: 0 0 5px;
+  color: #69707d;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.wiki-ask--embedded .wiki-ask__eyebrow {
+  margin: 0;
+  color: #315efb;
+}
+
+.wiki-ask--embedded .wiki-ask__browse {
+  color: #1e4dc0;
+  font-size: 13px;
+}
+
+.wiki-ask--embedded .wiki-ask__examples {
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.wiki-ask--embedded .wiki-ask__examples button {
+  padding: 6px 9px;
+  border-color: rgb(49 94 251 / 20%);
+  background: #f0f4fa;
+  color: #31405a;
+  font-size: 12px;
+}
+
+.wiki-ask--embedded .wiki-ask__conversation {
+  min-height: 120px;
+  max-height: none;
+  flex: 1 1 200px;
+  gap: 10px;
+  padding: 12px;
+  border-color: rgb(64 125 180 / 28%);
+  border-radius: 10px;
+  background: #f7f9fc;
+}
+
+.wiki-ask--embedded .wiki-ask__message {
+  width: min(92%, 680px);
+  padding: 10px 12px;
+  border-color: rgb(64 125 180 / 24%);
+  border-radius: 10px;
+  background: #fffdf7;
+  color: #252b36;
+}
+
+.wiki-ask--embedded .wiki-ask__role {
+  color: #315efb;
+}
+
+.wiki-ask--embedded .wiki-ask__citations a {
+  background: #fffdf7;
+  color: #1e2430;
+}
+
+.wiki-ask--embedded .wiki-ask__status {
+  min-height: 18px;
+  margin: 0 2px;
+  color: #69707d;
+}
+
+.wiki-ask--embedded .wiki-ask__composer {
+  position: static;
+  bottom: auto;
+  flex: 0 0 auto;
+  margin-top: auto;
+  padding: 12px;
+  border-color: rgb(64 125 180 / 30%);
+  border-radius: 10px;
+  background: #eef3f8;
+  box-shadow: 0 6px 16px rgb(20 65 110 / 12%);
+  backdrop-filter: none;
+}
+
+.wiki-ask--embedded .wiki-ask__composer textarea {
+  min-height: 74px;
+  resize: none;
+  border-color: rgb(64 125 180 / 30%);
+  background: #fffdf7;
+  color: #252b36;
+}
+
+.wiki-ask--embedded .wiki-ask__actions {
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.wiki-ask--embedded .wiki-ask__actions p {
+  color: #69707d;
+}
+
+.wiki-ask--embedded button {
+  padding: 7px 11px;
+  border-color: #315efb;
+  background: #315efb;
+  color: #fff;
+  font-size: 12px;
+}
+
+.wiki-ask--embedded button.secondary {
+  border-color: rgb(49 94 251 / 22%);
+  background: #fffdf7;
+  color: #31405a;
+}
+
+@media (max-width: 767px) {
+  .wiki-ask.wiki-ask--embedded {
+    padding: 14px;
+  }
+
+  .wiki-ask--embedded .wiki-ask__intro :is(h1, h2) {
+    font-size: 22px;
+  }
+
+  .wiki-ask--embedded .wiki-ask__actions {
+    flex-wrap: wrap;
+  }
+
+  .wiki-ask--embedded .wiki-ask__actions p {
+    flex-basis: 100%;
+  }
+}
+</style>

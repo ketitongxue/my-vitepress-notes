@@ -14,7 +14,10 @@ export function focusWindow(state, id) {
 export function openWindow(state, entry, bounds) {
   if (state.windows.some(({ id }) => id === entry.id)) return focusWindow(state, entry.id)
   const offset = (state.cascade % 5) * 32
-  const rect = constrainWindow({ x: 96 + offset, y: 72 + offset, width: 580, height: 360 }, bounds)
+  const initialRect = entry.id === 'ask'
+    ? { x: 72, y: 40, width: 760, height: Math.min(640, Math.max(480, bounds.height - 120)) }
+    : { x: 96 + offset, y: 72 + offset, width: 580, height: 360 }
+  const rect = constrainWindow(initialRect, bounds)
   const nextZ = state.nextZ + 1
   return {
     windows: [...state.windows, { id: entry.id, entry, ...rect, z: nextZ }],
