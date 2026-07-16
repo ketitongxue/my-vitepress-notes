@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, ref } from 'vue'
+import WikiAsk from './WikiAsk.vue'
 import {
   closeWindow,
   focusWindow,
@@ -224,18 +225,24 @@ onBeforeUnmount(() => {
 
       <span class="window-manager__tape" aria-hidden="true"></span>
       <span class="window-manager__sparkle" aria-hidden="true">✦</span>
-      <div class="window-manager__preview">
-        <p>{{ item.entry.window.summary }}</p>
-        <a
-          v-if="item.entry.window.href"
-          :href="item.entry.window.href"
-          :target="isExternalHref(item.entry.window.href) ? '_blank' : undefined"
-          :rel="isExternalHref(item.entry.window.href) ? 'noopener noreferrer' : undefined"
-        >前往 {{ titleFor(item) }}</a>
-        <div v-else class="window-manager__status">
-          <span>整理中</span>
-          <p>内容持续完善</p>
-        </div>
+      <div
+        class="window-manager__preview"
+        :class="{ 'window-manager__preview--ask': item.id === 'ask' }"
+      >
+        <WikiAsk v-if="item.id === 'ask'" embedded />
+        <template v-else>
+          <p>{{ item.entry.window.summary }}</p>
+          <a
+            v-if="item.entry.window.href"
+            :href="item.entry.window.href"
+            :target="isExternalHref(item.entry.window.href) ? '_blank' : undefined"
+            :rel="isExternalHref(item.entry.window.href) ? 'noopener noreferrer' : undefined"
+          >前往 {{ titleFor(item) }}</a>
+          <div v-else class="window-manager__status">
+            <span>整理中</span>
+            <p>内容持续完善</p>
+          </div>
+        </template>
       </div>
 
       <span
@@ -381,6 +388,14 @@ button.window-manager__traffic-control {
   color: #485465;
   font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
   line-height: 1.75;
+}
+
+.window-manager__preview--ask {
+  display: flex;
+  margin: 10px 14px 14px;
+  padding: 0;
+  overflow: hidden;
+  background: #fffdf7;
 }
 
 .window-manager__preview p {
@@ -535,6 +550,11 @@ button.window-manager__traffic-control {
   .window-manager__preview {
     margin: 10px 20px 22px;
     padding: 20px;
+  }
+
+  .window-manager__preview--ask {
+    margin: 8px 10px 10px;
+    padding: 0;
   }
 
   .window-manager__resize-handle {

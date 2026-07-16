@@ -464,6 +464,21 @@ test('desktop window reducer keeps singleton windows within viewport bounds', ()
   assert.equal(resized.windows.length, 1)
 })
 
+test('knowledge Q&A opens as a readable application window', () => {
+  const bounds = { width: 1280, height: 760 }
+  const entry = desktopEntries.find(({ id }) => id === 'ask')
+  assert.ok(entry)
+
+  const opened = openWindow(createWindowState(), entry, bounds)
+  assert.deepEqual(
+    (({ x, y, width, height }) => ({ x, y, width, height }))(opened.windows[0]),
+    { x: 72, y: 40, width: 760, height: 640 },
+  )
+
+  const shortViewport = openWindow(createWindowState(), entry, { width: 1280, height: 680 })
+  assert.equal(shortViewport.windows[0].height, 560)
+})
+
 test('desktop window resize reducer supports keyboard steps and all eight edges', () => {
   const bounds = { width: 800, height: 600 }
   const entry = desktopEntries[0]
@@ -603,6 +618,10 @@ test('desktop components use local Tabler icons and native pointer interactions'
   assert.match(manager, /window-manager__traffic-lights/)
   assert.match(manager, /window-manager__tape/)
   assert.match(manager, /内容持续完善/)
+  assert.match(manager, /import WikiAsk from '.\/WikiAsk\.vue'/)
+  assert.match(manager, /item\.id === 'ask'/)
+  assert.match(manager, /<WikiAsk\s+v-if="item\.id === 'ask'"\s+embedded\s*\/>/)
+  assert.match(manager, /window-manager__preview--ask/)
 
   assert.match(surface, /desktopEntries/)
   assert.match(surface, /createWindowState/)
