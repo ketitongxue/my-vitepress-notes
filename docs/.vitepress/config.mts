@@ -51,8 +51,6 @@ export default defineConfig({
   head: [['script', {}, personalSiteAccessPreflight]],
   themeConfig: {
     nav: [
-      { text: '主题', link: '/topics/' },
-      { text: '笔记', link: '/notes/sustainable-ai-workflow' },
       {
         text: '知识库',
         items: [
@@ -146,16 +144,6 @@ export default defineConfig({
           text: '对比分析',
           collapsed: true,
           items: []
-        }
-      ],
-      '/notes/': [
-        {
-          text: '笔记',
-          items: [
-            { text: '可持续的 AI 工作流', link: '/notes/sustainable-ai-workflow' },
-            { text: '产品验证循环', link: '/notes/product-validation-loop' },
-            { text: '静态网站交付', link: '/notes/static-site-delivery' }
-          ]
         }
       ],
       '/wiki/': [

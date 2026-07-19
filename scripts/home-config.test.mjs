@@ -8,7 +8,7 @@ test('static home configuration is normalized, immutable, and complete', () => {
   assert.equal(Object.isFrozen(DEFAULT_HOME_CONFIG), true)
   assert.equal(Object.isFrozen(DEFAULT_HOME_CONFIG.desktop.entries), true)
   assert.equal(DEFAULT_HOME_CONFIG.boot.lines.length, 4)
-  assert.equal(DEFAULT_HOME_CONFIG.desktop.entries.length, 10)
+  assert.equal(DEFAULT_HOME_CONFIG.desktop.entries.length, 9)
   assert.equal(DEFAULT_HOME_CONFIG.exit.lines.length, 2)
   assert.deepEqual(normalizeHomeConfig(DEFAULT_HOME_CONFIG), structuredClone(DEFAULT_HOME_CONFIG))
 })

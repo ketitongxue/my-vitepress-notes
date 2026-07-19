@@ -59,13 +59,6 @@ import { knowledgeSections } from './personalOsContent.mjs'
         </nav>
       </article>
 
-      <div v-else-if="section.id === 'recent'" class="knowledge-portfolio__updates">
-        <ul class="knowledge-portfolio__recent-list">
-          <li><time datetime="2026-07-01">2026-07-01</time><a href="/notes/product-validation-loop">产品验证循环</a></li>
-          <li><time datetime="2026-06-30">2026-06-30</time><a href="/notes/static-site-delivery">静态网站交付</a></li>
-          <li><time datetime="2026-07-02">2026-07-02</time><a href="/notes/sustainable-ai-workflow">可持续的 AI 工作流</a></li>
-        </ul>
-      </div>
     </section>
   </main>
 </template>
