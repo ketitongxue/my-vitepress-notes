@@ -14,6 +14,10 @@ import {
   finishIconPointer, isDragDistance, resolveIconPosition, resolveSurfaceBounds,
 } from '../docs/.vitepress/theme/components/desktopGeometry.mjs'
 import {
+  DESKTOP_SESSION_KEY, getDesktopSessionStorage, loadDesktopSession, parseDesktopSession,
+  saveDesktopSession, serializeDesktopSession,
+} from '../docs/.vitepress/theme/components/desktopSessionState.mjs'
+import {
   closeWindow, constrainWindowState, createWindowState, moveWindow, openWindow, resizeWindow,
   resizeWindowByKey, resizeWindowFromEdge, toggleMaximizeWindow,
 } from '../docs/.vitepress/theme/components/windowManagerState.mjs'
@@ -538,6 +542,66 @@ test('desktop window maximize fills current bounds and restores readable geometr
     (({ x, y, width, height }) => ({ x, y, width, height }))(constrainedRestore.windows[0]),
     { x: 140, y: 110, width: 460, height: 310 },
   )
+})
+
+test('desktop session restores current entries, geometry, icons, and maximize state', () => {
+  const values = new Map()
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+    removeItem: (key) => values.delete(key),
+  }
+  const bounds = { width: 1200, height: 700 }
+  const ask = desktopEntries.find(({ id }) => id === 'ask')
+  const opened = openWindow(createWindowState(), ask, bounds)
+  const maximized = toggleMaximizeWindow(opened, ask.id, bounds)
+  const icons = Object.fromEntries(desktopEntries.map((entry, index) => [entry.id, {
+    anchor: index % 2 ? 'left' : 'right',
+    x: 18 + index,
+    y: 26 + index,
+  }]))
+
+  assert.equal(saveDesktopSession(storage, icons, maximized), true)
+  assert.equal(values.has(DESKTOP_SESSION_KEY), true)
+  assert.doesNotMatch(values.get(DESKTOP_SESSION_KEY), /"entry"/)
+
+  const restored = loadDesktopSession(storage, desktopEntries, bounds)
+  assert.equal(restored.windowState.windows.length, 1)
+  assert.equal(restored.windowState.windows[0].entry, ask)
+  assert.equal(restored.windowState.windows[0].maximized, true)
+  assert.deepEqual(
+    restored.windowState.windows[0].restoreRect,
+    maximized.windows[0].restoreRect,
+  )
+  assert.deepEqual(restored.iconPositions[ask.id], icons[ask.id])
+})
+
+test('desktop session rejects corrupt data and storage denial without escaping', () => {
+  const bounds = { width: 900, height: 600 }
+  assert.equal(parseDesktopSession('{bad', desktopEntries, bounds), null)
+  assert.equal(parseDesktopSession('x'.repeat(70 * 1024), desktopEntries, bounds), null)
+  assert.equal(getDesktopSessionStorage(Object.defineProperty({}, 'sessionStorage', {
+    get() { throw new Error('denied') },
+  })), null)
+  assert.equal(saveDesktopSession({ setItem() { throw new Error('denied') } }, {}, createWindowState()), false)
+  assert.equal(loadDesktopSession({ getItem() { throw new Error('denied') } }, desktopEntries, bounds), null)
+
+  const serialized = serializeDesktopSession({}, {
+    windows: [{ id: 'unknown', x: 1, y: 1, width: 400, height: 300, z: 11 }],
+    nextZ: 11,
+    cascade: 1,
+  })
+  const restored = parseDesktopSession(serialized, desktopEntries, bounds)
+  assert.deepEqual(restored.windowState.windows, [])
+  assert.deepEqual(Object.keys(restored.iconPositions), desktopEntries.map(({ id }) => id))
+})
+
+test('desktop surface wires session restoration and flushes state before unmount', () => {
+  const component = readComponent('DesktopSurface.vue')
+  assert.match(component, /loadDesktopSession/)
+  assert.match(component, /saveDesktopSession/)
+  assert.match(component, /watch\(windowState, scheduleSessionPersistence, \{ deep: true \}\)/)
+  assert.match(component, /onBeforeUnmount\(\(\) => \{[\s\S]*persistSession\(\)/)
 })
 
 test('desktop components use local Tabler icons and native pointer interactions', () => {

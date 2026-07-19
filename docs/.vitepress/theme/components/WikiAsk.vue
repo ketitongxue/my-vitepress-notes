@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import {
   consumeSse,
   getSessionStorage,
   isActiveRequest,
   loadSessionHistory,
+  loadSessionView,
   normalizeStoredHistory,
   removeSessionHistory,
+  removeSessionView,
   sanitizeCitations,
   saveSessionHistory,
+  saveSessionView,
 } from './wikiAskClient.mjs'
 
 type AskState = 'idle' | 'retrieving' | 'streaming' | 'complete' | 'error'
@@ -21,6 +24,8 @@ const props = defineProps({
 })
 
 const STORAGE_KEY = 'wiki-ask:v1:history'
+const EMBEDDED_VIEW_KEY = 'wiki-ask:v1:view:embedded'
+const PAGE_VIEW_KEY = 'wiki-ask:v1:view:page'
 const MAX_HISTORY_ITEMS = 6
 
 const question = ref('')
@@ -28,15 +33,19 @@ const messages = ref<ChatMessage[]>([])
 const state = ref<AskState>('idle')
 const statusText = ref('可以开始提问。')
 const errorText = ref('')
+const root = ref<HTMLElement | null>(null)
 const conversation = ref<HTMLElement | null>(null)
 let activeController: AbortController | null = null
 let conversationVersion = 0
+let viewReady = false
+let viewTimer: number | undefined
 
 const busy = computed(() => state.value === 'retrieving' || state.value === 'streaming')
 const canSend = computed(() => question.value.trim().length > 0 && !busy.value)
 const titleId = computed(() => props.embedded ? 'wiki-ask-window-title' : 'wiki-ask-title')
 const questionId = computed(() => props.embedded ? 'wiki-ask-window-question' : 'wiki-ask-question')
 const headingTag = computed(() => props.embedded ? 'h2' : 'h1')
+const viewStorageKey = computed(() => props.embedded ? EMBEDDED_VIEW_KEY : PAGE_VIEW_KEY)
 
 const errorMessages: Record<string, string> = {
   INVALID_QUESTION: '请输入一个有效问题。',
@@ -65,6 +74,33 @@ function saveHistory() {
 
 function loadHistory() {
   messages.value = loadSessionHistory(getSessionStorage(), STORAGE_KEY) as ChatMessage[]
+}
+
+function saveView() {
+  if (!viewReady) return
+  if (viewTimer !== undefined) window.clearTimeout(viewTimer)
+  viewTimer = undefined
+  saveSessionView(getSessionStorage(), viewStorageKey.value, {
+    question: question.value,
+    rootScrollTop: root.value?.scrollTop ?? 0,
+    conversationScrollTop: conversation.value?.scrollTop ?? 0,
+  })
+}
+
+function scheduleViewSave() {
+  if (!viewReady) return
+  if (viewTimer !== undefined) window.clearTimeout(viewTimer)
+  viewTimer = window.setTimeout(saveView, 100)
+}
+
+async function restoreView() {
+  loadHistory()
+  const saved = loadSessionView(getSessionStorage(), viewStorageKey.value)
+  question.value = saved.question
+  await nextTick()
+  if (root.value) root.value.scrollTop = saved.rootScrollTop
+  if (conversation.value) conversation.value.scrollTop = saved.conversationScrollTop
+  viewReady = true
 }
 
 async function scrollToLatest() {
@@ -180,6 +216,11 @@ function clearConversation() {
   state.value = 'idle'
   statusText.value = '对话已清空，可以重新提问。'
   removeSessionHistory(getSessionStorage(), STORAGE_KEY)
+  removeSessionView(getSessionStorage(), viewStorageKey.value)
+  void nextTick(() => {
+    root.value?.scrollTo({ top: 0 })
+    conversation.value?.scrollTo({ top: 0 })
+  })
 }
 
 function handleKeydown(event: KeyboardEvent) {
@@ -189,8 +230,10 @@ function handleKeydown(event: KeyboardEvent) {
   }
 }
 
-onMounted(loadHistory)
+watch(question, scheduleViewSave)
+onMounted(() => { void restoreView() })
 onBeforeUnmount(() => {
+  saveView()
   conversationVersion += 1
   activeController?.abort()
   activeController = null
@@ -199,28 +242,36 @@ onBeforeUnmount(() => {
 
 <template>
   <section
+    ref="root"
     class="wiki-ask"
     :class="{ 'wiki-ask--embedded': props.embedded }"
     :aria-labelledby="titleId"
+    @scroll.passive="scheduleViewSave"
   >
     <header class="wiki-ask__intro">
       <p class="wiki-ask__eyebrow">知识库问答</p>
       <component :is="headingTag" :id="titleId">向知识库提问</component>
       <p>回答仅基于 AI 知识库中已发布的中文页面，并附上可继续阅读的站内引用。</p>
-      <a class="wiki-ask__browse" href="/wiki/">浏览 AI 知识库</a>
+      <a class="wiki-ask__browse" href="/wiki/" @click="saveView">浏览 AI 知识库</a>
       <div class="wiki-ask__examples" aria-label="示例问题">
         <button type="button" @click="question = 'Claude Code 的权限模型是什么？'">Claude Code 的权限模型是什么？</button>
         <button type="button" @click="question = '上下文工程有哪些关键原则？'">上下文工程有哪些关键原则？</button>
       </div>
     </header>
 
-    <div v-if="messages.length > 0 || busy" ref="conversation" class="wiki-ask__conversation" aria-label="问答对话">
+    <div
+      v-if="messages.length > 0 || busy"
+      ref="conversation"
+      class="wiki-ask__conversation"
+      aria-label="问答对话"
+      @scroll.passive="scheduleViewSave"
+    >
       <article v-for="(message, index) in messages" :key="index" :class="['wiki-ask__message', `is-${message.role}`]">
         <p class="wiki-ask__role">{{ message.role === 'user' ? '你' : '知识库助手' }}</p>
         <p class="wiki-ask__answer">{{ message.content || '…' }}</p>
         <ul v-if="message.sources?.length" class="wiki-ask__citations" aria-label="回答引用">
           <li v-for="source in message.sources" :key="source.id">
-            <a :href="source.url">
+            <a :href="source.url" @click="saveView">
               <span>[{{ source.number }}] {{ source.title }}</span>
               <small v-if="source.section">{{ source.section }}</small>
             </a>

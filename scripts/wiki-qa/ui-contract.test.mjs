@@ -7,9 +7,13 @@ import {
   getSessionStorage,
   isActiveRequest,
   loadSessionHistory,
+  loadSessionView,
+  normalizeSessionView,
   normalizeStoredHistory,
   removeSessionHistory,
+  removeSessionView,
   saveSessionHistory,
+  saveSessionView,
   sanitizeCitations,
 } from '../../docs/.vitepress/theme/components/wikiAskClient.mjs'
 
@@ -55,6 +59,11 @@ test('component meets interaction, persistence, stream, and safety contracts', a
   assert.match(component, /(?:load|save|remove)SessionHistory\(getSessionStorage\(\)/)
   assert.match(client, /storage\?\.(?:getItem|setItem|removeItem)/)
   assert.match(component, /wiki-ask:v1/)
+  assert.match(component, /wiki-ask:v1:view:embedded/)
+  assert.match(component, /loadSessionView/)
+  assert.match(component, /saveSessionView/)
+  assert.match(component, /@scroll\.passive="scheduleViewSave"/)
+  assert.match(component, /onBeforeUnmount\([\s\S]*saveView\(\)/)
   assert.match(component, /MAX_HISTORY_ITEMS\s*=\s*6/)
   assert.match(component, /\.slice\(-MAX_HISTORY_ITEMS\)/)
   for (const event of ['meta', 'delta', 'done', 'error']) {
@@ -236,6 +245,48 @@ test('session storage denial never escapes get, set, or remove helpers', () => {
     get() { throw new Error('denied') },
   })
   assert.equal(getSessionStorage(deniedWindow), null)
+})
+
+test('ask view cache preserves a bounded draft and scroll positions', () => {
+  const values = new Map()
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+    removeItem: (key) => values.delete(key),
+  }
+  const key = 'wiki-ask:v1:view:embedded'
+  assert.equal(saveSessionView(storage, key, {
+    question: `草稿${'问'.repeat(600)}`,
+    rootScrollTop: 132.7,
+    conversationScrollTop: 488.2,
+  }), true)
+  assert.deepEqual(loadSessionView(storage, key), {
+    question: `草稿${'问'.repeat(498)}`,
+    rootScrollTop: 133,
+    conversationScrollTop: 488,
+  })
+  assert.equal(removeSessionView(storage, key), true)
+  assert.deepEqual(loadSessionView(storage, key), normalizeSessionView(null))
+})
+
+test('ask view cache fails safely when session storage is unavailable or corrupt', () => {
+  const denied = {
+    getItem() { throw new Error('denied') },
+    setItem() { throw new Error('denied') },
+    removeItem() { throw new Error('denied') },
+  }
+  assert.deepEqual(loadSessionView(denied, 'key'), normalizeSessionView(null))
+  assert.equal(saveSessionView(denied, 'key', { question: 'draft' }), false)
+  assert.equal(removeSessionView(denied, 'key'), false)
+  assert.deepEqual(normalizeSessionView({
+    question: 42,
+    rootScrollTop: -8,
+    conversationScrollTop: Number.POSITIVE_INFINITY,
+  }), {
+    question: '',
+    rootScrollTop: 0,
+    conversationScrollTop: 0,
+  })
 })
 
 test('citations preserve original positions, allow same-page chunks, dedupe IDs, and cap at six', () => {
