@@ -174,7 +174,7 @@ test('regex-shaped filesystem paths are never exempt by shape alone', () => {
 test('scanner allows web routes, URLs, imports, and regex source', () => {
   assert.deepEqual(scanText('worker/safe.mjs', [
     '/wiki/concepts/attention',
-    '/notes/static-site-delivery',
+    '/wiki/concepts/context-engineering',
     '/api/ask',
     '/assets/app.hash.js',
     'https://example.com/raw/article.md',

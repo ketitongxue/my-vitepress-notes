@@ -65,10 +65,10 @@ test('Personal OS content is complete and internally referential', () => {
   assert.ok(bootLines.length >= 4)
   assert.deepEqual(desktopEntries.map(({ label }) => label), [
     'LLM Wiki', 'Finance Wiki', '知识问答', 'llm-wiki Skill', 'AI 实验',
-    '项目档案', '关于我', '联系方式', 'GitHub', '网站更新记录',
+    '项目档案', '关于我', '联系方式', 'GitHub',
   ])
   assert.deepEqual(desktopEntries.slice(0, 4).map(({ window }) => window.href), ['/wiki/', '/finance/', '/ask/', '/llm-wiki/'])
-  assert.equal(knowledgeSections.length, 6)
+  assert.equal(knowledgeSections.length, 5)
 })
 
 test('growth-axis content has eight immutable trusted nodes', () => {
@@ -386,7 +386,7 @@ test('hidden desktop measurements preserve icons and moved or resized windows', 
   assert.deepEqual(windows, windowSnapshot)
 
   applyMeasurement(1280, 720)
-  assert.equal(new Set(Object.values(icons).map(({ x, y }) => `${x}:${y}`)).size, 10)
+  assert.equal(new Set(Object.values(icons).map(({ x, y }) => `${x}:${y}`)).size, 9)
   assert.deepEqual(windows, windowSnapshot)
   assert.equal(resolveSurfaceBounds(currentBounds, Number.NaN, 720, 40), currentBounds)
   assert.equal(resolveSurfaceBounds(currentBounds, 1280, 40, 40), currentBounds)

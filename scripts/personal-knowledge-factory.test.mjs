@@ -157,7 +157,7 @@ test('final shell keeps home viewport-bounded with portfolio and retryable lazy 
   assert.match(navigation, /data-os-nav-target="system"/)
 })
 
-test('knowledge portfolio preserves the six-section content and navigation contract', async () => {
+test('knowledge portfolio preserves the five-section content and navigation contract', async () => {
   const portfolio = await read('docs/.vitepress/theme/components/KnowledgePortfolio.vue')
   const requiredHrefs = [
     '/wiki/',
@@ -167,9 +167,6 @@ test('knowledge portfolio preserves the six-section content and navigation contr
     '/llm-wiki/principles',
     '/llm-wiki/build',
     'https://github.com/ketitongxue/llm-wiki-skill',
-    '/notes/product-validation-loop',
-    '/notes/static-site-delivery',
-    '/notes/sustainable-ai-workflow',
   ]
 
   assert.match(portfolio, /import \{ knowledgeSections \} from '.\/personalOsContent\.mjs'/)
@@ -178,11 +175,11 @@ test('knowledge portfolio preserves the six-section content and navigation contr
   assert.match(portfolio, /<h1 id="knowledge-portfolio-title">/)
   const introHeading = portfolio.match(/<template v-if="section\.id === 'intro'">([\s\S]*?)<\/template>/)?.[1] ?? ''
   assert.match(introHeading, /\{\{ section\.title \}\}/, 'intro must render its source title beside the page identity')
-  assert.equal([...portfolio.matchAll(/<section\b/g)].length, 1, 'one source section template must render all six records')
+  assert.equal([...portfolio.matchAll(/<section\b/g)].length, 1, 'one source section template must render all five records')
   assert.match(portfolio, /<section[\s\S]*v-for="section in knowledgeSections"[\s\S]*:key="section\.id"[\s\S]*:data-knowledge-section="section\.id"/)
   assert.match(portfolio, /<h2[\s\S]*\{\{ section\.title \}\}[\s\S]*<\/h2>/)
   assert.match(portfolio, /section\.id === 'intro'/)
-  for (const id of ['llm-wiki', 'finance', 'qa', 'skill', 'recent']) {
+  for (const id of ['llm-wiki', 'finance', 'qa', 'skill']) {
     assert.match(portfolio, new RegExp(`section\\.id === '${id}'`))
   }
   for (const property of ['section.id', 'section.label', 'section.title', 'section.summary']) {
@@ -194,17 +191,6 @@ test('knowledge portfolio preserves the six-section content and navigation contr
   for (const copy of ['来源接收与分流', '结构化摄取', '验证与链接检查', '发布与更新']) {
     assert.match(workflow, new RegExp(copy))
   }
-  assert.match(portfolio, /<ul class="knowledge-portfolio__recent-list">/)
-  assert.equal([...portfolio.matchAll(/<time datetime="\d{4}-\d{2}-\d{2}">/g)].length, 3)
-  for (const [date, href, title] of [
-    ['2026-07-01', '/notes/product-validation-loop', '产品验证循环'],
-    ['2026-06-30', '/notes/static-site-delivery', '静态网站交付'],
-    ['2026-07-02', '/notes/sustainable-ai-workflow', '可持续的 AI 工作流'],
-  ]) {
-    const item = `<li><time datetime="${date}">${date}</time><a href="${href}">${title}</a></li>`
-    assert.match(portfolio, new RegExp(item), `${href} metadata must match its frontmatter`)
-  }
-
   for (const href of requiredHrefs) {
     const pattern = new RegExp(`href="${href.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`, 'g')
     assert.equal([...portfolio.matchAll(pattern)].length, 1, `${href} must be one native link`)

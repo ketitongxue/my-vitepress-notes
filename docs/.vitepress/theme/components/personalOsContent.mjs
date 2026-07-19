@@ -12,7 +12,6 @@ export const knowledgeSections = Object.freeze([
   section('finance', 'FINANCE', 'Finance Wiki', '金融、量化与市场结构知识库。', ['finance']),
   section('qa', 'Q&A', '知识问答', '基于知识库检索结果回答问题。', ['qa']),
   section('skill', 'SKILL', '能力与方法', '连接知识、项目和持续学习的方法栈。', ['skills', 'learning']),
-  section('recent', 'RECENT', '近期实践', '持续推进的项目与 AI 实验。', ['projects', 'experiments']),
 ])
 
 const node = ({ id, type, kicker, title, body, x, y, width, height,

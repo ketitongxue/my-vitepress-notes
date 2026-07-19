@@ -167,7 +167,6 @@ export const DEFAULT_HOME_CONFIG = deepFreeze(normalizeHomeConfig({
       { id: 'about', label: '关于我', icon: 'file', position: { x: 80, y: 360 }, window: { title: '关于我', summary: 'JuZX 的角色、关注方向与当前实践。', href: '/about' } },
       { id: 'contact', label: '联系方式', icon: 'terminal', position: { x: 176, y: 360 }, window: { title: '联系方式', summary: 'GitHub: ketitongxue' } },
       { id: 'github', label: 'GitHub', icon: 'world', position: { x: 80, y: 452 }, window: { title: 'GitHub', summary: '查看公开项目与提交记录。', href: 'https://github.com/ketitongxue' } },
-      { id: 'changelog', label: '网站更新记录', icon: 'file', position: { x: 176, y: 452 }, window: { title: '网站更新记录', summary: 'AI 纪元的内容与系统更新。', href: '/notes/sustainable-ai-workflow' } },
     ],
   },
   exit: {
