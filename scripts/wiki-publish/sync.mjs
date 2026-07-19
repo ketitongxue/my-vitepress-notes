@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url'
 import { diffInventory, scanWikiSnapshot } from './core.mjs'
 import { collectionConfig } from './collections.mjs'
 import { parseFrontmatter } from './markdown.mjs'
+import { requiredPublicationRoot } from './publication-root.mjs'
 
 function wikiPath(argv, env, collection) {
   const usage = `Usage: npm run ${collection.name}:sync -- --wiki <path> (or set ${collection.envKey})`
@@ -208,7 +209,7 @@ async function replaceDirectory(temp, target) {
   if (hadTarget) await rm(backup, { recursive: true, force: true })
 }
 
-export async function sync({ collectionName = 'wiki', argv = process.argv.slice(2), env = process.env, site = process.cwd() } = {}) {
+export async function sync({ collectionName = 'wiki', argv = process.argv.slice(2), env = process.env, site = requiredPublicationRoot(env) } = {}) {
   const collectionFlags = argv.flatMap((value, index) => value === '--collection' ? [index] : [])
   if (collectionFlags.length > 1) throw new Error('Duplicate --collection value')
   if (collectionFlags.length === 1) {

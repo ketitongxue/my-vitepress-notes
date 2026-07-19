@@ -4,6 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { parseFrontmatter } from './markdown.mjs'
+import { requiredPublicationRoot } from './publication-root.mjs'
 import { publicPath, scanWikiSnapshot } from './core.mjs'
 import { collectionConfig } from './collections.mjs'
 import { acquireLock } from './sync.mjs'
@@ -268,7 +269,7 @@ export async function recoverPublication(site, collection) {
   if (await exists(manifestBackup)) await rm(manifestBackup, { force: true })
 }
 
-export async function finalize({ collectionName = 'wiki', argv = process.argv.slice(2), site = process.cwd(), renameFile = rename } = {}) {
+export async function finalize({ collectionName = 'wiki', argv = process.argv.slice(2), site = requiredPublicationRoot(), renameFile = rename } = {}) {
   const collectionIndex = argv.indexOf('--collection')
   if (collectionIndex !== -1) {
     collectionName = argv[collectionIndex + 1]

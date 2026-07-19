@@ -6,6 +6,7 @@ import MarkdownIt from 'markdown-it'
 import { ALLOWED_SECTIONS, scanWikiSnapshot } from './core.mjs'
 import { collectionConfig } from './collections.mjs'
 import { parseFrontmatter } from './markdown.mjs'
+import { publicationRoot } from './publication-root.mjs'
 
 const PAGE_FIELDS = new Set(['source', 'hash', 'publicPath', 'status', 'syncedAt'])
 const HASH_PATTERN = /^[a-f0-9]{64}$/
@@ -36,6 +37,22 @@ function withoutCodeBlocks(markdown) {
   return markdown
     .replace(/```[^\n]*\n[\s\S]*?```/g, '')
     .replace(/~~~[^\n]*\n[\s\S]*?~~~/g, '')
+}
+
+export function passiveMarkdownErrors(source, markdown) {
+  const executable = withoutCodeBlocks(markdown).replace(/`[^`\n]*`/g, '')
+  const errors = []
+  if (/<\/?(?:script|style|template|iframe|object|embed)\b/i.test(executable)) {
+    errors.push(`${source}: contains an active HTML element`)
+  }
+  if (/<[A-Z][A-Za-z0-9_.:-]*\b/.test(executable) || /<[a-z][a-z0-9]*-[a-z0-9-]*\b/i.test(executable)) {
+    errors.push(`${source}: contains a Vue or custom component`)
+  }
+  if (/<[^>]+\s(?:v-[\w:.-]+|@[\w:.-]+|:[\w:.-]+|on[a-z]+)\s*=/i.test(executable)) {
+    errors.push(`${source}: contains an active HTML attribute`)
+  }
+  if (/javascript\s*:/i.test(executable)) errors.push(`${source}: contains a javascript URL`)
+  return errors
 }
 
 function internalLinks(markdown) {
@@ -81,7 +98,7 @@ function containsAbsolutePath(markdown, collection) {
 }
 
 function contentErrors(source, markdown, knownFiles, collection) {
-  const errors = []
+  const errors = passiveMarkdownErrors(source, markdown)
   if (/(^|\n)\s*sources\s*:/i.test(markdown)) errors.push(`${source}: contains sources: metadata`)
   if (/(?:^|[\s\\/])raw[\\/]/i.test(markdown)) errors.push(`${source}: contains raw/ path`)
   if (containsAbsolutePath(markdown, collection)) {
@@ -163,7 +180,7 @@ export async function validatePublishedWiki({ docsRoot, manifest, collection = c
 }
 
 async function main() {
-  const site = process.cwd()
+  const site = publicationRoot()
   const argv = process.argv.slice(2)
   const indexes = argv.flatMap((value, index) => value === '--collection' ? [index] : [])
   if (indexes.length > 1) throw new Error('Duplicate --collection value')

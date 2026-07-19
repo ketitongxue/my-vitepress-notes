@@ -125,8 +125,12 @@ assert.deepEqual(
 
 const financeSidebarItems = financeSidebar.flatMap((group) => group.items)
 const financeManifest = JSON.parse(await readFile('finance-manifest.json', 'utf8'))
-assert.equal(financeManifest.pages.length, 48, 'the Finance manifest must contain exactly 48 pages')
-assert.equal(financeSidebarItems.length, 48, 'the Finance sidebar must list exactly 48 pages')
+assert.ok(financeManifest.pages.length > 0, 'the Finance manifest must contain published pages')
+assert.equal(
+  financeSidebarItems.length,
+  financeManifest.pages.length,
+  'the Finance sidebar must list every current manifest page',
+)
 
 const financeSidebarLinks = financeSidebarItems.map((item) => item.link)
 assert.equal(

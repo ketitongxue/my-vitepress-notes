@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { collectionConfig } from './collections.mjs'
 import { scanWikiSnapshot } from './core.mjs'
 import { containsPrivateData, convertWikilinks, parseFrontmatter, serializePublicFrontmatter, stripProvenance } from './markdown.mjs'
+import { requiredPublicationRoot } from './publication-root.mjs'
 import { acquireLock } from './sync.mjs'
 
 async function exists(candidate) {
@@ -74,7 +75,7 @@ function knownTargets(inventory, collection) {
   return known
 }
 
-export async function prepareMirror({ collectionName, site = process.cwd(), writePrepared = writeFile }) {
+export async function prepareMirror({ collectionName, site = requiredPublicationRoot(), writePrepared = writeFile }) {
   const collection = collectionConfig(collectionName)
   if (collection.mode !== 'mirror') throw new Error(`${collection.name} is not a mirror collection`)
   const lock = await acquireLock(site, collection)
