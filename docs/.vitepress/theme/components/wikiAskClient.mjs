@@ -5,6 +5,7 @@ const MAX_SSE_LINE_CHARS = 64 * 1024
 const MAX_SSE_EVENT_CHARS = 96 * 1024
 const MAX_SSE_PENDING_CHARS = 128 * 1024
 const MAX_ASSISTANT_CHARS = 32 * 1024
+const MAX_VIEW_SCROLL = 10_000_000
 const PUBLISHED_WIKI_ROUTE = /^\/wiki\/(?:concepts|entities|comparisons)\/[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 export function isActiveRequest(signal, requestVersion, currentVersion) {
@@ -122,6 +123,51 @@ export function saveSessionHistory(storage, key, values) {
   try {
     if (!storage) return false
     storage.setItem(key, JSON.stringify(normalizeStoredHistory(values)))
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function normalizeSessionView(value) {
+  const source = value && typeof value === 'object' ? value : {}
+  const question = typeof source.question === 'string'
+    ? safeCodePoints(source.question).slice(0, 500).join('')
+    : ''
+  const scroll = (candidate) => Number.isFinite(candidate)
+    ? Math.min(MAX_VIEW_SCROLL, Math.max(0, Math.round(candidate)))
+    : 0
+  return {
+    question,
+    rootScrollTop: scroll(source.rootScrollTop),
+    conversationScrollTop: scroll(source.conversationScrollTop),
+  }
+}
+
+export function loadSessionView(storage, key) {
+  try {
+    if (!storage) return normalizeSessionView(null)
+    return normalizeSessionView(JSON.parse(storage.getItem(key) ?? '{}'))
+  } catch {
+    try { storage?.removeItem(key) } catch {}
+    return normalizeSessionView(null)
+  }
+}
+
+export function saveSessionView(storage, key, value) {
+  try {
+    if (!storage) return false
+    storage.setItem(key, JSON.stringify(normalizeSessionView(value)))
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function removeSessionView(storage, key) {
+  try {
+    if (!storage) return false
+    storage.removeItem(key)
     return true
   } catch {
     return false

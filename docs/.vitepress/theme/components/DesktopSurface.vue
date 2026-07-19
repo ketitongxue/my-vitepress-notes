@@ -4,6 +4,11 @@ import DesktopIcon from './DesktopIcon.vue'
 import WindowManager from './WindowManager.vue'
 import { constrainIconPosition, resolveSurfaceBounds } from './desktopGeometry.mjs'
 import {
+  getDesktopSessionStorage,
+  loadDesktopSession,
+  saveDesktopSession,
+} from './desktopSessionState.mjs'
+import {
   constrainWindowState,
   createWindowState,
   openWindow,
@@ -22,6 +27,9 @@ const bounds = ref({ width: 1280, height: 690 })
 const clock = ref('00:00')
 let resizeObserver
 let clockTimer
+let persistTimer
+let storage
+let sessionReady = false
 
 function createIconPositions(entries = desktopEntries.value) {
   return Object.fromEntries(entries.map((entry) => [entry.id, {
@@ -58,6 +66,28 @@ function openEntry(entry) {
   windowState.value = openWindow(windowState.value, entry, bounds.value)
 }
 
+function persistSession() {
+  if (!sessionReady) return
+  if (persistTimer !== undefined) window.clearTimeout(persistTimer)
+  persistTimer = undefined
+  saveDesktopSession(storage, iconPositions.value, windowState.value)
+}
+
+function scheduleSessionPersistence() {
+  if (!sessionReady) return
+  if (persistTimer !== undefined) window.clearTimeout(persistTimer)
+  persistTimer = window.setTimeout(persistSession, 120)
+}
+
+function restoreSession(entries = desktopEntries.value) {
+  const restored = loadDesktopSession(storage, entries, bounds.value)
+  iconPositions.value = restored?.iconPositions ?? createIconPositions(entries)
+  windowState.value = restored?.windowState ?? createWindowState()
+  constrainIconPositions(bounds.value)
+  constrainOpenWindows(bounds.value)
+  sessionReady = true
+}
+
 function constrainOpenWindows(nextBounds) {
   windowState.value = constrainWindowState(windowState.value, nextBounds)
 }
@@ -83,6 +113,8 @@ function updateClock() {
 
 onMounted(() => {
   measureSurface()
+  storage = getDesktopSessionStorage(window)
+  restoreSession()
   updateClock()
   clockTimer = window.setInterval(updateClock, 1000)
   if (typeof ResizeObserver === 'function') {
@@ -93,12 +125,17 @@ onMounted(() => {
 })
 
 watch(desktopEntries, (entries) => {
-  iconPositions.value = createIconPositions(entries)
-  windowState.value = createWindowState()
+  persistSession()
+  sessionReady = false
+  restoreSession(entries)
   void nextTick(measureSurface)
 })
 
+watch(iconPositions, scheduleSessionPersistence, { deep: true })
+watch(windowState, scheduleSessionPersistence, { deep: true })
+
 onBeforeUnmount(() => {
+  persistSession()
   resizeObserver?.disconnect()
   window.clearInterval(clockTimer)
   window.removeEventListener('resize', measureSurface)
