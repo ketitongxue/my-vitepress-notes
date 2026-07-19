@@ -47,7 +47,7 @@ test('public home config returns the latest validated version with ETag', async 
   assert.equal(response.status, 200)
   assert.equal(response.headers.get('etag'), '"home-1"')
   assert.match(response.headers.get('cache-control'), /stale-while-revalidate=300/)
-  assert.equal((await response.json()).config.desktop.entries.length, 9)
+  assert.equal((await response.json()).config.desktop.entries.length, DEFAULT_HOME_CONFIG.desktop.entries.length)
   assert.equal(notModified.status, 304)
 })
 
@@ -94,7 +94,7 @@ test('home admin saves a validated draft with optimistic concurrency', async () 
   assert.equal(response.status, 201)
   assert.deepEqual(await response.json(), { revision: 2 })
   assert.equal(calls[0][4], 1)
-  assert.equal(JSON.parse(calls[0][1]).desktop.entries.length, 9)
+  assert.equal(JSON.parse(calls[0][1]).desktop.entries.length, DEFAULT_HOME_CONFIG.desktop.entries.length)
 })
 
 test('home admin rejects stale drafts, invalid origins, duplicate ids, and unsafe links', async () => {

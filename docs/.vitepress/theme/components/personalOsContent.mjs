@@ -7,9 +7,8 @@ const section = (id, label, title, summary, cardIds) =>
   Object.freeze({ id, label, title, summary, cardIds: Object.freeze(cardIds) })
 
 export const knowledgeSections = Object.freeze([
-  section('intro', 'INTRO', '身份与方向', '从工业数字化实践出发，持续搭建个人知识与实验系统。', ['identity', 'experience']),
+  section('intro', 'INTRO', '身份与方向', '从工业数字化实践出发，持续搭建 AI、Agent 与知识工程系统。', ['identity', 'experience']),
   section('llm-wiki', 'LLM WIKI', 'LLM Wiki', 'AI、Agent 与知识工程的结构化知识库。', ['llm-wiki']),
-  section('finance', 'FINANCE', 'Finance Wiki', '金融、量化与市场结构知识库。', ['finance']),
   section('qa', 'Q&A', '知识问答', '基于知识库检索结果回答问题。', ['qa']),
   section('skill', 'SKILL', '能力与方法', '连接知识、项目和持续学习的方法栈。', ['skills', 'learning']),
 ])
@@ -39,8 +38,8 @@ export const canvasCards = Object.freeze([
     items: ['产品规划', '工业数字化', '知识工程', 'AI 工作流'], x: 1180, y: 600,
     width: 380, height: 180, minWidth: 320, minHeight: 160, accent: 'blue' }),
   node({ id: 'knowledge-products', type: 'knowledge', kicker: 'KNOWLEDGE SYSTEM', title: '知识系统', body: '',
-    links: [{ label: 'LLM Wiki', href: '/wiki/' }, { label: 'Finance Wiki', href: '/finance/' },
-      { label: '知识问答', href: '/ask/' }, { label: 'llm-wiki Skill', href: '/llm-wiki/' }],
+    links: [{ label: 'LLM Wiki', href: '/wiki/' }, { label: '知识问答', href: '/ask/' },
+      { label: 'llm-wiki Skill', href: '/llm-wiki/' }],
     x: 1830, y: 500, width: 400, height: 260, minWidth: 340, minHeight: 220, accent: 'blue' }),
   node({ id: 'current-build', type: 'status', kicker: 'CURRENT BUILD', title: 'Personal Digital Factory',
     body: '持续构建中', status: 'online', x: 1740, y: 850, width: 320, height: 170,

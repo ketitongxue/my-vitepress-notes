@@ -27,18 +27,15 @@ assert.deepEqual(
 
 const knowledgeNav = config.site.themeConfig.nav.find((item) => item.text === '知识库')
 assert.deepEqual(
-  knowledgeNav?.items,
-  [
-    { text: 'AI 知识库', link: '/wiki/' },
-    { text: '金融知识库', link: '/finance/' }
-  ],
-  'the main navigation must fuse the two knowledge bases into one dropdown'
+  knowledgeNav,
+  { text: '知识库', link: '/wiki/' },
+  'the main navigation must link directly to the AI knowledge base'
 )
 
 assert.equal(
-  config.site.themeConfig.nav.some((item) => item.text === '金融知识库'),
+  JSON.stringify(config.site.themeConfig.nav).includes('/finance/'),
   false,
-  'the Finance landing page must not remain a separate top-level navigation button'
+  'the retired Finance route must not remain in navigation'
 )
 
 const wikiSidebar = config.site.themeConfig.sidebar['/wiki/']
@@ -97,80 +94,6 @@ assert.deepEqual(
   'wiki sidebar titles and order must match the Chinese wiki index'
 )
 
-const financeSidebar = config.site.themeConfig.sidebar['/finance/']
-assert.ok(financeSidebar, 'the theme must define an independent /finance/ sidebar')
-assert.deepEqual(
-  financeSidebar.map((group) => group.text),
-  ['实体', '概念', '对比分析'],
-  'the Finance sidebar must use the three Chinese index sections'
-)
-assert.deepEqual(
-  financeSidebar.map(({ collapsed }) => collapsed ?? false),
-  [true, true, true],
-  'every Finance sidebar group should be collapsed by default'
-)
-
-assert.deepEqual(
-  financeSidebar[0].items.map((item) => item.text),
-  [
-    '本杰明·格雷厄姆',
-    '爱德华·索普',
-    '乔治·索罗斯',
-    '詹姆斯·西蒙斯与大奖章基金',
-    'LTCM 崩塌',
-    '沃伦·巴菲特'
-  ],
-  'Finance entity sidebar labels must use concise Chinese names'
-)
-
-const financeSidebarItems = financeSidebar.flatMap((group) => group.items)
-const financeManifest = JSON.parse(await readFile('finance-manifest.json', 'utf8'))
-assert.ok(financeManifest.pages.length > 0, 'the Finance manifest must contain published pages')
-assert.equal(
-  financeSidebarItems.length,
-  financeManifest.pages.length,
-  'the Finance sidebar must list every current manifest page',
-)
-
-const financeSidebarLinks = financeSidebarItems.map((item) => item.link)
-assert.equal(
-  new Set(financeSidebarLinks).size,
-  financeSidebarLinks.length,
-  'every Finance sidebar link must be unique'
-)
-assert.equal(
-  financeSidebarLinks.some((link) => sidebarLinks.includes(link)),
-  false,
-  'Finance and wiki routes must not overlap'
-)
-
-const financeManifestLinks = new Map(financeManifest.pages.map((page) => [
-  `/${page.publicPath.replace(/^docs\//, '').replace(/\.md$/, '')}`,
-  page.source
-]))
-const missingFinanceSources = [...financeManifestLinks]
-  .filter(([link]) => !financeSidebarLinks.includes(link))
-  .map(([, source]) => source)
-assert.deepEqual(
-  missingFinanceSources,
-  [],
-  `Finance sidebar is missing manifest sources: ${missingFinanceSources.join(', ')}`
-)
-
-const financeIndex = await readFile('docs/finance/index.md', 'utf8')
-const financeIndexHeadings = [...financeIndex.matchAll(/^## (实体|概念|对比分析)$/gm)]
-const financeIndexGroups = financeIndexHeadings.map((heading, index) => ({
-  text: heading[1],
-  items: [...financeIndex
-    .slice(heading.index + heading[0].length, financeIndexHeadings[index + 1]?.index)
-    .matchAll(/^- \[([^\]]+)\]\((\/finance\/[^)]+)\)$/gm)].map(
-    ([, itemText, link]) => ({ text: itemText, link })
-  )
-}))
-assert.deepEqual(
-  financeSidebar.flatMap((group) => group.items.map((item) => item.link)),
-  financeIndexGroups.flatMap((group) => group.items.map((item) => item.link)),
-  'Finance sidebar links and order must match the generated Finance index'
-)
+assert.equal(config.site.themeConfig.sidebar['/finance/'], undefined)
 
 console.log('theme config tests passed')

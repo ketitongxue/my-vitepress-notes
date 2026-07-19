@@ -36,5 +36,4 @@ export function sidebarFor(name, root = projectRoot) {
 
 export const knowledgeSidebars = {
   '/wiki/': sidebarFor('wiki'),
-  '/finance/': sidebarFor('finance'),
 }

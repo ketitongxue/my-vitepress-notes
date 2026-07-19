@@ -13,7 +13,7 @@ npm run worker:dev
 
 `docs:dev`、`worker:dev`、`build` 和 `test` 会先从公开内容仓库
 [`ketitongxue/juzxailab-content`](https://github.com/ketitongxue/juzxailab-content)
-安装 AI 与金融知识库。默认优先使用同一工作区内的本地 `juzxailab-content` checkout；
+安装 AI 知识库。默认优先使用同一工作区内的本地 `juzxailab-content` checkout；
 Cloudflare 构建环境会克隆公开仓库的 `main`。也可以显式指定：
 
 ```bash
@@ -25,15 +25,15 @@ JUZXAILAB_CONTENT_PATH="../juzxailab-content" npm run content:sync
 DeepSeek 生成带站内引用的流式回答；不会读取本地 `llm_wiki` 或其他私有来源。
 
 发布器仍由本仓库维护，但公共 Markdown、索引和 manifest 写入独立内容仓库。
-同步两个源知识库时只通过环境变量提供本地来源和发布目标，不在仓库文件中写入本机绝对路径：
+同步源知识库时只通过环境变量提供本地来源和发布目标，不在仓库文件中写入本机绝对路径：
 
 ```bash
 PUBLICATION_ROOT="$PUBLIC_CONTENT_PATH" LLM_WIKI_PATH="$LLM_WIKI_PATH" npm run wiki:sync
-PUBLICATION_ROOT="$PUBLIC_CONTENT_PATH" FINANCE_WIKI_PATH="$FINANCE_WIKI_PATH" npm run finance:sync
 ```
 
-完成翻译/净化和 `wiki:finalize` 或 `finance:finalize` 后，在内容仓库创建 PR。
+完成翻译/净化和 `wiki:finalize` 后，在内容仓库创建 PR。
 内容仓库 `main` 更新会先运行安全校验，再通过 Cloudflare Deploy Hook 自动重建网站。
+内容仓库可以继续保存其他历史资料，但网站构建只安装并发布 `docs/wiki`。
 
 本地启动 Worker 前，在项目根目录创建不纳入 Git 的 `.dev.vars`，配置
 `DEEPSEEK_API_KEY` 和 `IP_HASH_SALT`。生产环境使用 Cloudflare Secrets：

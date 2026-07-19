@@ -31,21 +31,25 @@ async function fixture(t) {
   return { root, site, source }
 }
 
-test('installs both collections and replaces stale content', async (t) => {
+test('installs only the AI collection and removes stale Finance content', async (t) => {
   const { site, source } = await fixture(t)
   await mkdir(path.join(site, 'docs', 'wiki'), { recursive: true })
+  await mkdir(path.join(site, 'docs', 'finance'), { recursive: true })
   await writeFile(path.join(site, 'docs', 'wiki', 'stale.md'), 'stale')
+  await writeFile(path.join(site, 'docs', 'finance', 'stale.md'), 'retired')
+  await writeFile(path.join(site, 'finance-manifest.json'), '{}')
   await installFromDirectory({ site, source })
   assert.match(await readFile(path.join(site, 'docs', 'wiki', 'concepts', 'sample.md'), 'utf8'), /公开知识库/)
   await assert.rejects(readFile(path.join(site, 'docs', 'wiki', 'stale.md')), /ENOENT/)
-  assert.equal(JSON.parse(await readFile(path.join(site, 'finance-manifest.json'), 'utf8')).pages.length, 1)
+  await assert.rejects(readFile(path.join(site, 'docs', 'finance', 'stale.md')), /ENOENT/)
+  await assert.rejects(readFile(path.join(site, 'finance-manifest.json')), /ENOENT/)
 })
 
 test('rejects a missing manifest without replacing existing content', async (t) => {
   const { site, source } = await fixture(t)
   await mkdir(path.join(site, 'docs', 'wiki'), { recursive: true })
   await writeFile(path.join(site, 'docs', 'wiki', 'sentinel.md'), 'keep me')
-  await import('node:fs/promises').then(({ rm }) => rm(path.join(source, 'finance-manifest.json')))
+  await import('node:fs/promises').then(({ rm }) => rm(path.join(source, 'wiki-manifest.json')))
   await assert.rejects(installFromDirectory({ site, source }), /ENOENT|manifest/)
   assert.equal(await readFile(path.join(site, 'docs', 'wiki', 'sentinel.md'), 'utf8'), 'keep me')
 })

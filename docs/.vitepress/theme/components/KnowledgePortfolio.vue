@@ -28,14 +28,9 @@ import { knowledgeSections } from './personalOsContent.mjs'
         <p>这里连接工业数字化经验、持续学习和可复用的知识工程实践。</p>
       </article>
 
-      <article
-        class="knowledge-portfolio__feature"
-        v-else-if="section.id === 'llm-wiki' || section.id === 'finance'"
-      >
-        <p v-if="section.id === 'llm-wiki'">围绕 AI、Agent 与知识工程，建立可检索、可连接、可持续更新的知识网络。</p>
-        <p v-else>沉淀金融、量化研究与市场结构笔记，让概念、人物和策略形成清晰关联。</p>
-        <a v-if="section.id === 'llm-wiki'" href="/wiki/">进入 LLM Wiki →</a>
-        <a v-else href="/finance/">进入 Finance Wiki →</a>
+      <article class="knowledge-portfolio__feature" v-else-if="section.id === 'llm-wiki'">
+        <p>围绕 AI、Agent 与知识工程，建立可检索、可连接、可持续更新的知识网络。</p>
+        <a href="/wiki/">进入 LLM Wiki →</a>
       </article>
 
       <article class="knowledge-portfolio__callout" v-else-if="section.id === 'qa'">
