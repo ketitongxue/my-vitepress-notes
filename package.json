@@ -7,10 +7,6 @@
     "wiki:sync": "node scripts/wiki-publish/sync.mjs",
     "wiki:finalize": "node scripts/wiki-publish/finalize.mjs",
     "wiki:validate": "node scripts/wiki-publish/validate.mjs",
-    "finance:sync": "node scripts/wiki-publish/sync.mjs --collection finance",
-    "finance:prepare": "node scripts/wiki-publish/prepare.mjs --collection finance",
-    "finance:finalize": "node scripts/wiki-publish/finalize.mjs --collection finance",
-    "finance:validate": "node scripts/wiki-publish/validate.mjs --collection finance",
     "qa:index": "node scripts/wiki-qa/indexer.mjs",
     "qa:security": "node scripts/wiki-qa/security-scan.mjs",
     "build": "npm run content:sync && npm run qa:index && npm run docs:build:site",
@@ -23,7 +19,7 @@
     "test:content": "node scripts/content-validator.test.mjs",
     "test:factory": "node --test scripts/personal-knowledge-factory.test.mjs",
     "test:theme": "node scripts/theme-validator.test.mjs && node scripts/theme-config.test.mjs && node --test scripts/theme-color.test.mjs && node scripts/check-theme.mjs",
-    "test": "npm run content:sync && npm run qa:index && npm run test:factory && node --test scripts/brand-name.test.mjs && node --test scripts/site-design.test.mjs && node --test scripts/home-config.test.mjs && node --test scripts/llm-wiki-skill-pages.test.mjs && node --test scripts/knowledge-navigation.test.mjs && node --test scripts/content-repository/*.test.mjs && node --test scripts/wiki-publish/*.test.mjs && node --test scripts/wiki-qa/*.test.mjs && node --test worker/*.test.mjs && node --test scripts/personal-os-core.test.mjs && npm run wiki:validate && npm run finance:validate && npm run test:content && npm run test:theme && npm run docs:build:site && npm run qa:security"
+    "test": "npm run content:sync && npm run qa:index && npm run test:factory && node --test scripts/brand-name.test.mjs && node --test scripts/site-design.test.mjs && node --test scripts/home-config.test.mjs && node --test scripts/llm-wiki-skill-pages.test.mjs && node --test scripts/knowledge-navigation.test.mjs && node --test scripts/content-repository/*.test.mjs && node --test scripts/wiki-publish/*.test.mjs && node --test scripts/wiki-qa/*.test.mjs && node --test worker/*.test.mjs && node --test scripts/personal-os-core.test.mjs && npm run wiki:validate && npm run test:content && npm run test:theme && npm run docs:build:site && npm run qa:security"
   },
   "devDependencies": {
     "markdown-it": "^14.3.0",

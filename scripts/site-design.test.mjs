@@ -32,13 +32,12 @@ test('homepage keeps the Personal OS route shell and focused view components ava
 })
 
 test('knowledge pages are generated as compact accessible hubs', async () => {
-  for (const path of ['docs/wiki/index.md', 'docs/finance/index.md']) {
-    const page = await read(path)
-    assert.match(page, /class="knowledge-hub"/)
-    assert.match(page, /class="knowledge-hub__featured"/)
-    assert.match(page, /<details class="knowledge-hub__all">/)
-    assert.match(page, /<summary>全部条目/)
-  }
+  const page = await read('docs/wiki/index.md')
+  assert.match(page, /class="knowledge-hub"/)
+  assert.match(page, /class="knowledge-hub__featured"/)
+  assert.match(page, /<details class="knowledge-hub__all">/)
+  assert.match(page, /<summary>全部条目/)
+  await assert.rejects(access(new URL('docs/finance/index.md', root)), /ENOENT/)
 })
 
 test('Q&A clearly limits retrieval to the AI knowledge base', async () => {

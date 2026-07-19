@@ -437,7 +437,7 @@ async function exists(candidate) {
 
 export async function scanPublishedCollections(projectRoot) {
   const findings = []
-  for (const name of ['wiki', 'finance']) {
+  for (const name of ['wiki']) {
     const collection = collectionConfig(name)
     const docsRoot = path.join(projectRoot, 'docs', collection.docsDirectory)
     const manifestPath = path.join(projectRoot, collection.manifestFile)

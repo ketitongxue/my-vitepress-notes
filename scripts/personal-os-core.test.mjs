@@ -68,11 +68,11 @@ test('a direct non-home claim does not consume the first home boot', () => {
 test('Personal OS content is complete and internally referential', () => {
   assert.ok(bootLines.length >= 4)
   assert.deepEqual(desktopEntries.map(({ label }) => label), [
-    'LLM Wiki', 'Finance Wiki', '知识问答', 'llm-wiki Skill', 'AI 实验',
+    'LLM Wiki', '知识问答', 'llm-wiki Skill', 'AI 实验',
     '项目档案', '关于我', '联系方式', 'GitHub',
   ])
-  assert.deepEqual(desktopEntries.slice(0, 4).map(({ window }) => window.href), ['/wiki/', '/finance/', '/ask/', '/llm-wiki/'])
-  assert.equal(knowledgeSections.length, 5)
+  assert.deepEqual(desktopEntries.slice(0, 3).map(({ window }) => window.href), ['/wiki/', '/ask/', '/llm-wiki/'])
+  assert.equal(knowledgeSections.length, 4)
 })
 
 test('growth-axis content has eight immutable trusted nodes', () => {
@@ -126,7 +126,6 @@ test('growth-axis relationships and native destinations are exact', () => {
   const knowledge = canvasCards.find(({ id }) => id === 'knowledge-products')
   assert.deepEqual(knowledge.links, [
     { label: 'LLM Wiki', href: '/wiki/' },
-    { label: 'Finance Wiki', href: '/finance/' },
     { label: '知识问答', href: '/ask/' },
     { label: 'llm-wiki Skill', href: '/llm-wiki/' },
   ])
@@ -390,7 +389,7 @@ test('hidden desktop measurements preserve icons and moved or resized windows', 
   assert.deepEqual(windows, windowSnapshot)
 
   applyMeasurement(1280, 720)
-  assert.equal(new Set(Object.values(icons).map(({ x, y }) => `${x}:${y}`)).size, 9)
+  assert.equal(new Set(Object.values(icons).map(({ x, y }) => `${x}:${y}`)).size, desktopEntries.length)
   assert.deepEqual(windows, windowSnapshot)
   assert.equal(resolveSurfaceBounds(currentBounds, Number.NaN, 720, 40), currentBounds)
   assert.equal(resolveSurfaceBounds(currentBounds, 1280, 40, 40), currentBounds)

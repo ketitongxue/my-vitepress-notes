@@ -59,13 +59,7 @@ export default defineConfig({
   },
   themeConfig: {
     nav: [
-      {
-        text: '知识库',
-        items: [
-          { text: 'AI 知识库', link: '/wiki/' },
-          { text: '金融知识库', link: '/finance/' }
-        ]
-      },
+      { text: '知识库', link: '/wiki/' },
       {
         text: '工具',
         items: [

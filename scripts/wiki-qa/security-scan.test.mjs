@@ -16,37 +16,36 @@ const safeBody = '# 安全页面\n\n这是用于验证跨集合安全门禁的�
 
 async function publishedCollectionsFixture() {
   const root = await mkdtemp(path.join(os.tmpdir(), 'wiki-qa-collections-'))
-  for (const name of ['wiki', 'finance']) {
-    const source = 'concepts/safe.md'
-    const markdown = `---\ntitle: 安全页面\n---\n${safeBody}\n`
-    await mkdir(path.join(root, 'docs', name, 'concepts'), { recursive: true })
-    await writeFile(path.join(root, 'docs', name, source), markdown)
-    await writeFile(path.join(root, `${name}-manifest.json`), `${JSON.stringify({
-      version: 1,
-      pages: [{
-        source,
-        hash: sha256(markdown),
-        publicPath: `docs/${name}/${source}`,
-        status: 'published',
-        syncedAt: '2026-07-08T00:00:00.000Z',
-      }],
-    })}\n`)
-  }
+  const name = 'wiki'
+  const source = 'concepts/safe.md'
+  const markdown = `---\ntitle: 安全页面\n---\n${safeBody}\n`
+  await mkdir(path.join(root, 'docs', name, 'concepts'), { recursive: true })
+  await writeFile(path.join(root, 'docs', name, source), markdown)
+  await writeFile(path.join(root, `${name}-manifest.json`), `${JSON.stringify({
+    version: 1,
+    pages: [{
+      source,
+      hash: sha256(markdown),
+      publicPath: `docs/${name}/${source}`,
+      status: 'published',
+      syncedAt: '2026-07-08T00:00:00.000Z',
+    }],
+  })}\n`)
   return root
 }
 
-test('published collection scan applies every Wiki content gate to Finance', async (t) => {
+test('published collection scan applies every content gate to the AI Wiki', async (t) => {
   const mutations = [
     ['sources: metadata', (markdown) => `${markdown}\nsources:\n  - private`],
     ['raw/ path', (markdown) => `${markdown}\nraw/private.md`],
     ['absolute path', (markdown) => `${markdown}\n/Users/person/private.md`],
     ['residual wikilink', (markdown) => `${markdown}\n[[private]]`],
-    ['broken link', (markdown) => `${markdown}\n[missing](/finance/concepts/missing)`],
+    ['broken link', (markdown) => `${markdown}\n[missing](/wiki/concepts/missing)`],
   ]
   for (const [expected, mutate] of mutations) {
     const root = await publishedCollectionsFixture()
     t.after(() => import('node:fs/promises').then(({ rm }) => rm(root, { recursive: true, force: true })))
-    const page = path.join(root, 'docs/finance/concepts/safe.md')
+    const page = path.join(root, 'docs/wiki/concepts/safe.md')
     await writeFile(page, mutate(await readFile(page, 'utf8')))
     const findings = await scanPublishedCollections(root)
     assert.ok(findings.some((finding) => finding.includes(expected)), `${expected} must be rejected`)
@@ -54,23 +53,22 @@ test('published collection scan applies every Wiki content gate to Finance', asy
 
   const extraRoot = await publishedCollectionsFixture()
   t.after(() => import('node:fs/promises').then(({ rm }) => rm(extraRoot, { recursive: true, force: true })))
-  await writeFile(path.join(extraRoot, 'docs/finance/concepts/extra.md'), safeBody)
+  await writeFile(path.join(extraRoot, 'docs/wiki/concepts/extra.md'), safeBody)
   assert.ok((await scanPublishedCollections(extraRoot)).some((finding) => finding.includes('extra file')))
 
   const missingRoot = await publishedCollectionsFixture()
   t.after(() => import('node:fs/promises').then(({ rm }) => rm(missingRoot, { recursive: true, force: true })))
-  await import('node:fs/promises').then(({ rm }) => rm(path.join(missingRoot, 'docs/finance/concepts/safe.md')))
+  await import('node:fs/promises').then(({ rm }) => rm(path.join(missingRoot, 'docs/wiki/concepts/safe.md')))
   assert.ok((await scanPublishedCollections(missingRoot)).some((finding) => finding.includes('missing file')))
 })
 
-test('QA index remains Wiki-only when Finance is published', async () => {
+test('QA index remains scoped to the AI Wiki', async () => {
   const manifest = JSON.parse(await readFile(path.join(projectRoot, 'wiki-manifest.json'), 'utf8'))
   const index = await buildIndex(path.join(projectRoot, 'docs'))
   assert.equal(index.pages.length, manifest.pages.length)
   assert.ok(index.chunks.length >= index.pages.length)
   assert.ok(index.pages.every(({ url }) => url.startsWith('/wiki/')))
   assert.ok(index.chunks.every(({ url }) => url.startsWith('/wiki/')))
-  assert.ok(index.pages.every(({ url }) => !url.startsWith('/finance/')))
 })
 
 test('scanner catches production leaks without echoing their values', () => {
@@ -221,7 +219,6 @@ test('integrated test command preserves the deployment verification order', asyn
     'node --test scripts/wiki-qa/*.test.mjs',
     'node --test worker/*.test.mjs',
     'npm run wiki:validate',
-    'npm run finance:validate',
     'npm run test:content',
     'npm run test:theme',
     'npm run docs:build',
@@ -248,7 +245,6 @@ test('README documents setup, secrets, deployment, limits, and privacy', async (
     'npx wrangler secret put IP_HASH_SALT',
     'npm test',
     'PUBLICATION_ROOT="$PUBLIC_CONTENT_PATH" LLM_WIKI_PATH="$LLM_WIKI_PATH" npm run wiki:sync',
-    'PUBLICATION_ROOT="$PUBLIC_CONTENT_PATH" FINANCE_WIKI_PATH="$FINANCE_WIKI_PATH" npm run finance:sync',
     'Build command `npm run build`',
     'Deploy command `npx wrangler deploy`',
     'sessionStorage',

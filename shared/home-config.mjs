@@ -159,7 +159,6 @@ export const DEFAULT_HOME_CONFIG = deepFreeze(normalizeHomeConfig({
     resetLabel: '重置桌面位置',
     entries: [
       { id: 'llm-wiki', label: 'LLM Wiki', icon: 'folder', position: { x: 80, y: 84 }, window: { title: 'LLM Wiki', summary: 'AI、Agent 与知识工程的结构化知识库。', href: '/wiki/' } },
-      { id: 'finance-wiki', label: 'Finance Wiki', icon: 'folder', position: { x: 176, y: 84 }, window: { title: 'Finance Wiki', summary: '金融、量化与市场结构知识库。', href: '/finance/' } },
       { id: 'ask', label: '知识问答', icon: 'terminal', position: { x: 80, y: 176 }, window: { title: '知识问答', summary: '基于 LLM Wiki 检索结果回答问题。', href: '/ask/' } },
       { id: 'skill', label: 'llm-wiki Skill', icon: 'file', position: { x: 176, y: 176 }, window: { title: 'llm-wiki Skill', summary: '公开的知识库构建方法、流程与安装指南。', href: '/llm-wiki/' } },
       { id: 'experiments', label: 'AI 实验', icon: 'folder', position: { x: 80, y: 268 }, window: { title: 'AI 实验', summary: '个人 AI 工具、Agent 与工作流实验。' } },

@@ -157,11 +157,10 @@ test('final shell keeps home viewport-bounded with portfolio and retryable lazy 
   assert.match(navigation, /data-os-nav-target="system"/)
 })
 
-test('knowledge portfolio preserves the five-section content and navigation contract', async () => {
+test('knowledge portfolio preserves the AI-focused content and navigation contract', async () => {
   const portfolio = await read('docs/.vitepress/theme/components/KnowledgePortfolio.vue')
   const requiredHrefs = [
     '/wiki/',
-    '/finance/',
     '/ask/',
     '/llm-wiki/',
     '/llm-wiki/principles',
@@ -175,13 +174,14 @@ test('knowledge portfolio preserves the five-section content and navigation cont
   assert.match(portfolio, /<h1 id="knowledge-portfolio-title">/)
   const introHeading = portfolio.match(/<template v-if="section\.id === 'intro'">([\s\S]*?)<\/template>/)?.[1] ?? ''
   assert.match(introHeading, /\{\{ section\.title \}\}/, 'intro must render its source title beside the page identity')
-  assert.equal([...portfolio.matchAll(/<section\b/g)].length, 1, 'one source section template must render all five records')
+  assert.equal([...portfolio.matchAll(/<section\b/g)].length, 1, 'one source section template must render all records')
   assert.match(portfolio, /<section[\s\S]*v-for="section in knowledgeSections"[\s\S]*:key="section\.id"[\s\S]*:data-knowledge-section="section\.id"/)
   assert.match(portfolio, /<h2[\s\S]*\{\{ section\.title \}\}[\s\S]*<\/h2>/)
   assert.match(portfolio, /section\.id === 'intro'/)
-  for (const id of ['llm-wiki', 'finance', 'qa', 'skill']) {
+  for (const id of ['llm-wiki', 'qa', 'skill']) {
     assert.match(portfolio, new RegExp(`section\\.id === '${id}'`))
   }
+  assert.doesNotMatch(portfolio, /Finance|\/finance\//)
   for (const property of ['section.id', 'section.label', 'section.title', 'section.summary']) {
     assert.match(portfolio, new RegExp(property.replace('.', '\\.') ))
   }

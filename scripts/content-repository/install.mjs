@@ -10,7 +10,8 @@ import { passiveMarkdownErrors, validatePublishedWiki } from '../wiki-publish/va
 
 const execFileAsync = promisify(execFile)
 const DEFAULT_REPOSITORY = 'https://github.com/ketitongxue/juzxailab-content.git'
-const COLLECTIONS = ['wiki', 'finance']
+const COLLECTIONS = ['wiki']
+const RETIRED_ARTIFACTS = ['docs/finance', 'finance-manifest.json']
 const ALLOWED_COLLECTION_ENTRIES = new Set(['comparisons', 'concepts', 'entities', 'index.md'])
 
 async function exists(candidate) {
@@ -73,18 +74,20 @@ async function replaceArtifacts(site, staged) {
     ...COLLECTIONS.map((name) => `docs/${name}`),
     ...COLLECTIONS.map((name) => `${name}-manifest.json`),
   ]
+  const targets = [...artifacts, ...RETIRED_ARTIFACTS]
   const installed = []
   const backups = []
   try {
-    for (const relative of artifacts) {
+    for (const relative of targets) {
       const target = path.join(site, ...relative.split('/'))
-      const source = path.join(staged, ...relative.split('/'))
       const backup = `${target}.content-backup-${token}`
       await mkdir(path.dirname(target), { recursive: true })
       if (await exists(target)) {
         await rename(target, backup)
         backups.push({ backup, target })
       }
+      if (!artifacts.includes(relative)) continue
+      const source = path.join(staged, ...relative.split('/'))
       await rename(source, target)
       installed.push(target)
     }
