@@ -8,20 +8,32 @@
 
 ```bash
 npm install
-npm run qa:index
 npm run worker:dev
+```
+
+`docs:dev`、`worker:dev`、`build` 和 `test` 会先从公开内容仓库
+[`ketitongxue/juzxailab-content`](https://github.com/ketitongxue/juzxailab-content)
+安装 AI 与金融知识库。默认优先使用同一工作区内的本地 `juzxailab-content` checkout；
+Cloudflare 构建环境会克隆公开仓库的 `main`。也可以显式指定：
+
+```bash
+JUZXAILAB_CONTENT_PATH="../juzxailab-content" npm run content:sync
 ```
 
 `qa:index` 只从 `docs/wiki/entities`、`docs/wiki/concepts` 和
 `docs/wiki/comparisons` 生成公开检索索引。Worker 使用关键词检索选取相关片段，再由
 DeepSeek 生成带站内引用的流式回答；不会读取本地 `llm_wiki` 或其他私有来源。
 
-同步两个知识库时只通过环境变量提供本地来源，不在命令或仓库文件中写入本机绝对路径：
+发布器仍由本仓库维护，但公共 Markdown、索引和 manifest 写入独立内容仓库。
+同步两个源知识库时只通过环境变量提供本地来源和发布目标，不在仓库文件中写入本机绝对路径：
 
 ```bash
-LLM_WIKI_PATH="$LLM_WIKI_PATH" npm run wiki:sync
-FINANCE_WIKI_PATH="$FINANCE_WIKI_PATH" npm run finance:sync
+PUBLICATION_ROOT="$PUBLIC_CONTENT_PATH" LLM_WIKI_PATH="$LLM_WIKI_PATH" npm run wiki:sync
+PUBLICATION_ROOT="$PUBLIC_CONTENT_PATH" FINANCE_WIKI_PATH="$FINANCE_WIKI_PATH" npm run finance:sync
 ```
+
+完成翻译/净化和 `wiki:finalize` 或 `finance:finalize` 后，在内容仓库创建 PR。
+内容仓库 `main` 更新会先运行安全校验，再通过 Cloudflare Deploy Hook 自动重建网站。
 
 本地启动 Worker 前，在项目根目录创建不纳入 Git 的 `.dev.vars`，配置
 `DEEPSEEK_API_KEY` 和 `IP_HASH_SALT`。生产环境使用 Cloudflare Secrets：
@@ -80,5 +92,6 @@ Cloudflare Workers 连接此 GitHub 仓库，并在 `main` 分支更新后自动
 - Deploy command `npx wrangler deploy`
 - Node.js：`22`（由根目录 `.node-version` 指定）
 
-`npm run build` 会先重新生成问答索引，再构建 VitePress 静态资源；Wrangler 随后同时发布
-Worker 和这些静态资源。部署前必须已配置上述两个 Secrets。
+`npm run build` 会先安装内容仓库、重新生成问答索引，再构建 VitePress 静态资源；Wrangler
+随后同时发布 Worker 和这些静态资源。构建日志会输出实际使用的内容 commit，便于回滚和审计。
+部署前必须已配置上述两个 Secrets。

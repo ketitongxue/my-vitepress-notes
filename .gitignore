@@ -12,9 +12,15 @@
 .finance-sync.candidate-*/
 .finance-sync.lock.claim-*/
 .finance-publish.tmp-*/
+.content-cache/
+.content-cache.install-*/
 node_modules/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
 .wrangler/
 worker/generated/wiki-index.json
+docs/wiki/
+docs/finance/
+wiki-manifest.json
+finance-manifest.json
 .DS_Store

@@ -325,7 +325,9 @@ test('head watchdog fails open and releases its pending timer id', async () => {
 
 test('the production build audits SSR landmarks and navigation visibility', async () => {
   const packageJson = JSON.parse(await read('package.json'))
-  assert.match(packageJson.scripts['docs:build'], /node scripts\/personal-os-ssr-check\.mjs/)
+  assert.match(packageJson.scripts['docs:build'], /npm run content:sync/)
+  assert.match(packageJson.scripts['docs:build'], /npm run docs:build:site/)
+  assert.match(packageJson.scripts['docs:build:site'], /node scripts\/personal-os-ssr-check\.mjs/)
 })
 
 test('MacBook boot is one exact accessible fullscreen replacement', async () => {

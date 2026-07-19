@@ -32,7 +32,7 @@ async function run(site, args = [], env = {}, timeout = 10_000) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [cli, ...args], {
       cwd: site,
-      env: { ...process.env, LLM_WIKI_PATH: '', FINANCE_WIKI_PATH: '', ...env },
+      env: { ...process.env, LLM_WIKI_PATH: '', FINANCE_WIKI_PATH: '', PUBLICATION_ROOT: site, ...env },
     })
     let stdout = ''
     let stderr = ''
@@ -209,6 +209,14 @@ test('sync exits 1 with usage when no wiki path is configured', async (t) => {
   const result = await run(site)
   assert.equal(result.code, 1)
   assert.match(result.stderr, /Usage:.*--wiki <path>.*LLM_WIKI_PATH/i)
+})
+
+test('sync CLI refuses to publish without PUBLICATION_ROOT', async (t) => {
+  const wiki = await temporaryDirectory(t, 'sync-wiki-')
+  const site = await temporaryDirectory(t, 'sync-site-')
+  const result = await run(site, ['--wiki', wiki], { PUBLICATION_ROOT: '' })
+  assert.equal(result.code, 1)
+  assert.match(result.stderr, /PUBLICATION_ROOT is required/)
 })
 
 test('manifest is the published baseline when local report is absent', async (t) => {

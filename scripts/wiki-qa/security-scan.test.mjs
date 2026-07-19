@@ -242,13 +242,13 @@ test('README documents setup, secrets, deployment, limits, and privacy', async (
     + 'SQLite Durable Object 原子计数，并按 UTC 日期重置。'
   for (const required of [
     'npm install',
-    'npm run qa:index',
+    'npm run content:sync',
     'npm run worker:dev',
     'npx wrangler secret put DEEPSEEK_API_KEY',
     'npx wrangler secret put IP_HASH_SALT',
     'npm test',
-    'LLM_WIKI_PATH="$LLM_WIKI_PATH" npm run wiki:sync',
-    'FINANCE_WIKI_PATH="$FINANCE_WIKI_PATH" npm run finance:sync',
+    'PUBLICATION_ROOT="$PUBLIC_CONTENT_PATH" LLM_WIKI_PATH="$LLM_WIKI_PATH" npm run wiki:sync',
+    'PUBLICATION_ROOT="$PUBLIC_CONTENT_PATH" FINANCE_WIKI_PATH="$FINANCE_WIKI_PATH" npm run finance:sync',
     'Build command `npm run build`',
     'Deploy command `npx wrangler deploy`',
     'sessionStorage',
