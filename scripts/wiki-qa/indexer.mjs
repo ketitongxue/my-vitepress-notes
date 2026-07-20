@@ -3,8 +3,8 @@ import { mkdir, rename, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { containsPrivateData, parseFrontmatter } from '../wiki-publish/markdown.mjs'
-import { scanWikiSnapshot } from '../wiki-publish/core.mjs'
+import { scanWikiSnapshot } from '@ketitongxue/llm-wiki-publisher/core'
+import { containsPrivateData, parseFrontmatter } from '@ketitongxue/llm-wiki-publisher/markdown'
 
 const PUBLIC_DIRECTORIES = ['comparisons', 'concepts', 'entities']
 const TARGET_MAX = 900

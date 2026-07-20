@@ -215,7 +215,7 @@ test('integrated test command preserves the deployment verification order', asyn
   const command = packageJson.scripts.test
   const ordered = [
     'npm run qa:index',
-    'node --test scripts/wiki-publish/*.test.mjs',
+    'node --test scripts/external-wiki-tooling.test.mjs',
     'node --test scripts/wiki-qa/*.test.mjs',
     'node --test worker/*.test.mjs',
     'npm run wiki:validate',
@@ -245,6 +245,7 @@ test('README documents setup, secrets, deployment, limits, and privacy', async (
     'npx wrangler secret put IP_HASH_SALT',
     'npm test',
     'PUBLICATION_ROOT="$PUBLIC_CONTENT_PATH" LLM_WIKI_PATH="$LLM_WIKI_PATH" npm run wiki:sync',
+    'ketitongxue/llm-wiki-publisher',
     'Build command `npm run build`',
     'Deploy command `npx wrangler deploy`',
     'sessionStorage',

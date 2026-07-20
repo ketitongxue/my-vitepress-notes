@@ -5,8 +5,8 @@ import { promisify } from 'node:util'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { collectionConfig } from '../wiki-publish/collections.mjs'
-import { passiveMarkdownErrors, validatePublishedWiki } from '../wiki-publish/validate.mjs'
+import { collectionConfig } from '@ketitongxue/llm-wiki-publisher/collections'
+import { passiveMarkdownErrors, validatePublishedWiki } from '@ketitongxue/llm-wiki-publisher/validate'
 
 const execFileAsync = promisify(execFile)
 const DEFAULT_REPOSITORY = 'https://github.com/ketitongxue/juzxailab-content.git'
