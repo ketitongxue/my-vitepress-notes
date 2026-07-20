@@ -118,7 +118,7 @@ test('Personal OS view components expose exact navigation and desktop menu label
   assert.match(home, /<BottomOsNavigation[\s\S]*:active-view="activeView"[\s\S]*@select="selectView"[\s\S]*\/>/)
   assert.match(desktop, /configuration\.desktop\.brand/)
   assert.match(desktop, /v-for="link in configuration\.desktop\.menuLinks"/)
-  assert.match(desktop, /configuration\.desktop\.resetLabel/)
+  assert.doesNotMatch(desktop, /configuration\.desktop\.resetLabel|resetIconPositions|重置桌面位置/)
   assert.match(desktop, /<time :datetime="clock">\{\{ clock \}\}<\/time>/)
   assert.deepEqual([...navigation.matchAll(/>\s*(0[1-3] (?:主页|知识库|我的 OS))\s*<\/button>/g)].map((match) => match[1]), [
     '01 主页', '02 知识库', '03 我的 OS',
@@ -148,7 +148,7 @@ test('final shell keeps home viewport-bounded with portfolio and retryable lazy 
   assert.match(home, /systemLoadState\.value = 'error'/)
   assert.match(home, />\s*重新加载我的 OS\s*<\/button>/)
   assert.match(home, /aria-label="我的 OS 系统视图"/)
-  assert.match(home, /id="personal-os-home"[\s\S]*tabindex="-1"[\s\S]*aria-label="JuZX OS 主页"/)
+  assert.match(home, /id="personal-os-home"[\s\S]*tabindex="-1"[\s\S]*aria-label="AI 纪元主页"/)
   assert.match(home, /document\.getElementById\('personal-os-home'\)\?\.focus/)
   assert.equal([...home.matchAll(/<BottomOsNavigation\b/g)].length, 1)
   assert.match(home, /v-show="!hydrated \|\| activeView !== 'home' \|\| homeEntered"/)

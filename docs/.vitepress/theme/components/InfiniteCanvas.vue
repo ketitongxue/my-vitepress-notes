@@ -487,7 +487,7 @@ onBeforeUnmount(() => {
   <section
     class="infinite-canvas"
     :class="{ 'is-ready': ready }"
-    aria-label="JuZX OS 无限画布"
+    aria-label="AI 纪元无限画布"
     aria-describedby="canvas-instructions"
   >
     <p id="canvas-instructions" class="infinite-canvas__instructions">

@@ -43,11 +43,6 @@ function iconStyle(position) {
   return { left: `${position.x}px`, top: `${position.y}px` }
 }
 
-function resetIconPositions() {
-  iconPositions.value = createIconPositions()
-  constrainIconPositions(bounds.value)
-}
-
 function updateIconPosition({ id, position }) {
   iconPositions.value = {
     ...iconPositions.value,
@@ -143,15 +138,14 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section ref="surface" class="desktop-surface" aria-label="JuZX OS 桌面">
+  <section ref="surface" class="desktop-surface" aria-label="AI 纪元桌面">
     <header ref="menu" class="desktop-surface__menu">
       <a class="desktop-surface__brand is-active" href="#home" aria-current="page">{{ configuration.desktop.brand }}</a>
-      <nav aria-label="JuZX OS 菜单">
+      <nav aria-label="AI 纪元菜单">
         <a v-for="link in configuration.desktop.menuLinks" :key="`${link.label}-${link.href}`" :href="link.href">
           {{ link.label }}
         </a>
       </nav>
-      <button type="button" @click="resetIconPositions">{{ configuration.desktop.resetLabel }}</button>
       <time :datetime="clock">{{ clock }}</time>
     </header>
 
@@ -227,7 +221,7 @@ onBeforeUnmount(() => {
   position: relative;
   z-index: 20;
   display: grid;
-  grid-template-columns: auto auto 1fr auto;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
   height: 40px;
   padding: 0 18px;
@@ -291,23 +285,6 @@ onBeforeUnmount(() => {
   letter-spacing: .02em;
 }
 
-.desktop-surface__menu button {
-  justify-self: start;
-  min-height: 28px;
-  padding: 3px 10px;
-  border: 1px solid rgb(255 255 255 / 24%);
-  border-radius: 999px;
-  background: rgb(255 255 255 / 8%);
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.desktop-surface__menu button:focus-visible {
-  outline: 3px solid #f4d758;
-  outline-offset: 1px;
-}
-
 .desktop-surface__workspace {
   position: absolute;
   z-index: 1;
@@ -333,10 +310,6 @@ onBeforeUnmount(() => {
   .desktop-surface__menu nav {
     justify-content: center;
     gap: clamp(7px, 3vw, 14px);
-  }
-
-  .desktop-surface__menu button {
-    display: none;
   }
 
   .desktop-surface__menu time {

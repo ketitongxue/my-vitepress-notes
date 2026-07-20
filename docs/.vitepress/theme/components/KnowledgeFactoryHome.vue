@@ -153,7 +153,7 @@ onBeforeUnmount(() => {
       v-show="!hydrated || (activeView === 'home' && homeEntered)"
       id="personal-os-home"
       tabindex="-1"
-      aria-label="JuZX OS 主页"
+      aria-label="AI 纪元主页"
       data-os-view="home"
     >
       <DesktopSurface :configuration="homeConfiguration.config" />
