@@ -6,8 +6,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 
-import { collectionConfig } from '../wiki-publish/collections.mjs'
-import { validatePublishedWiki } from '../wiki-publish/validate.mjs'
+import { collectionConfig } from '@ketitongxue/llm-wiki-publisher/collections'
+import { validatePublishedWiki } from '@ketitongxue/llm-wiki-publisher/validate'
 
 const execFileAsync = promisify(execFile)
 const MAX_SCAN_FILE_BYTES = 16 * 1024 * 1024

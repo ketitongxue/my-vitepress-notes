@@ -24,7 +24,10 @@ JUZXAILAB_CONTENT_PATH="../juzxailab-content" npm run content:sync
 `docs/wiki/comparisons` 生成公开检索索引。Worker 使用关键词检索选取相关片段，再由
 DeepSeek 生成带站内引用的流式回答；不会读取本地 `llm_wiki` 或其他私有来源。
 
-发布器仍由本仓库维护，但公共 Markdown、索引和 manifest 写入独立内容仓库。
+同步、发布与内容安全校验由独立仓库
+[`ketitongxue/llm-wiki-publisher`](https://github.com/ketitongxue/llm-wiki-publisher)
+维护；本仓库仅保留网站构建、问答索引和运行时代码。工具版本通过依赖锁文件固定，
+公共 Markdown、索引和 manifest 写入独立内容仓库。
 同步源知识库时只通过环境变量提供本地来源和发布目标，不在仓库文件中写入本机绝对路径：
 
 ```bash
