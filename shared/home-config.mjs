@@ -145,18 +145,18 @@ export const DEFAULT_HOME_CONFIG = deepFreeze(normalizeHomeConfig({
       'JuZX@digital-factory ~ zsh',
       '$ whoami',
       'Product Manager / Industrial Digitalization Explorer',
-      '$ open juzx-os',
+      '$ open ai-era',
     ],
-    launchLabel: '启动 JuZX OS',
+    launchLabel: '启动 AI 纪元',
   },
   desktop: {
-    brand: 'JuZX OS',
+    brand: 'AI 纪元',
     menuLinks: [
       { label: 'About', href: '/about' },
       { label: 'Knowledge', href: '#knowledge' },
       { label: 'Now', href: '#system' },
     ],
-    resetLabel: '重置桌面位置',
+    resetLabel: '重置桌面位置', // Retained for compatibility with existing D1 configuration records; the desktop no longer renders this control.
     entries: [
       { id: 'llm-wiki', label: 'LLM Wiki', icon: 'folder', position: { x: 80, y: 84 }, window: { title: 'LLM Wiki', summary: 'AI、Agent 与知识工程的结构化知识库。', href: '/wiki/' } },
       { id: 'ask', label: '知识问答', icon: 'terminal', position: { x: 80, y: 176 }, window: { title: '知识问答', summary: '基于 LLM Wiki 检索结果回答问题。', href: '/ask/' } },
