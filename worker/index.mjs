@@ -15,6 +15,7 @@ import {
   handlePersonalOsAdmin,
   handlePublicPersonalOsConfig,
 } from './personal-os-config.mjs'
+import { handlePrivateMarkdown } from './private-markdown.mjs'
 
 function notFound() {
   return Response.json(
@@ -36,6 +37,7 @@ export function createWorker({
   homeAdminHandler = notImplemented,
   personalOsPublicHandler = notImplemented,
   personalOsAdminHandler = notImplemented,
+  privateMarkdownHandler = notImplemented,
 } = {}) {
   return {
     async fetch(request, env, ctx) {
@@ -61,6 +63,11 @@ export function createWorker({
         return withNoStore(await personalOsAdminHandler(request, env, ctx))
       }
 
+      if (pathname === '/api/admin/private-notes'
+        || pathname.startsWith('/api/admin/private-notes/')) {
+        return withNoStore(await privateMarkdownHandler(request, env, ctx))
+      }
+
       if (pathname === '/api' || pathname.startsWith('/api/')) {
         return notFound()
       }
@@ -76,4 +83,5 @@ export default createWorker({
   homeAdminHandler: handleHomeAdmin,
   personalOsPublicHandler: handlePublicPersonalOsConfig,
   personalOsAdminHandler: handlePersonalOsAdmin,
+  privateMarkdownHandler: handlePrivateMarkdown,
 })

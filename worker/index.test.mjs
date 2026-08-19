@@ -112,6 +112,23 @@ test('home public and admin API paths route to their dedicated handlers', async 
   assert.deepEqual(calls, [['public', 'GET'], ['admin', 'GET']])
 })
 
+test('private markdown admin API paths route to their dedicated handler', async () => {
+  const calls = []
+  const worker = createWorker({
+    askHandler: assert.fail,
+    privateMarkdownHandler(request) {
+      calls.push(request.method)
+      return Response.json({ documents: [] })
+    },
+  })
+  const env = { ASSETS: { fetch: assert.fail } }
+
+  const response = await worker.fetch(new Request('https://example.com/api/admin/private-notes'), env)
+  assert.deepEqual(await response.json(), { documents: [] })
+  assert.equal(response.headers.get('cache-control'), 'no-store')
+  assert.deepEqual(calls, ['GET'])
+})
+
 test('all non-API paths are delegated to env.ASSETS.fetch', async () => {
   const assetResponse = new Response('from assets', { status: 203 })
   const worker = createWorker({ askHandler: assert.fail })
