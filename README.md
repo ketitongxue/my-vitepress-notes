@@ -86,6 +86,23 @@ issuer、audience 和 `ADMIN_EMAIL`，不能只依赖页面地址隐藏。保存
 顶部菜单、桌面图标/默认位置/窗口内容与退出页文案。主页配置请求失败时会自动回退到仓库内
 的静态配置，不影响访问；现有管理页面和管理 API 的 Access 通配规则同时保护该入口。
 
+## 私有 Markdown 笔记
+
+管理页 `/admin/private-notes` 支持直接拖拽或选择本地 `.md`/`.markdown` 文件上传，
+不需要修改代码。笔记正文保存在 D1 的 `private_markdown_documents` 表中，只能通过已验证
+的 Cloudflare Access 管理 API 读取；它们不会进入公开知识库导航、静态构建或问答检索索引。
+单篇限制为 512 KiB，使用 UTF-8；相同文件名再次上传会更新为下一版本。删除操作也只对
+通过 Access 的站点所有者开放。
+
+应用数据库迁移后即可使用：
+
+```bash
+npx wrangler d1 migrations apply personal-os-config --remote
+```
+
+Access application 继续使用上面的 `juzxailab.com/admin/*` 与
+`juzxailab.com/api/admin/*` 通配规则，因此只有 `ADMIN_EMAIL` 对应的账号能看到和操作私有笔记。
+
 ## Cloudflare Workers Git 部署
 
 Cloudflare Workers 连接此 GitHub 仓库，并在 `main` 分支更新后自动构建和发布到 `workers.dev`。
