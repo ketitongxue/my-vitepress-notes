@@ -89,8 +89,10 @@ issuer、audience 和 `ADMIN_EMAIL`，不能只依赖页面地址隐藏。保存
 ## 私有 Markdown 笔记
 
 管理页 `/admin/private-notes` 支持直接拖拽或选择本地 `.md`/`.markdown` 文件上传，
-不需要修改代码。笔记正文保存在 D1 的 `private_markdown_documents` 表中，只能通过已验证
-的 Cloudflare Access 管理 API 读取；它们不会进入公开知识库导航、静态构建或问答检索索引。
+也支持上传一个包含一篇 Markdown 和图片资源的 `.zip` 笔记包，不需要修改代码。笔记正文
+保存在 D1 的 `private_markdown_documents` 表中，图片保存在私有 R2 桶
+`juzxailab-private-notes`，只能通过已验证的 Cloudflare Access 管理 API 读取；管理页会渲染
+相对图片引用，也保留原始 Markdown 查看入口。它们不会进入公开知识库导航、静态构建或问答检索索引。
 单篇限制为 512 KiB，使用 UTF-8；相同文件名再次上传会更新为下一版本。删除操作也只对
 通过 Access 的站点所有者开放。
 
@@ -98,6 +100,7 @@ issuer、audience 和 `ADMIN_EMAIL`，不能只依赖页面地址隐藏。保存
 
 ```bash
 npx wrangler d1 migrations apply personal-os-config --remote
+npx wrangler r2 bucket create juzxailab-private-notes
 ```
 
 Access application 继续使用上面的 `juzxailab.com/admin/*` 与
