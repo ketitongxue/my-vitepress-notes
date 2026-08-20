@@ -1,5 +1,6 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import MarkdownIt from 'markdown-it'
+import { computed, onMounted, ref } from 'vue'
 
 const documents = ref([])
 const selected = ref(null)
@@ -8,6 +9,41 @@ const uploading = ref(false)
 const error = ref('')
 const message = ref('')
 const dragging = ref(false)
+const markdown = new MarkdownIt({ html: false, breaks: true, linkify: false })
+
+function normalizeAssetPath(value) {
+  if (typeof value !== 'string' || /^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(value)) return null
+  let path
+  try {
+    path = decodeURIComponent(value.split(/[?#]/, 1)[0]).replaceAll('\\', '/').replace(/^\.\//, '')
+  } catch {
+    return null
+  }
+  const parts = path.split('/')
+  if (!path || parts.some((part) => !part || part === '.' || part === '..')) return null
+  return parts.join('/')
+}
+
+function assetUrl(value) {
+  const path = normalizeAssetPath(value)
+  if (!path || !selected.value?.id) return value
+  const asset = selected.value.assets?.find(({ path: assetPath }) => assetPath === path)
+  if (!asset) return value
+  return `/api/admin/private-notes/${selected.value.id}/assets/${path.split('/').map(encodeURIComponent).join('/')}`
+}
+
+const defaultImageRenderer = markdown.renderer.rules.image
+  || ((tokens, index, options, env, self) => self.renderToken(tokens, index, options))
+markdown.renderer.rules.image = (tokens, index, options, env, self) => {
+  const token = tokens[index]
+  token.attrSet('src', assetUrl(token.attrGet('src')))
+  token.attrSet('loading', 'lazy')
+  return defaultImageRenderer(tokens, index, options, env, self)
+}
+
+const renderedContent = computed(() => selected.value
+  ? markdown.render(selected.value.content)
+  : '')
 
 async function api(path, options = {}) {
   const headers = new Headers(options.headers)
@@ -55,7 +91,10 @@ function filesFromInput(event) {
 
 function filesFromDrop(event) {
   dragging.value = false
-  void uploadFiles([...event.dataTransfer.files])
+  const files = [...event.dataTransfer.files]
+  const packageFile = files.find((file) => /\.zip$/i.test(file.name))
+  if (packageFile) void uploadPackage(packageFile)
+  else void uploadFiles(files)
 }
 
 async function uploadFiles(files) {
@@ -74,6 +113,35 @@ async function uploadFiles(files) {
       const result = await api('/api/admin/private-notes/upload', { method: 'POST', body: form })
       message.value = result.replaced ? `已更新：${file.name}` : `已上传：${file.name}`
     }
+    await loadDocuments()
+  } catch (caught) {
+    error.value = caught.message
+  } finally {
+    uploading.value = false
+  }
+}
+
+function packageFromInput(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (file) void uploadPackage(file)
+}
+
+async function uploadPackage(file) {
+  if (!/\.zip$/i.test(file.name)) {
+    error.value = '请选择包含一篇 Markdown 和图片资源的 .zip 文件。'
+    return
+  }
+  uploading.value = true
+  error.value = ''
+  message.value = ''
+  try {
+    const form = new FormData()
+    form.append('package', file, file.name)
+    const result = await api('/api/admin/private-notes/upload-package', { method: 'POST', body: form })
+    message.value = result.replaced
+      ? `已更新：${result.document.filename}（${result.assetCount} 张图片）`
+      : `已上传：${result.document.filename}（${result.assetCount} 张图片）`
     await loadDocuments()
   } catch (caught) {
     error.value = caught.message
@@ -133,13 +201,19 @@ onMounted(() => void loadDocuments())
       <div>
         <small>UPLOAD</small>
         <h2 id="upload-title">把本地 Markdown 放进私有空间</h2>
-        <p>拖拽文件到这里，或选择多个 .md 文件。相同文件名再次上传会生成新版本。</p>
+        <p>拖拽 Markdown 或 ZIP 到这里。ZIP 内放一篇 Markdown 和它引用的图片，系统会自动保持相对路径。</p>
       </div>
+      <div class="private-notes-admin__pickers">
       <label class="private-notes-admin__picker">
-        <span>{{ uploading ? '正在上传…' : '选择 Markdown 文件' }}</span>
+        <span>{{ uploading ? '正在上传…' : '选择 Markdown' }}</span>
         <input type="file" accept=".md,.markdown,text/markdown" multiple :disabled="uploading" @change="filesFromInput" />
       </label>
-      <small>单篇最大 512 KiB · UTF-8 · 不会进入公开导航、静态构建或问答索引</small>
+      <label class="private-notes-admin__picker private-notes-admin__picker--package">
+        <span>{{ uploading ? '正在上传…' : '选择笔记 ZIP' }}</span>
+        <input type="file" accept=".zip,application/zip" :disabled="uploading" @change="packageFromInput" />
+      </label>
+      </div>
+      <small>Markdown 最大 512 KiB · 图片总量最大 20 MiB · 仅你可见 · 不进入公开问答索引</small>
     </section>
 
     <div class="private-notes-admin__workspace">
@@ -171,8 +245,12 @@ onMounted(() => void loadDocuments())
             <h2 id="preview-title">{{ selected?.title || '选择一篇笔记' }}</h2>
           </div>
         </div>
-        <p v-if="!selected" class="private-notes-admin__empty">上传或选择笔记后，在这里查看原始 Markdown。</p>
-        <pre v-else>{{ selected.content }}</pre>
+        <p v-if="!selected" class="private-notes-admin__empty">上传或选择笔记后，在这里查看内容和图片。</p>
+        <div v-else class="private-notes-admin__rendered" v-html="renderedContent" />
+        <details v-if="selected" class="private-notes-admin__source">
+          <summary>查看原始 Markdown（{{ selected.assets?.length ?? 0 }} 个图片资源）</summary>
+          <pre>{{ selected.content }}</pre>
+        </details>
       </section>
     </div>
   </main>
@@ -300,6 +378,13 @@ onMounted(() => void loadDocuments())
   border-style: dashed;
 }
 
+.private-notes-admin__pickers {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: end;
+}
+
 .private-notes-admin__dropzone.is-dragging {
   border-color: #315efb;
   background: #eef3ff;
@@ -329,6 +414,8 @@ onMounted(() => void loadDocuments())
   cursor: pointer;
   opacity: 0;
 }
+
+.private-notes-admin__picker--package { background: #eef3ff; color: #315efb; }
 
 .private-notes-admin__workspace {
   display: grid;
@@ -402,10 +489,28 @@ onMounted(() => void loadDocuments())
   overflow-wrap: anywhere;
 }
 
+.private-notes-admin__rendered {
+  line-height: 1.75;
+}
+
+.private-notes-admin__rendered :deep(img) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 16px 0;
+  border: 1px solid #d8e0eb;
+  border-radius: 8px;
+}
+
+.private-notes-admin__rendered :deep(a) { color: #315efb; }
+.private-notes-admin__source { margin-top: 24px; }
+.private-notes-admin__source summary { cursor: pointer; color: #315efb; }
+
 @media (max-width: 760px) {
   .private-notes-admin { padding: 20px 16px 32px; }
   .private-notes-admin__header,
   .private-notes-admin__dropzone { align-items: start; flex-direction: column; }
+  .private-notes-admin__pickers { width: 100%; justify-content: start; }
   .private-notes-admin__workspace { grid-template-columns: 1fr; }
 }
 

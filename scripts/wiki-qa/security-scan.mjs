@@ -60,7 +60,7 @@ const SAFE_PROJECT_PATHS = [
   /^\/api\/admin\/home$/,
   /^\/api\/admin\/personal-os\/(?:config|publish|rollback)$/,
   /^\/api\/admin\/personal-os$/,
-  /^\/api\/admin\/private-notes(?:\/upload|\/[a-f0-9]{16})?$/,
+  /^\/api\/admin\/private-notes(?:\/upload(?:-package)?|\/[a-f0-9]{16}(?:\/assets\/[^?]+)?)?$/,
   /^\/admin\/personal-os(?:\.html)?\/?$/,
   /^\/admin\/home(?:\.html)?\/?$/,
   /^\/admin\/private-notes(?:\.html)?\/?$/,
