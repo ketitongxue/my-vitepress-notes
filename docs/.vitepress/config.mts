@@ -67,7 +67,6 @@ export default defineConfig({
         ]
       },
       { text: '问答', link: '/ask/' },
-      { text: '关于', link: '/about' }
     ],
     sidebar: {
       '/llm-wiki/': [
