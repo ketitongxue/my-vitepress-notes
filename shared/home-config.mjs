@@ -162,7 +162,7 @@ export const DEFAULT_HOME_CONFIG = deepFreeze(normalizeHomeConfig({
       { id: 'ask', label: '知识问答', icon: 'terminal', position: { x: 80, y: 176 }, window: { title: '知识问答', summary: '基于 LLM Wiki 检索结果回答问题。', href: '/ask/' } },
       { id: 'skill', label: 'llm-wiki Skill', icon: 'file', position: { x: 176, y: 176 }, window: { title: 'llm-wiki Skill', summary: '公开的知识库构建方法、流程与安装指南。', href: '/llm-wiki/' } },
       { id: 'experiments', label: 'AI 实验', icon: 'folder', position: { x: 80, y: 268 }, window: { title: 'AI 实验', summary: '个人 AI 工具、Agent 与工作流实验。' } },
-      { id: 'projects', label: '项目档案', icon: 'folder', position: { x: 176, y: 268 }, window: { title: '项目档案', summary: 'MES 与工业数字化项目实践。' } },
+      { id: 'projects', label: '项目档案', icon: 'folder', position: { x: 176, y: 268 }, window: { title: '项目档案', summary: '记录我把 AI Agent、工具调用与工程化实践做成可运行系统的过程。', href: '/projects/go-tiny-claw' } },
       { id: 'about', label: '关于我', icon: 'file', position: { x: 80, y: 360 }, window: { title: '关于我', summary: 'JuZX 的角色、关注方向与当前实践。', href: '/about' } },
       { id: 'contact', label: '联系方式', icon: 'terminal', position: { x: 176, y: 360 }, window: { title: '联系方式', summary: 'GitHub: ketitongxue' } },
       { id: 'github', label: 'GitHub', icon: 'world', position: { x: 80, y: 452 }, window: { title: 'GitHub', summary: '查看公开项目与提交记录。', href: 'https://github.com/ketitongxue' } },
