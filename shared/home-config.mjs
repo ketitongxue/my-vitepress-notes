@@ -73,13 +73,16 @@ function normalizeEntry(value, index) {
   if (!ICONS.has(icon)) fail(`${name}.icon is not supported`)
 
   const position = exactObject(entry.position, `${name}.position`, new Set(['x', 'y']))
-  const windowConfig = exactObject(entry.window, `${name}.window`, new Set(['title', 'summary', 'href']))
+  const windowConfig = exactObject(entry.window, `${name}.window`, new Set(['title', 'summary', 'href', 'linkLabel']))
   const normalizedWindow = {
     title: text(windowConfig.title, `${name}.window.title`, { max: 100 }),
     summary: text(windowConfig.summary, `${name}.window.summary`, { max: 800, required: false }),
   }
   if (windowConfig.href !== undefined && windowConfig.href !== '') {
     normalizedWindow.href = safeHref(windowConfig.href, `${name}.window.href`)
+  }
+  if (windowConfig.linkLabel !== undefined && windowConfig.linkLabel !== '') {
+    normalizedWindow.linkLabel = text(windowConfig.linkLabel, `${name}.window.linkLabel`, { max: 100 })
   }
 
   return {
@@ -161,7 +164,7 @@ export const DEFAULT_HOME_CONFIG = deepFreeze(normalizeHomeConfig({
       { id: 'ask', label: '知识问答', icon: 'terminal', position: { x: 80, y: 176 }, window: { title: '知识问答', summary: '基于 LLM Wiki 检索结果回答问题。', href: '/ask/' } },
       { id: 'skill', label: 'llm-wiki Skill', icon: 'file', position: { x: 176, y: 176 }, window: { title: 'llm-wiki Skill', summary: '公开的知识库构建方法、流程与安装指南。', href: '/llm-wiki/' } },
       { id: 'experiments', label: 'AI 实验', icon: 'folder', position: { x: 80, y: 268 }, window: { title: 'AI 实验', summary: '个人 AI 工具、Agent 与工作流实验。' } },
-      { id: 'projects', label: '项目档案', icon: 'folder', position: { x: 176, y: 268 }, window: { title: '项目档案', summary: '记录我把 AI Agent、工具调用与工程化实践做成可运行系统的过程。', href: '/projects/go-tiny-claw' } },
+      { id: 'projects', label: '项目档案', icon: 'folder', position: { x: 176, y: 268 }, window: { title: '项目档案', summary: '记录我把 AI Agent、工具调用与工程化实践做成可运行系统的过程。', href: '/projects/go-tiny-claw', linkLabel: '查看 go-tiny-claw 项目介绍 →' } },
       { id: 'about', label: '关于我', icon: 'file', position: { x: 80, y: 360 }, window: { title: '关于我', summary: 'AI 纪元是一座持续生长的个人数字花园，记录 AI、产品、工程与个人实践之间的连接。联系方式已整合至此处。GitHub: ketitongxue。' } },
       { id: 'github', label: 'GitHub', icon: 'world', position: { x: 80, y: 452 }, window: { title: 'GitHub', summary: '查看公开项目与提交记录。', href: 'https://github.com/ketitongxue' } },
     ],
