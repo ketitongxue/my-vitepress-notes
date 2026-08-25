@@ -54,8 +54,9 @@ test('Personal OS menu destinations and local routes resolve', async () => {
   ])
   assert.match(desktop, /href="#home"/)
   assert.match(desktop, /configuration\.desktop\.menuLinks/)
-  for (const href of ['#knowledge', '#system', '/about']) assert.match(config, new RegExp(escapeRegex(href)))
-  await assert.doesNotReject(access(new URL('docs/about.md', root)), '/about must resolve')
+  for (const href of ['#knowledge', '#system']) assert.match(config, new RegExp(escapeRegex(href)))
+  assert.doesNotMatch(config, /\/about/)
+  await assert.rejects(access(new URL('docs/about.md', root)), /ENOENT/)
 })
 
 test('Q&A and local search expose Chinese interface labels', async () => {
