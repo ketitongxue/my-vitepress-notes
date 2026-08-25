@@ -37,13 +37,6 @@ function titleFor(item) {
   return item.entry.window.title
 }
 
-function summaryFor(item) {
-  if (item.id === 'projects') {
-    return '记录我把 AI Agent、工具调用与工程化实践做成可运行系统的过程。'
-  }
-  return item.entry.window.summary
-}
-
 function isExternalHref(href) {
   return typeof href === 'string' && href.startsWith(['https:', '', ''].join('/'))
 }
@@ -238,17 +231,13 @@ onBeforeUnmount(() => {
       >
         <WikiAsk v-if="item.id === 'ask'" embedded />
         <template v-else>
-          <p>{{ summaryFor(item) }}</p>
+          <p>{{ item.entry.window.summary }}</p>
           <a
             v-if="item.entry.window.href"
             :href="item.entry.window.href"
             :target="isExternalHref(item.entry.window.href) ? '_blank' : undefined"
             :rel="isExternalHref(item.entry.window.href) ? 'noopener noreferrer' : undefined"
-          >前往 {{ titleFor(item) }}</a>
-          <a
-            v-else-if="item.id === 'projects'"
-            href="/projects/go-tiny-claw"
-          >查看 go-tiny-claw 项目介绍 →</a>
+          >{{ item.entry.window.linkLabel || `前往 ${titleFor(item)}` }}</a>
           <div v-else class="window-manager__status">
             <span>整理中</span>
             <p>内容持续完善</p>
