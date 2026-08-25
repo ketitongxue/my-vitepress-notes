@@ -48,6 +48,7 @@ const SAFE_PROJECT_PATHS = [
   /^\/(?:wiki|finance)\/(?:entities|concepts|comparisons)(?:\/[a-z0-9-]+)?\/?$/,
   /^\/MACD\/RSI$/,
   /^\/notes\/[a-z0-9-]+\/?$/,
+  /^\/projects\/[a-z0-9-]+\/?$/,
   /^\/llm-wiki(?:\/[a-z0-9-]+)?\/?$/,
   /^\/\.codex\/skills\/?$/,
   /^\/\.codex\/skills\/llm-wiki\/?$/,
