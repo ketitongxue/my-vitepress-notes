@@ -231,7 +231,7 @@ onBeforeUnmount(() => {
       >
         <WikiAsk v-if="item.id === 'ask'" embedded />
         <template v-else>
-          <p>{{ item.entry.window.summary }}</p>
+          <p class="window-manager__summary">{{ item.entry.window.summary }}</p>
           <a
             v-if="item.entry.window.href"
             :href="item.entry.window.href"
@@ -400,6 +400,10 @@ button.window-manager__traffic-control {
 
 .window-manager__preview p {
   margin: 0 0 16px;
+}
+
+.window-manager__summary {
+  white-space: pre-line;
 }
 
 .window-manager__status {
