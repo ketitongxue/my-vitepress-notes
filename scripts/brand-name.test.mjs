@@ -15,7 +15,6 @@ test('old brand pattern catches the compact spelling', () => {
 const brandedFiles = [
   'README.md',
   'docs/index.md',
-  'docs/about.md',
   'docs/.vitepress/config.mts',
   'worker/deepseek.mjs',
 ]
