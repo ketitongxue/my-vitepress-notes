@@ -69,7 +69,7 @@ test('Personal OS content is complete and internally referential', () => {
   assert.ok(bootLines.length >= 4)
   assert.deepEqual(desktopEntries.map(({ label }) => label), [
     'LLM Wiki', '知识问答', 'llm-wiki Skill', 'AI 实验',
-    '项目档案', '关于我', '联系方式', 'GitHub',
+    '项目档案', '关于我', 'GitHub',
   ])
   assert.deepEqual(desktopEntries.slice(0, 3).map(({ window }) => window.href), ['/wiki/', '/ask/', '/llm-wiki/'])
   assert.equal(knowledgeSections.length, 4)
