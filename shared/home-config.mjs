@@ -152,7 +152,6 @@ export const DEFAULT_HOME_CONFIG = deepFreeze(normalizeHomeConfig({
   desktop: {
     brand: 'AI 纪元',
     menuLinks: [
-      { label: 'About', href: '/about' },
       { label: 'Knowledge', href: '#knowledge' },
       { label: 'Now', href: '#system' },
     ],
@@ -163,8 +162,7 @@ export const DEFAULT_HOME_CONFIG = deepFreeze(normalizeHomeConfig({
       { id: 'skill', label: 'llm-wiki Skill', icon: 'file', position: { x: 176, y: 176 }, window: { title: 'llm-wiki Skill', summary: '公开的知识库构建方法、流程与安装指南。', href: '/llm-wiki/' } },
       { id: 'experiments', label: 'AI 实验', icon: 'folder', position: { x: 80, y: 268 }, window: { title: 'AI 实验', summary: '个人 AI 工具、Agent 与工作流实验。' } },
       { id: 'projects', label: '项目档案', icon: 'folder', position: { x: 176, y: 268 }, window: { title: '项目档案', summary: '记录我把 AI Agent、工具调用与工程化实践做成可运行系统的过程。', href: '/projects/go-tiny-claw' } },
-      { id: 'about', label: '关于我', icon: 'file', position: { x: 80, y: 360 }, window: { title: '关于我', summary: 'JuZX 的角色、关注方向与当前实践。', href: '/about' } },
-      { id: 'contact', label: '联系方式', icon: 'terminal', position: { x: 176, y: 360 }, window: { title: '联系方式', summary: 'GitHub: ketitongxue' } },
+      { id: 'about', label: '关于我', icon: 'file', position: { x: 80, y: 360 }, window: { title: '关于我', summary: 'AI 纪元是一座持续生长的个人数字花园，记录 AI、产品、工程与个人实践之间的连接。联系方式已整合至此处。GitHub: ketitongxue。' } },
       { id: 'github', label: 'GitHub', icon: 'world', position: { x: 80, y: 452 }, window: { title: 'GitHub', summary: '查看公开项目与提交记录。', href: 'https://github.com/ketitongxue' } },
     ],
   },
