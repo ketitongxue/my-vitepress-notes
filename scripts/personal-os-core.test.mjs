@@ -654,7 +654,8 @@ test('desktop components use local Tabler icons and native pointer interactions'
   assert.match(manager, /item\.id === 'ask'/)
   assert.match(manager, /<WikiAsk\s+v-if="item\.id === 'ask'"\s+embedded\s*\/>/)
   assert.match(manager, /window-manager__preview--ask/)
-  assert.match(manager, /item\.entry\.window\.summary/)
+  assert.match(manager, /<p class="window-manager__summary">\{\{ item\.entry\.window\.summary \}\}<\/p>/)
+  assert.match(manager, /\.window-manager__summary\s*\{[^}]*white-space:\s*pre-line;/)
   assert.match(manager, /item\.entry\.window\.linkLabel/)
   assert.doesNotMatch(manager, /summaryFor|go-tiny-claw/)
 

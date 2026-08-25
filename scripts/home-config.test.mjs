@@ -37,6 +37,15 @@ test('home config rejects unknown icons, fields, unsafe links, and invalid posit
   }
 })
 
+test('home config preserves line breaks inside window summaries', () => {
+  const config = structuredClone(DEFAULT_HOME_CONFIG)
+  config.desktop.entries.find(({ id }) => id === 'about').window.summary = '第一行\n第二行'
+  assert.equal(
+    normalizeHomeConfig(config).desktop.entries.find(({ id }) => id === 'about').window.summary,
+    '第一行\n第二行',
+  )
+})
+
 test('home configuration client validates D1 data and falls back to static content', async () => {
   const remote = await loadHomeConfiguration({
     fetchImpl: async (path) => {
