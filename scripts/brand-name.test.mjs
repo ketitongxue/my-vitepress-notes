@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { resolve } from 'node:path'
@@ -16,7 +17,7 @@ const brandedFiles = [
   'README.md',
   'docs/index.md',
   'docs/.vitepress/config.mts',
-  'worker/deepseek.mjs',
+  'shared/home-config.mjs',
 ]
 
 const trackedFiles = execFileSync('git', ['ls-files', '-z'], {
@@ -24,6 +25,7 @@ const trackedFiles = execFileSync('git', ['ls-files', '-z'], {
   encoding: 'utf8',
 }).split('\0').filter((file) => (
   file
+  && existsSync(resolve(projectRoot, file))
   && file !== 'scripts/brand-name.test.mjs'
   && !file.startsWith('docs/superpowers/')
 ))

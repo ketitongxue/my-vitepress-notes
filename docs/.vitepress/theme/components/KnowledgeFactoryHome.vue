@@ -2,7 +2,6 @@
 import { markRaw, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import BottomOsNavigation from './BottomOsNavigation.vue'
 import DesktopSurface from './DesktopSurface.vue'
-import KnowledgePortfolio from './KnowledgePortfolio.vue'
 import MacbookBoot from './MacbookBoot.vue'
 import {
   hasCompletedHomeEntry, hashForOsView, initialOsView, normalizeOsHash,
@@ -69,10 +68,6 @@ async function requestSystem() {
 
 async function resetViewScroll(view) {
   await nextTick()
-  if (view === 'knowledge') {
-    document.getElementById('personal-os-knowledge')?.scrollIntoView({ block: 'start' })
-    return
-  }
   window.scrollTo(0, 0)
 }
 
@@ -158,15 +153,6 @@ onBeforeUnmount(() => {
     >
       <DesktopSurface :configuration="homeConfiguration.config" />
     </main>
-    <section
-      v-show="!hydrated || activeView === 'knowledge'"
-      id="personal-os-knowledge"
-      class="knowledge-factory-page"
-      aria-label="知识库视图"
-      data-os-view="knowledge"
-    >
-      <KnowledgePortfolio />
-    </section>
     <section
       v-show="!hydrated || activeView === 'system'"
       class="personal-system-view"
