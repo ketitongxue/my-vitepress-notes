@@ -8,8 +8,6 @@ function withNoStore(response) {
   })
 }
 
-export { DailyQuota } from './daily-quota.mjs'
-import { handleAsk } from './ask.mjs'
 import { handleHomeAdmin, handlePublicHomeConfig } from './home-config.mjs'
 import {
   handlePersonalOsAdmin,
@@ -32,7 +30,6 @@ async function notImplemented() {
 }
 
 export function createWorker({
-  askHandler = notImplemented,
   homePublicHandler = notImplemented,
   homeAdminHandler = notImplemented,
   personalOsPublicHandler = notImplemented,
@@ -42,10 +39,6 @@ export function createWorker({
   return {
     async fetch(request, env, ctx) {
       const { pathname } = new URL(request.url)
-
-      if (pathname === '/api/ask' && request.method === 'POST') {
-        return withNoStore(await askHandler(request, env, ctx))
-      }
 
       if (pathname === '/api/personal-os/config') {
         return personalOsPublicHandler(request, env, ctx)
@@ -78,7 +71,6 @@ export function createWorker({
 }
 
 export default createWorker({
-  askHandler: handleAsk,
   homePublicHandler: handlePublicHomeConfig,
   homeAdminHandler: handleHomeAdmin,
   personalOsPublicHandler: handlePublicPersonalOsConfig,

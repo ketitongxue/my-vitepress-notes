@@ -4,7 +4,7 @@
   "main": "worker/index.mjs",
   "compatibility_date": "2026-07-04",
   "build": {
-    "command": "npm run qa:index"
+    "command": "npm run docs:build:site"
   },
   "assets": {
     "directory": "./docs/.vitepress/dist",
@@ -28,28 +28,5 @@
       "migrations_dir": "migrations"
     }
   ],
-  "ratelimits": [
-    {
-      "name": "QA_RATE_LIMITER",
-      "namespace_id": "20260704",
-      "simple": {
-        "limit": 3,
-        "period": 60
-      }
-    }
-  ],
-  "durable_objects": {
-    "bindings": [
-      {
-        "name": "QA_QUOTA",
-        "class_name": "DailyQuota"
-      }
-    ]
-  },
-  "migrations": [
-    {
-      "tag": "v1",
-      "new_sqlite_classes": ["DailyQuota"]
-    }
-  ]
+  "migrations": []
 }

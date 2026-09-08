@@ -127,7 +127,7 @@ test('admin rejects stale drafts, invalid origins and unsafe links', async () =>
     body: JSON.stringify({ schemaVersion: 1, baseRevision: 1, config: baseConfig }),
   }), env)
   const unsafeConfig = structuredClone(baseConfig)
-  unsafeConfig.cards.find(({ id }) => id === 'knowledge-products').links[0].href = 'javascript:alert(1)'
+  unsafeConfig.cards.find(({ id }) => id === 'knowledge-products').links = [{ label: 'invalid', href: 'javascript:alert(1)' }]
   const unsafe = await handler(request('/api/admin/personal-os/config', {
     method: 'PUT',
     body: { schemaVersion: 1, baseRevision: 1, config: unsafeConfig },

@@ -16,21 +16,12 @@ const emit = defineEmits(['select'])
     </button>
     <button
       type="button"
-      data-os-nav-target="knowledge"
-      :class="{ 'is-active': activeView === 'knowledge' }"
-      :aria-current="activeView === 'knowledge' ? 'page' : undefined"
-      @click="emit('select', 'knowledge')"
-    >
-      02 知识库
-    </button>
-    <button
-      type="button"
       data-os-nav-target="system"
       :class="{ 'is-active': activeView === 'system' }"
       :aria-current="activeView === 'system' ? 'page' : undefined"
       @click="emit('select', 'system')"
     >
-      03 我的 OS
+      02 我的 OS
     </button>
   </nav>
 </template>

@@ -7,19 +7,9 @@ test('Wrangler schema and assets directory use explicit relative paths', async (
 
   assert.equal(config.$schema, './node_modules/wrangler/config-schema.json')
   assert.equal(config.assets.directory, './docs/.vitepress/dist')
-  assert.equal(config.build.command, 'npm run qa:index')
-})
-
-test('Wrangler configures the exact QA rate and daily quota limits', async () => {
-  const config = JSON.parse(await readFile(new URL('../wrangler.jsonc', import.meta.url)))
-
-  assert.deepEqual(config.ratelimits, [{
-    name: 'QA_RATE_LIMITER',
-    namespace_id: '20260704',
-    simple: { limit: 3, period: 60 },
-  }])
-  assert.equal(config.vars.DAILY_PER_IP_LIMIT, '5')
-  assert.equal(config.vars.DAILY_GLOBAL_LIMIT, '10')
+  assert.equal(config.build.command, 'npm run docs:build:site')
+  assert.equal(config.ratelimits, undefined)
+  assert.equal(config.durable_objects, undefined)
 })
 
 test('main test script runs Worker tests and Wrangler is pinned', async () => {
@@ -27,13 +17,9 @@ test('main test script runs Worker tests and Wrangler is pinned', async () => {
     await readFile(new URL('../package.json', import.meta.url)),
   )
 
-  assert.match(packageJson.scripts.test, /node --test worker\/\*\.test\.mjs/)
-  assert.match(packageJson.scripts.test, /npm run wiki:validate/)
-  assert.doesNotMatch(packageJson.scripts.test, /finance:validate/)
-  assert.equal(
-    packageJson.scripts['worker:dev'],
-    'npm run content:sync && npm run qa:index && wrangler dev',
-  )
+  assert.match(packageJson.scripts.test, /worker\/index\.test\.mjs/)
+  assert.doesNotMatch(packageJson.scripts.test, /wiki:validate|qa:index|content:sync/)
+  assert.equal(packageJson.scripts['worker:dev'], 'wrangler dev')
   assert.equal(packageJson.scripts.deploy, 'npm run build && wrangler deploy')
   assert.doesNotMatch(packageJson.scripts.build, /npm run build/)
   assert.equal(packageJson.devDependencies.wrangler, '4.107.0')

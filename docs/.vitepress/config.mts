@@ -1,12 +1,10 @@
 import { defineConfig } from 'vitepress'
 
-import { knowledgeSidebars } from './knowledge-navigation.mjs'
-
 const personalSiteAccessPreflight = String.raw`(function () {
   var root = document.documentElement
   var isHomepage = location.pathname === '/' || location.pathname === '/index.html'
   if (!isHomepage) return
-  var view = location.hash === '#knowledge' ? 'knowledge' : location.hash === '#system' ? 'system' : 'home'
+  var view = location.hash === '#system' ? 'system' : 'home'
   root.dataset.personalOsView = view
   function syncNavigationClaim() {
     var buttons = document.querySelectorAll('[data-os-nav-target]')
@@ -58,30 +56,8 @@ export default defineConfig({
     }
   },
   themeConfig: {
-    nav: [
-      { text: '知识库', link: '/wiki/' },
-      {
-        text: '工具',
-        items: [
-          { text: 'LLM Wiki Skill', link: '/llm-wiki/' }
-        ]
-      },
-      { text: '问答', link: '/ask/' },
-    ],
-    sidebar: {
-      '/llm-wiki/': [
-        {
-          text: 'LLM Wiki Skill',
-          items: [
-            { text: '概览', link: '/llm-wiki/' },
-            { text: '原理', link: '/llm-wiki/principles' },
-            { text: '构建知识库', link: '/llm-wiki/build' },
-            { text: '安装与使用', link: '/llm-wiki/install' }
-          ]
-        }
-      ],
-      ...knowledgeSidebars
-    },
+    nav: [],
+    sidebar: {},
     search: {
       provider: 'local',
       options: {

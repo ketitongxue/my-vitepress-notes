@@ -1,4 +1,4 @@
-export const OS_VIEWS = Object.freeze(['home', 'knowledge', 'system'])
+export const OS_VIEWS = Object.freeze(['home', 'system'])
 
 export function normalizeOsHash(hash = '') {
   const candidate = String(hash).replace(/^#/, '')
