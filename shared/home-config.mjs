@@ -155,6 +155,7 @@ export const DEFAULT_HOME_CONFIG = deepFreeze(normalizeHomeConfig({
   desktop: {
     brand: 'AI 纪元',
     menuLinks: [
+      { label: '知识库', href: 'https://ketitongxue.github.io/ai-era-html-docs/' },
       { label: 'Now', href: '#system' },
     ],
     resetLabel: '重置桌面位置', // Retained for compatibility with existing D1 configuration records; the desktop no longer renders this control.
@@ -163,6 +164,7 @@ export const DEFAULT_HOME_CONFIG = deepFreeze(normalizeHomeConfig({
       { id: 'projects', label: '项目档案', icon: 'folder', position: { x: 176, y: 84 }, window: { title: '项目档案', summary: '记录我把 AI Agent、工具调用与工程化实践做成可运行系统的过程。', href: '/projects/go-tiny-claw', linkLabel: '查看 go-tiny-claw 项目介绍 →' } },
       { id: 'about', label: '关于我', icon: 'file', position: { x: 80, y: 360 }, window: { title: '关于我', summary: 'JuZX 的角色、关注方向与当前实践。联系方式已整合至此处。', href: 'https://github.com/ketitongxue', linkLabel: 'Github:ketitongxue' } },
       { id: 'github', label: 'GitHub', icon: 'world', position: { x: 80, y: 452 }, window: { title: 'GitHub', summary: '查看公开项目与提交记录。', href: 'https://github.com/ketitongxue' } },
+      { id: 'html-knowledge', label: '知识库', icon: 'folder', position: { x: 176, y: 176 }, window: { title: '知识库', summary: 'AI 与实践的 HTML 文档，持续整理与更新。', href: 'https://ketitongxue.github.io/ai-era-html-docs/', linkLabel: '打开知识库 →' } },
     ],
   },
   exit: {

@@ -11,7 +11,7 @@ test('static home configuration is normalized, immutable, and complete', () => {
   assert.equal(DEFAULT_HOME_CONFIG.boot.lines[3], '$ open ai-era')
   assert.equal(DEFAULT_HOME_CONFIG.boot.launchLabel, '启动 AI 纪元')
   assert.equal(DEFAULT_HOME_CONFIG.desktop.brand, 'AI 纪元')
-  assert.equal(DEFAULT_HOME_CONFIG.desktop.entries.length, 4)
+  assert.equal(DEFAULT_HOME_CONFIG.desktop.entries.length, 5)
   assert.equal(DEFAULT_HOME_CONFIG.desktop.menuLinks.some(({ href }) => href === '/about'), false)
   assert.equal(DEFAULT_HOME_CONFIG.desktop.entries.some(({ id }) => id === 'contact'), false)
   const about = DEFAULT_HOME_CONFIG.desktop.entries.find(({ id }) => id === 'about')
