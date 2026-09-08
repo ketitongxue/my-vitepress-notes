@@ -15,6 +15,18 @@ import {
 } from './personal-os-config.mjs'
 import { handlePrivateMarkdown } from './private-markdown.mjs'
 
+// Kept as an inert compatibility export for already-created Durable Objects.
+// Public Q&A no longer routes requests to this class, but Cloudflare requires
+// a class that has existing instances to remain exported until those instances
+// are explicitly retired.
+export class DailyQuota {
+  constructor() {}
+
+  fetch() {
+    return new Response('Not found', { status: 404 })
+  }
+}
+
 function notFound() {
   return Response.json(
     { error: 'Not found' },
