@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, ref } from 'vue'
+import KnowledgeLibrary from './KnowledgeLibrary.vue'
 import {
   closeWindow,
   focusWindow,
@@ -227,17 +228,20 @@ onBeforeUnmount(() => {
       <div
         class="window-manager__preview"
       >
-        <p class="window-manager__summary">{{ item.entry.window.summary }}</p>
-        <a
-          v-if="item.entry.window.href"
-          :href="item.entry.window.href"
-          :target="isExternalHref(item.entry.window.href) ? '_blank' : undefined"
-          :rel="isExternalHref(item.entry.window.href) ? 'noopener noreferrer' : undefined"
-        >{{ item.entry.window.linkLabel || `前往 ${titleFor(item)}` }}</a>
-        <div v-else class="window-manager__status">
-          <span>整理中</span>
-          <p>内容持续完善</p>
-        </div>
+        <KnowledgeLibrary v-if="item.entry.id === 'html-knowledge'" />
+        <template v-else>
+          <p class="window-manager__summary">{{ item.entry.window.summary }}</p>
+          <a
+            v-if="item.entry.window.href"
+            :href="item.entry.window.href"
+            :target="isExternalHref(item.entry.window.href) ? '_blank' : undefined"
+            :rel="isExternalHref(item.entry.window.href) ? 'noopener noreferrer' : undefined"
+          >{{ item.entry.window.linkLabel || `前往 ${titleFor(item)}` }}</a>
+          <div v-else class="window-manager__status">
+            <span>整理中</span>
+            <p>内容持续完善</p>
+          </div>
+        </template>
       </div>
 
       <span
