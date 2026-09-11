@@ -12,7 +12,7 @@
     "deploy": "npm run build && wrangler deploy",
     "test:factory": "node --test scripts/site-smoke.test.mjs",
     "test:theme": "node scripts/theme-validator.test.mjs && node --test scripts/theme-color.test.mjs && node scripts/check-theme.mjs",
-    "test": "npm run test:factory && node --test scripts/site-smoke.test.mjs scripts/brand-name.test.mjs scripts/home-config.test.mjs scripts/knowledge-library.test.mjs && node --test worker/access-auth.test.mjs worker/home-config.test.mjs worker/index.test.mjs worker/personal-os-config.test.mjs worker/private-markdown.test.mjs worker/wrangler-config.test.mjs && npm run test:theme && npm run docs:build:site"
+    "test": "npm run test:factory && node --test scripts/site-smoke.test.mjs scripts/brand-name.test.mjs scripts/home-config.test.mjs scripts/knowledge-library.test.mjs scripts/personal-os-migrations.test.mjs && node --test worker/access-auth.test.mjs worker/home-config.test.mjs worker/index.test.mjs worker/personal-os-config.test.mjs worker/private-markdown.test.mjs worker/wrangler-config.test.mjs && npm run test:theme && npm run docs:build:site"
   },
   "devDependencies": {
     "markdown-it": "^14.3.0",

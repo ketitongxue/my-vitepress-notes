@@ -53,6 +53,10 @@ Trust 中创建 Self-hosted Access application，同时保护：
 issuer、audience 和 `ADMIN_EMAIL`，不能只依赖页面地址隐藏。保存采用 `baseRevision`
 乐观锁；发布新 revision 后，旧浏览器布局会自动失效并以新版默认位置重新初始化。
 
+历史版本的配置校验失败时，管理页保留版本号和说明并标注“配置无效”，不允许载入、发布或
+回滚该版本，其余有效版本仍可管理。`0014_repair_personal_os_connections.sql` 为迁移
+0011 遗留的悬空连线追加修复版本，保留原始历史；它不会覆盖后续人工草稿或发布。
+
 `01 主页` 使用同一个 D1 数据库中的独立 `home_config_versions` 版本表。公开接口为
 `/api/home/config`，管理页为 `/admin/home`，可独立保存草稿、发布和回滚启动终端文案、
 顶部菜单、桌面图标/默认位置/窗口内容与退出页文案。主页配置请求失败时会自动回退到仓库内
