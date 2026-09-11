@@ -68,7 +68,7 @@ test('home admin requires authentication and lists normalized versions', async (
 
   assert.equal((await denied(request('/api/admin/home/config'), env)).status, 403)
   const response = await allowed(request('/api/admin/home/config'), env)
-  assert.equal((await response.json()).versions[0].config.desktop.entries[0].id, 'experiments')
+  assert.equal((await response.json()).versions[0].config.desktop.entries[0].id, 'projects')
   assert.equal(response.headers.get('cache-control'), 'no-store')
 })
 

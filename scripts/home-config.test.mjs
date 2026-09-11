@@ -12,6 +12,20 @@ test('static home configuration is normalized, immutable, and complete', () => {
   assert.equal(DEFAULT_HOME_CONFIG.boot.launchLabel, '启动 AI 纪元')
   assert.equal(DEFAULT_HOME_CONFIG.desktop.brand, 'AI 纪元')
   assert.equal(DEFAULT_HOME_CONFIG.desktop.entries.length, 5)
+  assert.deepEqual(
+    DEFAULT_HOME_CONFIG.desktop.entries.map(({ id }) => id),
+    ['projects', 'experiments', 'html-knowledge', 'about', 'github'],
+  )
+  assert.deepEqual(
+    DEFAULT_HOME_CONFIG.desktop.entries.map(({ position }) => position),
+    [
+      { x: 80, y: 84 },
+      { x: 80, y: 192 },
+      { x: 80, y: 300 },
+      { x: 80, y: 408 },
+      { x: 80, y: 516 },
+    ],
+  )
   assert.equal(DEFAULT_HOME_CONFIG.desktop.menuLinks.some(({ href }) => href === '/about'), false)
   assert.equal(DEFAULT_HOME_CONFIG.desktop.entries.some(({ id }) => id === 'contact'), false)
   const about = DEFAULT_HOME_CONFIG.desktop.entries.find(({ id }) => id === 'about')
