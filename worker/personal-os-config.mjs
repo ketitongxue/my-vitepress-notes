@@ -26,7 +26,12 @@ function requireDatabase(env) {
 }
 
 function parseStoredConfig(value) {
-  const parsed = JSON.parse(value)
+  let parsed
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    throw new PersonalOsConfigError('Stored configuration is not valid JSON')
+  }
   return normalizePersonalOsConfig(parsed)
 }
 
@@ -58,15 +63,22 @@ function verifyMutationOrigin(request, env) {
 }
 
 function versionRecord(row) {
-  return {
+  const record = {
     revision: Number(row.revision),
     schemaVersion: Number(row.schema_version),
-    config: parseStoredConfig(row.config_json),
+    config: null,
     note: row.note ?? '',
     createdBy: row.created_by,
     createdAt: row.created_at,
     publishedAt: row.published_at ?? null,
   }
+  try {
+    record.config = parseStoredConfig(row.config_json)
+  } catch (caught) {
+    if (!(caught instanceof PersonalOsConfigError)) throw caught
+    record.validationError = caught.message
+  }
+  return record
 }
 
 export async function handlePublicPersonalOsConfig(request, env) {
@@ -172,15 +184,25 @@ export function createPersonalOsAdminHandler({ authenticate = authenticateAdmin 
       const revision = Number(body.value?.revision)
       if (!Number.isSafeInteger(revision) || revision < 1) return error('INVALID_REVISION', 400)
       try {
+        const row = await db.prepare(`
+          SELECT config_json
+          FROM personal_os_config_versions
+          WHERE revision = ?
+            AND revision = (SELECT MAX(revision) FROM personal_os_config_versions)
+        `).bind(revision).first()
+        if (!row) return error('REVISION_CONFLICT', 409)
+        parseStoredConfig(row.config_json)
         const result = await db.prepare(`
           UPDATE personal_os_config_versions
           SET published_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
           WHERE revision = ?
             AND revision = (SELECT MAX(revision) FROM personal_os_config_versions)
-        `).bind(revision).run()
+            AND config_json = ?
+        `).bind(revision, row.config_json).run()
         if (result.meta?.changes !== 1) return error('REVISION_CONFLICT', 409)
         return json({ revision, published: true })
-      } catch {
+      } catch (caught) {
+        if (caught instanceof PersonalOsConfigError) return error('INVALID_CONFIG', 400, caught.message)
         return error('PERSONAL_OS_DB_UNAVAILABLE', 503)
       }
     }
@@ -193,17 +215,25 @@ export function createPersonalOsAdminHandler({ authenticate = authenticateAdmin 
       const revision = Number(body.value?.revision)
       if (!Number.isSafeInteger(revision) || revision < 1) return error('INVALID_REVISION', 400)
       try {
+        const source = await db.prepare(`
+          SELECT config_json
+          FROM personal_os_config_versions
+          WHERE revision = ?
+        `).bind(revision).first()
+        if (!source) return error('REVISION_NOT_FOUND', 404)
+        parseStoredConfig(source.config_json)
         const row = await db.prepare(`
           INSERT INTO personal_os_config_versions
             (schema_version, config_json, note, created_by, published_at)
           SELECT schema_version, config_json, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
           FROM personal_os_config_versions
-          WHERE revision = ?
+          WHERE revision = ? AND config_json = ?
           RETURNING revision
-        `).bind(`Rollback to revision ${revision}`, auth.identity, revision).first()
-        if (!row) return error('REVISION_NOT_FOUND', 404)
+        `).bind(`Rollback to revision ${revision}`, auth.identity, revision, source.config_json).first()
+        if (!row) return error('REVISION_CONFLICT', 409)
         return json({ revision: Number(row.revision), rolledBackFrom: revision, published: true }, { status: 201 })
-      } catch {
+      } catch (caught) {
+        if (caught instanceof PersonalOsConfigError) return error('INVALID_CONFIG', 400, caught.message)
         return error('PERSONAL_OS_DB_UNAVAILABLE', 503)
       }
     }
