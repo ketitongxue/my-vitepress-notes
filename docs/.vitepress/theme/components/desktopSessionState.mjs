@@ -1,6 +1,8 @@
 import { constrainIconPosition, constrainWindow } from './desktopGeometry.mjs'
 
-export const DESKTOP_SESSION_KEY = 'juzx-os:v1:desktop-session'
+// Bump the session schema so existing two-column icon positions do not mask the
+// new one-column defaults on the next visit.
+export const DESKTOP_SESSION_KEY = 'juzx-os:v2:desktop-session'
 const MAX_SESSION_BYTES = 64 * 1024
 
 const finite = (value) => Number.isFinite(value)
@@ -53,7 +55,7 @@ export function serializeDesktopSession(iconPositions, windowState) {
     .map(serializedWindow)
     .filter(Boolean)
   return JSON.stringify({
-    version: 1,
+    version: 2,
     icons,
     windows,
     nextZ: nonNegativeInteger(windowState?.nextZ, 10),
@@ -124,7 +126,7 @@ export function parseDesktopSession(serialized, entries, bounds) {
   } catch {
     return null
   }
-  if (!saved || saved.version !== 1 || !Array.isArray(entries)) return null
+  if (!saved || saved.version !== 2 || !Array.isArray(entries)) return null
   const windows = restoredWindows(saved, entries, bounds)
   const highestZ = windows.reduce((highest, item) => Math.max(highest, item.z), 10)
   return {
