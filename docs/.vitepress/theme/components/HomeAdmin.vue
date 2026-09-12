@@ -13,6 +13,8 @@ const note = ref('')
 
 const latestRevision = computed(() => versions.value[0]?.revision ?? 0)
 const publishedRevision = computed(() => versions.value.find((version) => version.publishedAt)?.revision ?? null)
+const canPublishLatest = computed(() => Boolean(versions.value[0]?.config))
+const invalidVersions = computed(() => versions.value.filter((version) => !version.config))
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -49,7 +51,18 @@ async function loadVersions({ keepEditor = false } = {}) {
   try {
     const payload = await api('/api/admin/home/config')
     versions.value = payload.versions ?? []
-    if (!keepEditor && versions.value[0]?.config) setEditor(versions.value[0].config)
+    if (!keepEditor) {
+      const validVersion = versions.value.find((version) => version.config)
+      if (validVersion) {
+        setEditor(validVersion.config)
+        if (validVersion.revision !== latestRevision.value) {
+          message.value = `最新版本配置无效，已载入 revision ${validVersion.revision}。请保存为新草稿后发布。`
+        }
+      } else {
+        editor.value = ''
+        dirty.value = false
+      }
+    }
   } catch (caught) {
     error.value = caught.message
   } finally {
@@ -84,6 +97,10 @@ async function saveDraft() {
 }
 
 async function publishLatest() {
+  if (!canPublishLatest.value) {
+    error.value = '最新版本配置无效，请先保存有效的新草稿。'
+    return
+  }
   if (dirty.value) {
     error.value = '请先保存当前修改，再发布。'
     return
@@ -106,6 +123,7 @@ async function publishLatest() {
 }
 
 async function rollback(version) {
+  if (!version.config) return
   if (!window.confirm(`确定回滚到 revision ${version.revision} 吗？`)) return
   saving.value = true
   error.value = ''
@@ -126,6 +144,7 @@ async function rollback(version) {
 }
 
 function useVersion(version) {
+  if (!version.config) return
   setEditor(version.config)
   message.value = `已载入 revision ${version.revision}，修改后可保存为新草稿。`
 }
@@ -160,6 +179,9 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnUnsaved))
 
     <p v-if="message" class="home-admin__notice" role="status">{{ message }}</p>
     <p v-if="error" class="home-admin__error" role="alert">{{ error }}</p>
+    <p v-if="invalidVersions.length" class="home-admin__error" role="status">
+      有 {{ invalidVersions.length }} 个历史版本的配置无效，已保留版本记录并停用其载入、发布和回滚操作。有效版本仍可正常使用。
+    </p>
 
     <div class="home-admin__workspace">
       <section class="home-admin__editor" aria-labelledby="home-config-editor-title">
@@ -185,7 +207,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnUnsaved))
         </label>
         <div class="home-admin__actions">
           <button type="button" :disabled="loading || saving" @click="saveDraft">保存草稿</button>
-          <button class="is-primary" type="button" :disabled="loading || saving || !latestRevision" @click="publishLatest">
+          <button class="is-primary" type="button" :disabled="loading || saving || !canPublishLatest" @click="publishLatest">
             发布最新草稿
           </button>
         </div>
@@ -206,10 +228,11 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnUnsaved))
               <span v-if="version.publishedAt">已发布</span>
             </div>
             <p>{{ version.note || '无版本说明' }}</p>
+            <p v-if="version.validationError" class="home-admin__invalid-version">配置无效：{{ version.validationError }}</p>
             <time>{{ version.createdAt }}</time>
             <div class="home-admin__version-actions">
-              <button type="button" @click="useVersion(version)">载入</button>
-              <button type="button" :disabled="saving" @click="rollback(version)">回滚到此版本</button>
+              <button type="button" :disabled="saving || !version.config" @click="useVersion(version)">载入</button>
+              <button type="button" :disabled="saving || !version.config" @click="rollback(version)">回滚到此版本</button>
             </div>
           </li>
         </ol>
@@ -371,6 +394,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnUnsaved))
 .home-admin__versions li > div:first-child { display: flex; justify-content: space-between; gap: 8px; }
 .home-admin__versions li > div:first-child span { color: #28734b; font-size: 12px; }
 .home-admin__versions p { margin: 8px 0 4px; color: #69707d; font-size: 13px; }
+.home-admin__versions p.home-admin__invalid-version { color: #9b3e23; overflow-wrap: anywhere; }
 
 @media (max-width: 800px) {
   .home-admin { padding: 20px 16px 40px; }
