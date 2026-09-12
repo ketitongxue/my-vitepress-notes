@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref } from 'vue'
 import KnowledgeLibrary from './KnowledgeLibrary.vue'
+import ProjectIntroduction from './ProjectIntroduction.vue'
 import {
   closeWindow,
   focusWindow,
@@ -39,6 +40,11 @@ function titleFor(item) {
 
 function isExternalHref(href) {
   return typeof href === 'string' && href.startsWith(['https:', '', ''].join('/'))
+}
+
+function hasInlineProject(href) {
+  return typeof href === 'string'
+    && /^(?:https:\/\/juzxailab\.com)?\/projects\/go-tiny-claw(?:\.html)?\/?$/.test(href)
 }
 
 function updateState(state) {
@@ -255,9 +261,17 @@ onBeforeUnmount(() => {
       <span class="window-manager__sparkle" aria-hidden="true">✦</span>
       <div
         class="window-manager__preview"
-        :class="{ 'window-manager__preview--knowledge': item.entry.id === 'html-knowledge' }"
+        :class="{
+          'window-manager__preview--knowledge': item.entry.id === 'html-knowledge',
+          'window-manager__preview--project': hasInlineProject(item.entry.window.href),
+        }"
       >
         <KnowledgeLibrary v-if="item.entry.id === 'html-knowledge'" @activate="focus(item.id)" />
+        <ProjectIntroduction
+          v-else-if="hasInlineProject(item.entry.window.href)"
+          :summary="item.entry.window.summary"
+          :link-label="item.entry.window.linkLabel || `前往 ${titleFor(item)}`"
+        />
         <template v-else>
           <p class="window-manager__summary">{{ item.entry.window.summary }}</p>
           <a
@@ -464,6 +478,18 @@ button.window-manager__traffic-control {
   min-height: 0;
 }
 
+.window-manager__preview--project {
+  display: flex;
+  padding: 0;
+  overflow: hidden;
+}
+
+.window-manager__preview--project > * {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
 .window-manager__summary {
   white-space: pre-line;
 }
@@ -620,6 +646,10 @@ button.window-manager__traffic-control {
 
   .window-manager__preview--knowledge {
     margin: 6px 8px 8px;
+    padding: 0;
+  }
+
+  .window-manager__preview--project {
     padding: 0;
   }
 
