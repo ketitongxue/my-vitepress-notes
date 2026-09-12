@@ -1,6 +1,37 @@
 export const libraryUrl = 'https://ketitongxue.github.io/ai-era-html-docs/'
 export const libraryTreeUrl = 'https://api.github.com/repos/ketitongxue/ai-era-html-docs/git/trees/main?recursive=1'
 
+export function isLibraryRootHref(href) {
+  if (typeof href !== 'string' || /[\\\u0000-\u0020]/.test(href)) return false
+  if (!/^https:\/\/[^/?#@]+(?:[/?#]|$)/i.test(href)) return false
+  try {
+    const url = new URL(href)
+    return url.origin === 'https://ketitongxue.github.io'
+      && !url.username && !url.password
+      && ['/ai-era-html-docs', '/ai-era-html-docs/', '/ai-era-html-docs/index.html'].includes(url.pathname)
+  } catch {
+    return false
+  }
+}
+
+export function observeEmbeddedFrameFocus({ windowLike, getFrame, activate }) {
+  let pendingFrame = null
+  const handleBlur = () => {
+    if (pendingFrame !== null) windowLike.cancelAnimationFrame(pendingFrame)
+    pendingFrame = windowLike.requestAnimationFrame(() => {
+      pendingFrame = null
+      const frame = getFrame()
+      if (frame && windowLike.document.activeElement === frame) activate()
+    })
+  }
+  windowLike.addEventListener('blur', handleBlur)
+  return () => {
+    windowLike.removeEventListener('blur', handleBlur)
+    if (pendingFrame !== null) windowLike.cancelAnimationFrame(pendingFrame)
+    pendingFrame = null
+  }
+}
+
 function categoryFor(path, title) {
   const folders = path.slice(5).split('/')
   if (folders.length > 1) return folders[0]

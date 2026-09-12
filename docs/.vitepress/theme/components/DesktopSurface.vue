@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import DesktopIcon from './DesktopIcon.vue'
 import WindowManager from './WindowManager.vue'
+import { isLibraryRootHref } from './knowledgeLibrary.mjs'
 import { constrainIconPosition, resolveSurfaceBounds } from './desktopGeometry.mjs'
 import {
   getDesktopSessionStorage,
@@ -18,6 +19,7 @@ const props = defineProps({
   configuration: { type: Object, required: true },
 })
 const desktopEntries = computed(() => props.configuration.desktop.entries)
+const knowledgeEntry = computed(() => desktopEntries.value.find((entry) => entry.id === 'html-knowledge'))
 
 const surface = ref(null)
 const menu = ref(null)
@@ -142,9 +144,12 @@ onBeforeUnmount(() => {
     <header ref="menu" class="desktop-surface__menu">
       <a class="desktop-surface__brand is-active" href="#home" aria-current="page">{{ configuration.desktop.brand }}</a>
       <nav aria-label="AI 纪元菜单">
-        <a v-for="link in configuration.desktop.menuLinks" :key="`${link.label}-${link.href}`" :href="link.href">
-          {{ link.label }}
-        </a>
+        <template v-for="link in configuration.desktop.menuLinks" :key="`${link.label}-${link.href}`">
+          <button v-if="knowledgeEntry && isLibraryRootHref(link.href)" type="button" @click="openEntry(knowledgeEntry)">
+            {{ link.label }}
+          </button>
+          <a v-else :href="link.href">{{ link.label }}</a>
+        </template>
       </nav>
       <time :datetime="clock">{{ clock }}</time>
     </header>
@@ -236,18 +241,26 @@ onBeforeUnmount(() => {
   gap: 16px;
 }
 
-.desktop-surface__menu a {
+.desktop-surface__menu :is(a, button) {
   position: relative;
   color: inherit;
   text-decoration: none;
   transition: color 180ms ease, opacity 180ms ease;
 }
 
-.desktop-surface__menu nav a {
+.desktop-surface__menu button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.desktop-surface__menu nav :is(a, button) {
   color: rgb(244 248 252 / 78%);
 }
 
-.desktop-surface__menu nav a::after {
+.desktop-surface__menu nav :is(a, button)::after {
   position: absolute;
   right: 20%;
   bottom: -5px;
@@ -261,18 +274,18 @@ onBeforeUnmount(() => {
   transition: opacity 180ms ease, transform 180ms ease;
 }
 
-.desktop-surface__menu nav a:hover,
-.desktop-surface__menu nav a:focus-visible {
+.desktop-surface__menu nav :is(a, button):hover,
+.desktop-surface__menu nav :is(a, button):focus-visible {
   color: #fffdf6;
 }
 
-.desktop-surface__menu nav a:hover::after,
-.desktop-surface__menu nav a:focus-visible::after {
+.desktop-surface__menu nav :is(a, button):hover::after,
+.desktop-surface__menu nav :is(a, button):focus-visible::after {
   opacity: .85;
   transform: scaleX(1);
 }
 
-.desktop-surface__menu a:focus-visible {
+.desktop-surface__menu :is(a, button):focus-visible {
   outline: 3px solid #f4d758;
   outline-offset: 2px;
 }
