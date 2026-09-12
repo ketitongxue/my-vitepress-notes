@@ -327,7 +327,7 @@ onBeforeUnmount(() => {
   color: #1e2430;
   font: inherit;
   cursor: pointer;
-  animation: boot-line-in 350ms ease-out both;
+  animation: boot-line-in 350ms ease-out backwards;
   transition: transform 180ms ease, box-shadow 180ms ease;
 }
 
