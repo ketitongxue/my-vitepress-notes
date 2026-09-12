@@ -194,6 +194,7 @@ onBeforeUnmount(() => {
         :src="selectedArticle.href"
         :title="`${selectedArticle.title} · 知识库阅读内容`"
         sandbox="allow-scripts allow-same-origin allow-downloads"
+        allow="clipboard-write"
         referrerpolicy="no-referrer"
         @load="finishReaderAttempt"
         @error="finishReaderAttempt"
