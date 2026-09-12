@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { IconFileText, IconFolder, IconTerminal2, IconWorld } from '@tabler/icons-vue'
 import {
   consumeIconDoubleClick,
@@ -13,6 +13,8 @@ const props = defineProps({
   entry: { type: Object, required: true },
   position: { type: Object, required: true },
   bounds: { type: Object, required: true },
+  active: { type: Boolean, default: false },
+  order: { type: Number, default: 0 },
 })
 
 const emit = defineEmits(['move', 'open'])
@@ -24,6 +26,7 @@ const iconComponents = Object.freeze({
   world: IconWorld,
 })
 const iconComponent = computed(() => iconComponents[props.entry.icon] ?? IconFileText)
+const isDragging = ref(false)
 
 let gesture = null
 let activationState = createIconActivationState()
@@ -55,6 +58,7 @@ function handlePointerMove(event) {
 
 function moveGesture() {
   gesture.dragged = true
+  isDragging.value = true
   emit('move', {
     id: props.entry.id,
     position: {
@@ -82,6 +86,7 @@ function handlePointerUp(event) {
   if (dragged && !gesture.dragged) moveGesture()
   releaseCapture(event.currentTarget, gesture.pointerId)
   gesture = null
+  isDragging.value = false
   if (activation.openTouch) open()
 }
 
@@ -89,6 +94,7 @@ function handlePointerCancel(event) {
   if (!gesture || event.pointerId !== gesture.pointerId) return
   releaseCapture(event.currentTarget, gesture.pointerId)
   gesture = null
+  isDragging.value = false
 }
 
 function open() {
@@ -112,6 +118,8 @@ function handleKeydown(event) {
   <button
     type="button"
     class="desktop-icon"
+    :class="{ 'is-active': active, 'is-dragging': isDragging }"
+    :style="{ '--icon-order': order }"
     :data-icon-kind="entry.icon"
     @dblclick="handleDoubleClick"
     @keydown="handleKeydown"
@@ -119,10 +127,11 @@ function handleKeydown(event) {
     @pointermove="handlePointerMove"
     @pointerup="handlePointerUp"
     @pointercancel="handlePointerCancel"
+    @lostpointercapture="handlePointerCancel"
     @dragstart.prevent
   >
-    <span class="desktop-icon__tile" aria-hidden="true">
-      <component :is="iconComponent" />
+    <span class="desktop-icon__artwork" aria-hidden="true">
+      <span class="desktop-icon__tile"><component :is="iconComponent" /></span>
     </span>
     <span class="desktop-icon__label">{{ entry.label }}</span>
   </button>
@@ -147,24 +156,55 @@ function handleKeydown(event) {
   touch-action: none;
   user-select: none;
   cursor: default;
-  transition: transform 180ms cubic-bezier(.16, 1, .3, 1), background-color 180ms ease,
-    border-color 180ms ease;
+  transition: background-color 180ms ease, border-color 180ms ease;
 }
 
-.desktop-icon:hover,
+.desktop-icon:not(.is-dragging):hover,
 .desktop-icon:focus-visible {
   border-color: rgb(255 255 255 / 38%);
   background: rgb(255 255 255 / 9%);
-  transform: translateY(-3px) scale(1.02);
 }
 
-.desktop-icon:active {
-  transform: translateY(-1px) scale(.98);
+.desktop-icon:not(.is-dragging):hover .desktop-icon__tile,
+.desktop-icon:focus-visible .desktop-icon__tile {
+  transform: translateY(-4px) rotate(-3deg) scale(1.04);
+}
+
+.desktop-icon:not(.is-dragging):active .desktop-icon__tile {
+  transform: translateY(-1px) scale(.96);
+}
+
+.desktop-icon.is-dragging {
+  cursor: grabbing;
+}
+
+.desktop-icon.is-dragging .desktop-icon__tile {
+  transform: none;
+  transition: none;
 }
 
 .desktop-icon:focus-visible {
   outline: 3px solid #f4d758;
   outline-offset: 2px;
+}
+
+.desktop-icon__artwork {
+  display: block;
+}
+
+.desktop-icon.is-active .desktop-icon__artwork,
+.desktop-icon.is-active .desktop-icon__label {
+  animation: desktop-icon-enter 580ms cubic-bezier(.16, 1, .3, 1) both;
+  animation-delay: calc(90ms + var(--icon-order) * 85ms);
+}
+
+.desktop-icon.is-active .desktop-icon__label {
+  animation-delay: calc(145ms + var(--icon-order) * 85ms);
+}
+
+@keyframes desktop-icon-enter {
+  from { opacity: 0; transform: translateY(16px) scale(.84); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .desktop-icon__tile {
@@ -179,10 +219,10 @@ function handleKeydown(event) {
   background: linear-gradient(145deg, #fffdf6, #e8f1fb);
   color: #2d6fb5;
   box-shadow: 0 7px 15px rgb(20 65 110 / 22%), inset 0 1px rgb(255 255 255 / 72%);
-  transition: box-shadow 180ms ease;
+  transition: box-shadow 220ms ease, transform 300ms cubic-bezier(.16, 1, .3, 1);
 }
 
-.desktop-icon:hover .desktop-icon__tile,
+.desktop-icon:not(.is-dragging):hover .desktop-icon__tile,
 .desktop-icon:focus-visible .desktop-icon__tile {
   box-shadow: 0 10px 19px rgb(20 65 110 / 28%), inset 0 1px rgb(255 255 255 / 82%);
 }
@@ -263,8 +303,13 @@ function handleKeydown(event) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .desktop-icon {
+  .desktop-icon,
+  .desktop-icon__artwork,
+  .desktop-icon__tile,
+  .desktop-icon__label {
+    animation: none !important;
     transition: none !important;
+    transform: none !important;
   }
 }
 </style>
