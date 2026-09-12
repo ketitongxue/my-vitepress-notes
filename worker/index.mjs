@@ -14,6 +14,7 @@ import {
   handlePublicPersonalOsConfig,
 } from './personal-os-config.mjs'
 import { handlePrivateMarkdown } from './private-markdown.mjs'
+import { handleKnowledgeTree } from './knowledge-library.mjs'
 
 // Kept as an inert compatibility export for already-created Durable Objects.
 // Public Q&A no longer routes requests to this class, but Cloudflare requires
@@ -47,10 +48,15 @@ export function createWorker({
   personalOsPublicHandler = notImplemented,
   personalOsAdminHandler = notImplemented,
   privateMarkdownHandler = notImplemented,
+  knowledgeTreeHandler = notImplemented,
 } = {}) {
   return {
     async fetch(request, env, ctx) {
       const { pathname } = new URL(request.url)
+
+      if (pathname === '/api/knowledge/tree') {
+        return knowledgeTreeHandler(request, env, ctx)
+      }
 
       if (pathname === '/api/personal-os/config') {
         return personalOsPublicHandler(request, env, ctx)
@@ -88,4 +94,5 @@ export default createWorker({
   personalOsPublicHandler: handlePublicPersonalOsConfig,
   personalOsAdminHandler: handlePersonalOsAdmin,
   privateMarkdownHandler: handlePrivateMarkdown,
+  knowledgeTreeHandler: handleKnowledgeTree,
 })
