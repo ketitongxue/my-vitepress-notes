@@ -1,8 +1,38 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { groupLibraryDocuments, isLibraryRootHref, libraryUrl, observeEmbeddedFrameFocus } from '../docs/.vitepress/theme/components/knowledgeLibrary.mjs'
+import { groupLibraryDocuments, isLibraryRootHref, libraryUrl, loadLibraryDocuments, observeEmbeddedFrameFocus } from '../docs/.vitepress/theme/components/knowledgeLibrary.mjs'
 
 const blob = (path) => ({ path, type: 'blob', mode: '100644' })
+
+test('loads the same-origin directory with cancellation and identifies a usable backup', async () => {
+  const controller = new AbortController()
+  const document = blob('docs/Agent/中文文章.html')
+  for (const source of ['github', 'snapshot']) {
+    const result = await loadLibraryDocuments({
+      signal: controller.signal,
+      fetchImpl: async (url, options) => {
+        assert.equal(url, '/api/knowledge/tree')
+        assert.equal(options.signal, controller.signal)
+        return Response.json({ source, tree: [document] })
+      },
+    })
+    assert.equal(result.groups[0].articles[0].title, '中文文章')
+    assert.equal(result.usingSnapshot, source === 'snapshot')
+  }
+})
+
+test('unavailable, malformed and incomplete directory responses remain retryable errors', async () => {
+  for (const response of [
+    new Response('unavailable', { status: 503 }),
+    new Response('<html>not JSON</html>'),
+    Response.json({ tree: [], truncated: true }),
+    Response.json({ error: 'Not found' }),
+  ]) {
+    await assert.rejects(loadLibraryDocuments({ fetchImpl: async () => response }))
+  }
+  await assert.rejects(loadLibraryDocuments({ fetchImpl: async () => { throw new TypeError('Network error') } }))
+})
+
 test('groups existing topics and prefers explicit folders', () => {
   const groups = groupLibraryDocuments({ tree: [
     blob('docs/01 Claude Code 使用.html'), blob('docs/02 Claude Code 记忆.html'),

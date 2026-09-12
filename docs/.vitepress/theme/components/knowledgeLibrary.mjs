@@ -1,5 +1,15 @@
 export const libraryUrl = 'https://ketitongxue.github.io/ai-era-html-docs/'
-export const libraryTreeUrl = 'https://api.github.com/repos/ketitongxue/ai-era-html-docs/git/trees/main?recursive=1'
+export const libraryTreeUrl = '/api/knowledge/tree'
+
+export async function loadLibraryDocuments({ signal, fetchImpl = fetch } = {}) {
+  const response = await fetchImpl(libraryTreeUrl, { signal })
+  if (!response.ok) throw new Error('Library unavailable')
+  const data = await response.json()
+  return {
+    groups: groupLibraryDocuments(data),
+    usingSnapshot: data.source === 'snapshot',
+  }
+}
 
 export function isLibraryRootHref(href) {
   if (typeof href !== 'string' || /[\\\u0000-\u0020]/.test(href)) return false

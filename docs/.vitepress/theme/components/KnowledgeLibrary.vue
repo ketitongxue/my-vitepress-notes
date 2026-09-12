@@ -1,11 +1,12 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { groupLibraryDocuments, libraryTreeUrl, libraryUrl, observeEmbeddedFrameFocus } from './knowledgeLibrary.mjs'
+import { loadLibraryDocuments, libraryUrl, observeEmbeddedFrameFocus } from './knowledgeLibrary.mjs'
 
 const emit = defineEmits(['activate'])
 const groups = ref([])
 const loading = ref(true)
 const failed = ref(false)
+const usingSnapshot = ref(false)
 const total = computed(() => groups.value.reduce((count, group) => count + group.articles.length, 0))
 const directory = ref(null)
 const directoryHeading = ref(null)
@@ -32,10 +33,11 @@ async function load() {
   failed.value = false
   timer = setTimeout(() => request.abort(), 15000)
   try {
-    const response = await fetch(libraryTreeUrl, { signal: request.signal })
-    if (!response.ok) throw new Error('Library unavailable')
-    const result = groupLibraryDocuments(await response.json())
-    if (!disposed && request === controller) groups.value = result
+    const result = await loadLibraryDocuments({ signal: request.signal })
+    if (!disposed && request === controller) {
+      groups.value = result.groups
+      usingSnapshot.value = result.usingSnapshot
+    }
   } catch {
     if (!disposed && request === controller) failed.value = true
   } finally {
@@ -119,6 +121,7 @@ onBeforeUnmount(() => {
       <p v-else-if="!total">知识库暂时没有已发布的 HTML 文章。</p>
       <template v-else>
         <p class="knowledge-library__count">{{ groups.length }} 个分类 · {{ total }} 篇文章</p>
+        <p v-if="usingSnapshot" role="status">已显示可用目录，最新文章可能稍后更新。<button type="button" @click="load">刷新目录</button></p>
         <section v-for="group in groups" :key="group.title" class="knowledge-library__group">
           <h3>{{ group.title }} <span>{{ group.articles.length }}</span></h3>
           <ul>
