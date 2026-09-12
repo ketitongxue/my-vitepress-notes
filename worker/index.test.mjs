@@ -30,6 +30,22 @@ test('unknown /api/* returns JSON 404 with no-store', async () => {
   assert.equal(response.headers.get('cache-control'), 'no-store')
 })
 
+test('knowledge directory requests route to their dedicated public handler', async () => {
+  const calls = []
+  const worker = createWorker({
+    knowledgeTreeHandler(request, env, ctx) {
+      calls.push([request.method, env, ctx])
+      return Response.json({ tree: [], source: 'live' }, { headers: { 'cache-control': 'public, max-age=300' } })
+    },
+  })
+  const env = { ASSETS: { fetch: assert.fail } }
+  const ctx = { waitUntil: assert.fail }
+  const response = await worker.fetch(new Request('https://example.com/api/knowledge/tree?refresh=1'), env, ctx)
+  assert.deepEqual(await response.json(), { tree: [], source: 'live' })
+  assert.equal(response.headers.get('cache-control'), 'public, max-age=300')
+  assert.deepEqual(calls, [['GET', env, ctx]])
+})
+
 test('Personal OS public and admin API paths route to their dedicated handlers', async () => {
   const calls = []
   const worker = createWorker({
