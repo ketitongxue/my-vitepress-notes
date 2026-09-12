@@ -41,9 +41,32 @@ const emit = defineEmits(['select'])
   box-shadow: 0 8px 24px rgb(25 70 115 / 22%);
   transform: translateX(50%);
   backdrop-filter: blur(12px);
+  isolation: isolate;
+  animation: os-dock-in 550ms cubic-bezier(.16, 1, .3, 1);
+}
+
+.bottom-os-navigation::before {
+  position: absolute;
+  z-index: -1;
+  top: 5px;
+  bottom: 5px;
+  left: 5px;
+  width: calc((100% - 14px) / 2);
+  border: 1px solid rgb(38 101 164 / 24%);
+  border-radius: inherit;
+  background: #2f83d6;
+  box-shadow: inset 0 1px rgb(255 255 255 / 26%);
+  content: "";
+  transition: transform 350ms cubic-bezier(.16, 1, .3, 1);
+}
+
+@keyframes os-dock-in {
+  from { opacity: 0; transform: translate(50%, 16px); }
+  to { opacity: 1; transform: translate(50%, 0); }
 }
 
 .bottom-os-navigation button {
+  flex: 1 0 0;
   min-width: 92px;
   min-height: 44px;
   border: 0;
@@ -56,10 +79,7 @@ const emit = defineEmits(['select'])
 }
 
 .bottom-os-navigation button.is-active {
-  border: 1px solid rgb(38 101 164 / 24%);
-  background: #2f83d6;
   color: #fffdf7;
-  box-shadow: inset 0 1px rgb(255 255 255 / 26%);
 }
 
 .bottom-os-navigation button:hover:not(.is-active) {
@@ -98,7 +118,9 @@ const emit = defineEmits(['select'])
 
 @media (prefers-reduced-motion: reduce) {
   .bottom-os-navigation,
+  .bottom-os-navigation::before,
   .bottom-os-navigation button {
+    animation: none !important;
     transition: none !important;
   }
 }

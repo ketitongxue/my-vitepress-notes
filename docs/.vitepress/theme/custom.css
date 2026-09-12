@@ -570,12 +570,14 @@ html[data-personal-os-view] .factory-home .bottom-os-navigation button {
   color: #1E2430 !important;
 }
 
-html[data-personal-os-view="home"] .factory-home [data-os-nav-target="home"],
-html[data-personal-os-view="knowledge"] .factory-home [data-os-nav-target="knowledge"],
-html[data-personal-os-view="system"] .factory-home [data-os-nav-target="system"] {
-  border: 1px solid rgb(38 101 164 / 24%) !important;
-  background: #2F83D6 !important;
+html[data-personal-os-view="home"] .factory-home .bottom-os-navigation [data-os-nav-target="home"],
+html[data-personal-os-view="knowledge"] .factory-home .bottom-os-navigation [data-os-nav-target="knowledge"],
+html[data-personal-os-view="system"] .factory-home .bottom-os-navigation [data-os-nav-target="system"] {
   color: #FFFDF7 !important;
+}
+
+html[data-personal-os-view="system"] .factory-home .bottom-os-navigation::before {
+  transform: translateX(calc(100% + 4px));
 }
 
 .knowledge-hub__stats,

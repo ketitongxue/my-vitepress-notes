@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import DesktopAtmosphere from './DesktopAtmosphere.vue'
 import DesktopIcon from './DesktopIcon.vue'
 import WindowManager from './WindowManager.vue'
 import { isLibraryRootHref } from './knowledgeLibrary.mjs'
@@ -17,11 +18,13 @@ import {
 
 const props = defineProps({
   configuration: { type: Object, required: true },
+  active: { type: Boolean, default: false },
 })
 const desktopEntries = computed(() => props.configuration.desktop.entries)
 const knowledgeEntry = computed(() => desktopEntries.value.find((entry) => entry.id === 'html-knowledge'))
 
 const surface = ref(null)
+const atmosphere = ref(null)
 const menu = ref(null)
 const iconPositions = ref(createIconPositions())
 const windowState = ref(createWindowState())
@@ -140,7 +143,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section ref="surface" class="desktop-surface" aria-label="AI 纪元桌面">
+  <section
+    ref="surface"
+    class="desktop-surface"
+    :class="{ 'is-active': active }"
+    aria-label="AI 纪元桌面"
+    @pointermove.passive="atmosphere?.movePointer($event)"
+    @pointerleave="atmosphere?.clearPointer()"
+  >
+    <DesktopAtmosphere ref="atmosphere" :active="active" />
     <header ref="menu" class="desktop-surface__menu">
       <a class="desktop-surface__brand is-active" href="#home" aria-current="page">{{ configuration.desktop.brand }}</a>
       <nav aria-label="AI 纪元菜单">
@@ -156,11 +167,13 @@ onBeforeUnmount(() => {
 
     <div class="desktop-surface__workspace">
       <DesktopIcon
-        v-for="entry in desktopEntries"
+        v-for="(entry, index) in desktopEntries"
         :key="entry.id"
         :entry="entry"
         :position="iconPositions[entry.id]"
         :bounds="bounds"
+        :active="active"
+        :order="index"
         :style="iconStyle(iconPositions[entry.id])"
         @move="updateIconPosition"
         @open="openEntry"
@@ -184,8 +197,7 @@ onBeforeUnmount(() => {
   font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
-.desktop-surface::before,
-.desktop-surface::after {
+.desktop-surface::before {
   position: absolute;
   z-index: 0;
   content: "";
@@ -194,32 +206,13 @@ onBeforeUnmount(() => {
 
 .desktop-surface::before {
   inset: 0;
-  opacity: .42;
+  opacity: .2;
   background-image:
     radial-gradient(circle, rgb(255 245 180 / 82%) 0 1px, transparent 1.7px),
     radial-gradient(circle, rgb(255 255 255 / 64%) 0 1.2px, transparent 2px),
     radial-gradient(circle, rgb(207 232 255 / 48%) 0 1px, transparent 1.6px);
   background-position: 10px 18px, 43px 64px, 72px 22px;
   background-size: 92px 92px, 128px 128px, 156px 156px;
-}
-
-.desktop-surface::after {
-  top: 12%;
-  left: 8%;
-  width: 5px;
-  height: 5px;
-  border-radius: 1px;
-  background: rgb(255 244 170 / 76%);
-  box-shadow:
-    16vw 19vh rgb(225 241 255 / 52%),
-    31vw -3vh rgb(255 244 170 / 64%),
-    47vw 31vh rgb(225 241 255 / 46%),
-    63vw 8vh rgb(255 244 170 / 68%),
-    77vw 42vh rgb(225 241 255 / 52%),
-    24vw 62vh rgb(255 244 170 / 62%),
-    56vw 70vh rgb(225 241 255 / 48%),
-    84vw 68vh rgb(255 244 170 / 62%);
-  transform: rotate(45deg);
 }
 
 .desktop-surface__menu {
@@ -234,6 +227,15 @@ onBeforeUnmount(() => {
   background: rgb(47 131 214 / 88%);
   border-bottom: 1px solid rgb(255 255 255 / 8%);
   font-size: 11px;
+}
+
+.desktop-surface.is-active .desktop-surface__menu {
+  animation: desktop-menu-enter 520ms cubic-bezier(.16, 1, .3, 1) both;
+}
+
+@keyframes desktop-menu-enter {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .desktop-surface__menu nav {
@@ -313,6 +315,11 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 767px) {
+  .desktop-surface::before {
+    opacity: .14;
+    background-size: 130px 130px, 180px 180px, 220px 220px;
+  }
+
   .desktop-surface__menu {
     grid-template-columns: auto minmax(0, 1fr) auto;
     height: 48px;
@@ -338,6 +345,10 @@ onBeforeUnmount(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .desktop-surface__menu {
+    animation: none !important;
+  }
+
   .desktop-surface :where(a, button) {
     transition: none !important;
   }

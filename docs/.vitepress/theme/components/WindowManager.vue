@@ -170,6 +170,24 @@ function cancelManipulation(event) {
   manipulation.value = null
 }
 
+function prepareWindowEnter(element) {
+  element.inert = false
+  element.removeAttribute('aria-hidden')
+}
+
+function prepareWindowLeave(element) {
+  // Vue retains the element during its exit, while the window is already absent
+  // from state. Disable its entire subtree, including embedded reader controls.
+  element.inert = true
+  const activeElement = element.ownerDocument.activeElement
+  if (element.contains(activeElement)) activeElement.blur()
+  element.setAttribute('aria-hidden', 'true')
+  const active = manipulation.value
+  if (active && element.contains(active.target)) {
+    cancelManipulation({ pointerId: active.pointerId })
+  }
+}
+
 onBeforeUnmount(() => {
   cancelFrame()
   pendingPoint = null
@@ -178,7 +196,16 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="window-manager" :class="{ 'is-manipulating': isManipulating }">
+  <TransitionGroup
+    name="window-pop"
+    tag="div"
+    appear
+    class="window-manager"
+    :class="{ 'is-manipulating': isManipulating }"
+    @before-enter="prepareWindowEnter"
+    @before-leave="prepareWindowLeave"
+    @leave-cancelled="prepareWindowEnter"
+  >
     <article
       v-for="item in state.windows"
       :key="item.id"
@@ -186,6 +213,7 @@ onBeforeUnmount(() => {
       :class="{
         'window-manager__window--project': item.id === 'projects',
         'is-maximized': item.maximized,
+        'is-being-manipulated': manipulation?.id === item.id,
       }"
       :style="{
         left: `${item.x}px`,
@@ -262,7 +290,7 @@ onBeforeUnmount(() => {
         @keydown="handleResizeKey(item, handle.edge, $event)"
       ></span>
     </article>
-  </div>
+  </TransitionGroup>
 </template>
 
 <style scoped>
@@ -294,6 +322,35 @@ onBeforeUnmount(() => {
 .window-manager__window.is-maximized {
   border-radius: 0;
   box-shadow: none;
+}
+
+.window-pop-enter-active {
+  transition: opacity 250ms cubic-bezier(.16, 1, .3, 1), transform 250ms cubic-bezier(.16, 1, .3, 1);
+}
+
+.window-pop-leave-active {
+  transition: opacity 160ms ease-in, transform 160ms ease-in;
+}
+
+.window-pop-enter-from {
+  opacity: 0;
+  transform: scale(.92) translateY(8px);
+}
+
+.window-pop-leave-to {
+  opacity: 0;
+  transform: scale(.96) translateY(6px);
+}
+
+.window-manager__window.is-being-manipulated {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+.window-manager__window[inert],
+.window-manager__window[inert] :deep(*) {
+  pointer-events: none;
 }
 
 .window-manager__titlebar {
@@ -578,6 +635,16 @@ button.window-manager__traffic-control {
 @media (prefers-reduced-motion: reduce) {
   .window-manager__window {
     scroll-behavior: auto;
+    transition: none;
+    transform: none;
+  }
+
+  .window-manager__traffic-control span {
+    transition: none;
+  }
+
+  .window-pop-enter-from {
+    opacity: 1;
   }
 }
 </style>

@@ -149,14 +149,16 @@ onBeforeUnmount(() => {
       id="personal-os-home"
       tabindex="-1"
       aria-label="AI 纪元主页"
+      :class="{ 'is-visible': hydrated && activeView === 'home' && homeEntered }"
       data-os-view="home"
     >
-      <DesktopSurface :configuration="homeConfiguration.config" />
+      <DesktopSurface :configuration="homeConfiguration.config" :active="hydrated && homeEntered && activeView === 'home'" />
     </main>
     <section
       v-show="!hydrated || activeView === 'system'"
       class="personal-system-view"
       aria-label="我的 OS 系统视图"
+      :class="{ 'is-visible': hydrated && activeView === 'system' }"
       data-os-view="system"
     >
       <component
@@ -191,3 +193,18 @@ onBeforeUnmount(() => {
     />
   </div>
 </template>
+
+<style scoped>
+.factory-home [data-os-view].is-visible {
+  animation: os-view-in 350ms cubic-bezier(.16, 1, .3, 1);
+}
+
+@keyframes os-view-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .factory-home [data-os-view].is-visible { animation: none; }
+}
+</style>

@@ -19,13 +19,16 @@ const props = defineProps({
 })
 const emit = defineEmits(['entered'])
 const screen = ref(null)
+const terminal = ref(null)
 const launchButton = ref(null)
 const visible = ref(true)
 const state = ref('typing')
 const visibleLineCount = ref(0)
 const progress = ref(0)
+const zoomDuration = 1500
 let storage
 let runtime
+let motionPreference
 let entered = false
 let started = false
 
@@ -75,7 +78,14 @@ function beginZoom() {
   if (state.value !== 'launching' || !screen.value) return
   state.value = transitionMacbookBoot(state.value, 'PROGRESS_COMPLETE')
   const bounds = screen.value.getBoundingClientRect()
-  const transform = computeCoverTransform(bounds, {
+  // Cover with the display itself so the bezel never remains at the viewport edge.
+  const border = Number.parseFloat(getComputedStyle(screen.value).borderLeftWidth) || 0
+  const transform = computeCoverTransform({
+    left: bounds.left + border,
+    top: bounds.top + border,
+    width: bounds.width - border * 2,
+    height: bounds.height - border * 2,
+  }, {
     width: window.innerWidth,
     height: window.innerHeight,
   })
@@ -85,7 +95,11 @@ function beginZoom() {
   schedule(() => {
     state.value = transitionMacbookBoot(state.value, 'ZOOM_COMPLETE')
     void enterDesktop()
-  }, 500)
+  }, zoomDuration)
+}
+
+function handleMotionChange(event) {
+  if (event.matches && !entered) void enterDesktop()
 }
 
 function advanceProgress() {
@@ -111,6 +125,9 @@ function handleKeydown(event) {
 function revealNextLine() {
   if (state.value !== 'typing') return
   visibleLineCount.value += 1
+  void nextTick(() => {
+    if (terminal.value) terminal.value.scrollTop = terminal.value.scrollHeight
+  })
   if (visibleLineCount.value < bootLines.value.length) {
     schedule(revealNextLine, 220)
     return
@@ -132,6 +149,8 @@ function startBoot() {
 
   storage = getSessionStorage(window)
   const reduceMotion = getReducedMotionPreference(window)
+  motionPreference = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+  motionPreference?.addEventListener('change', handleMotionChange)
   const skipBoot = shouldSkipMacbookBoot(storage, reduceMotion)
   runtime.listen()
 
@@ -161,6 +180,7 @@ watch(() => props.disabled, (disabled) => {
 
 onBeforeUnmount(() => {
   runtime?.stop()
+  motionPreference?.removeEventListener('change', handleMotionChange)
   clearPreflightFallback()
   if (document.documentElement.dataset.personalSiteAccess === 'pending') {
     document.documentElement.dataset.personalSiteAccess = 'fallback'
@@ -169,10 +189,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section v-if="visible" class="macbook-boot" :data-state="state" aria-label="个人系统启动页">
+  <section v-if="visible" class="macbook-boot" :data-state="state" :style="{ '--boot-zoom-duration': `${zoomDuration}ms` }" aria-label="个人系统启动页">
     <div class="macbook-boot__computer">
       <div ref="screen" class="macbook-boot__screen">
-        <div class="macbook-boot__terminal" aria-hidden="true">
+        <div ref="terminal" class="macbook-boot__terminal" aria-hidden="true">
+          <div class="macbook-boot__terminal-bar">{{ configuration.desktop.brand }} ~ zsh</div>
           <p v-for="(line, index) in visibleLines" :key="`${index}-${line}`">{{ line }}</p>
           <p v-if="state === 'launching' || state === 'zooming'" class="macbook-boot__progress">
             {{ progressCells(progress) }}
@@ -191,6 +212,7 @@ onBeforeUnmount(() => {
       </div>
       <div class="macbook-boot__base" aria-hidden="true"></div>
     </div>
+    <button class="macbook-boot__skip" type="button" @click="enterDesktop">跳过动画</button>
   </section>
 </template>
 
@@ -210,7 +232,8 @@ onBeforeUnmount(() => {
 }
 
 .macbook-boot__computer {
-  width: min(760px, calc(100vw - 40px));
+  width: min(708px, calc(100vw - 56px));
+  animation: boot-arrive 650ms cubic-bezier(.16, 1, .3, 1) both;
 }
 
 .macbook-boot__screen {
@@ -218,27 +241,66 @@ onBeforeUnmount(() => {
   --boot-x: 0px;
   --boot-y: 0px;
   position: relative;
-  min-height: min(430px, 64vh);
-  padding: clamp(24px, 5vw, 56px);
+  display: flex;
+  flex-direction: column;
+  height: min(470px, 68dvh);
+  min-height: 300px;
+  padding: clamp(20px, 3vw, 32px);
   overflow: hidden;
   border: 10px solid #192232;
   border-radius: 18px 18px 8px 8px;
-  background: #fffdf7;
+  background: linear-gradient(145deg, #3b91e1, #2f83d6 46%, #2875c5);
+  color: #fffdf7;
+  box-shadow: 0 20px 60px rgb(25 34 50 / 12%);
   transform-origin: center;
 }
 
 .macbook-boot[data-state="zooming"] .macbook-boot__screen {
-  transition: transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform var(--boot-zoom-duration) cubic-bezier(.4, 0, .2, 1);
   transform: translate(var(--boot-x), var(--boot-y)) scale(var(--boot-scale));
+  will-change: transform;
+}
+
+.macbook-boot__terminal {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  transition: opacity 800ms ease, transform 800ms cubic-bezier(.4, 0, .2, 1);
+}
+
+.macbook-boot[data-state="zooming"] .macbook-boot__terminal {
+  opacity: 0;
+  transform: scale(1.15);
+}
+
+.macbook-boot__terminal-bar {
+  margin-bottom: 24px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgb(255 253 247 / 18%);
+  color: rgb(255 253 247 / 70%);
+  font-size: 11px;
+  text-align: center;
 }
 
 .macbook-boot__terminal p {
   margin: 0 0 12px;
   overflow-wrap: anywhere;
+  animation: boot-line-in 320ms ease-out both;
 }
 
 .macbook-boot__progress {
-  color: #315efb;
+  color: #f4d758;
+}
+
+.macbook-boot[data-state="ready"] .macbook-boot__terminal p:last-child::after {
+  display: inline-block;
+  width: .55em;
+  height: 1em;
+  margin-left: 4px;
+  background: currentColor;
+  vertical-align: -.1em;
+  content: "";
+  animation: boot-caret 1s step-end infinite;
 }
 
 .macbook-boot__status {
@@ -253,6 +315,8 @@ onBeforeUnmount(() => {
 }
 
 .macbook-boot__launch {
+  flex: 0 0 auto;
+  align-self: flex-start;
   min-width: 44px;
   min-height: 44px;
   margin-top: 20px;
@@ -260,9 +324,20 @@ onBeforeUnmount(() => {
   border: 2px solid #1e2430;
   border-radius: 8px;
   background: #F4D758;
-  color: inherit;
+  color: #1e2430;
   font: inherit;
   cursor: pointer;
+  animation: boot-line-in 350ms ease-out both;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.macbook-boot__launch:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgb(25 34 50 / 18%);
+}
+
+.macbook-boot__launch:active {
+  transform: scale(.98);
 }
 
 .macbook-boot__launch:focus-visible {
@@ -276,11 +351,53 @@ onBeforeUnmount(() => {
   margin-left: -22px;
   border-radius: 2px 2px 18px 18px;
   background: #69707d;
+  transition: opacity 300ms ease;
+}
+
+.macbook-boot[data-state="zooming"] .macbook-boot__base {
+  opacity: 0;
+}
+
+.macbook-boot__skip {
+  position: absolute;
+  right: max(24px, env(safe-area-inset-right));
+  bottom: max(24px, env(safe-area-inset-bottom));
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: #f7f4ec;
+  color: #69707d;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.macbook-boot__skip:focus-visible {
+  outline: 3px solid #315efb;
+  outline-offset: 3px;
+}
+
+@keyframes boot-arrive {
+  from { opacity: 0; transform: translateY(20px) scale(.96); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes boot-line-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes boot-caret {
+  50% { opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .macbook-boot__screen {
-    transition-duration: 80ms !important;
+  .macbook-boot *,
+  .macbook-boot *::after {
+    animation: none !important;
+    transition: none !important;
   }
 }
 
@@ -290,7 +407,8 @@ onBeforeUnmount(() => {
   }
 
   .macbook-boot__screen {
-    min-height: min(390px, 58vh);
+    height: min(390px, 64dvh);
+    min-height: 280px;
     padding: 24px 20px;
     border-width: 8px;
     border-radius: 14px 14px 6px 6px;
