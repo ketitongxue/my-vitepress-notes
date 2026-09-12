@@ -27,7 +27,6 @@ const trackedFiles = execFileSync('git', ['ls-files', '-z'], {
   file
   && existsSync(resolve(projectRoot, file))
   && file !== 'scripts/brand-name.test.mjs'
-  && !file.startsWith('docs/superpowers/')
 ))
 
 test('tracked source files do not contain the old brand name', async () => {
