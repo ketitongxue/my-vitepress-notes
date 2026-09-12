@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readdir, readFile } from 'node:fs/promises'
 import { DatabaseSync } from 'node:sqlite'
 import test from 'node:test'
-import { normalizeHomeConfig } from '../shared/home-config.mjs'
+import { DEFAULT_HOME_CONFIG, normalizeHomeConfig } from '../shared/home-config.mjs'
 import { createHomeAdminHandler, handlePublicHomeConfig } from '../worker/home-config.mjs'
 
 test('migrated home history remains readable and invalid history cannot be published or rolled back', async (t) => {
@@ -18,6 +18,11 @@ test('migrated home history remains readable and invalid history cannot be publi
   }).map((row) => row.revision)
   assert.ok(invalidRevisions.length > 0)
   assert.doesNotThrow(() => normalizeHomeConfig(JSON.parse(history[0].config_json)))
+  assert.deepEqual(JSON.parse(history[0].config_json).desktop.entries.map(({ id, position }) => ({ id, position })), [
+    { id: 'projects', position: { x: 80, y: 84 } },
+    { id: 'html-knowledge', position: { x: 80, y: 192 } },
+    { id: 'about', position: { x: 80, y: 300 } },
+  ])
 
   const env = {
     ALLOWED_ORIGIN: 'https://example.com',
@@ -80,4 +85,41 @@ test('migrated home history remains readable and invalid history cannot be publi
   assert.equal(rejected.status, 400)
   assert.equal((await rejected.json()).error, 'INVALID_CONFIG')
   assert.equal(db.prepare('SELECT published_at FROM home_config_versions WHERE revision = ?').get(Number(inserted.lastInsertRowid)).published_at, null)
+})
+
+test('homepage alignment preserves content and history, is idempotent, and respects drafts', async (t) => {
+  const db = new DatabaseSync(':memory:')
+  t.after(() => db.close())
+  await readFile(new URL('../migrations/0002_home_config.sql', import.meta.url), 'utf8').then((sql) => db.exec(sql))
+  const migration = await readFile(new URL('../migrations/0015_align_home_desktop_entries.sql', import.meta.url), 'utf8')
+  const config = structuredClone(DEFAULT_HOME_CONFIG)
+  config.boot.lines = ['Custom boot message']
+  const [projects, knowledge, about] = config.desktop.entries
+  about.window.summary = 'Custom about summary\nContact details'
+  config.desktop.entries = [
+    { ...structuredClone(projects), id: 'experiments', label: 'AI 实验' },
+    about, knowledge, projects,
+    { ...structuredClone(about), id: 'github', label: 'GitHub' },
+  ]
+  config.desktop.entries.forEach((entry, index) => { entry.position = { x: 80 + index * 96, y: 268 } })
+  const insert = db.prepare('INSERT INTO home_config_versions (schema_version, config_json, note, created_by, published_at) VALUES (1, ?, ?, ?, ?)')
+  insert.run(JSON.stringify(config), 'Customized homepage', 'owner', '2026-09-12T00:00:00Z')
+  const history = db.prepare('SELECT * FROM home_config_versions ORDER BY revision').all()
+  db.exec(migration)
+  const after = db.prepare('SELECT * FROM home_config_versions ORDER BY revision').all()
+  assert.deepEqual(after.slice(0, -1), history)
+  assert.equal(after.length, history.length + 1)
+  const expected = structuredClone(config)
+  expected.desktop.entries = [projects, knowledge, about].map((entry, index) => ({
+    ...entry, position: { x: 80, y: 84 + index * 108 },
+  }))
+  assert.deepEqual(normalizeHomeConfig(JSON.parse(after.at(-1).config_json)), expected)
+  assert.ok(after.at(-1).published_at)
+  db.exec(migration)
+  assert.deepEqual(db.prepare('SELECT * FROM home_config_versions ORDER BY revision').all(), after)
+
+  insert.run(JSON.stringify(config), 'Pending administrator draft', 'owner', null)
+  const withDraft = db.prepare('SELECT * FROM home_config_versions ORDER BY revision').all()
+  db.exec(migration)
+  assert.deepEqual(db.prepare('SELECT * FROM home_config_versions ORDER BY revision').all(), withDraft)
 })

@@ -1,8 +1,8 @@
 import { constrainIconPosition, constrainWindow } from './desktopGeometry.mjs'
 
-// Bump the session schema so existing two-column icon positions do not mask the
-// new one-column defaults on the next visit.
-export const DESKTOP_SESSION_KEY = 'juzx-os:v2:desktop-session'
+// Reset saved positions for the three-icon layout so previous spacing or dragged
+// positions do not mask the new right-aligned defaults. The payload schema stays v2.
+export const DESKTOP_SESSION_KEY = 'juzx-os:v3:desktop-session'
 const MAX_SESSION_BYTES = 64 * 1024
 
 const finite = (value) => Number.isFinite(value)
