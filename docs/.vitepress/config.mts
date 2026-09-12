@@ -47,7 +47,6 @@ export default defineConfig({
   appearance: 'dark',
   cleanUrls: true,
   lastUpdated: true,
-  srcExclude: ['superpowers/**'],
   head: [['script', {}, personalSiteAccessPreflight]],
   transformPageData(pageData) {
     const updated = pageData.frontmatter.updated
