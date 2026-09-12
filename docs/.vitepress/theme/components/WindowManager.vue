@@ -227,8 +227,9 @@ onBeforeUnmount(() => {
       <span class="window-manager__sparkle" aria-hidden="true">✦</span>
       <div
         class="window-manager__preview"
+        :class="{ 'window-manager__preview--knowledge': item.entry.id === 'html-knowledge' }"
       >
-        <KnowledgeLibrary v-if="item.entry.id === 'html-knowledge'" />
+        <KnowledgeLibrary v-if="item.entry.id === 'html-knowledge'" @activate="focus(item.id)" />
         <template v-else>
           <p class="window-manager__summary">{{ item.entry.window.summary }}</p>
           <a
@@ -393,6 +394,19 @@ button.window-manager__traffic-control {
   margin: 0 0 16px;
 }
 
+.window-manager__preview--knowledge {
+  display: flex;
+  margin: 8px 12px 12px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.window-manager__preview--knowledge > * {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
 .window-manager__summary {
   white-space: pre-line;
 }
@@ -545,6 +559,11 @@ button.window-manager__traffic-control {
   .window-manager__preview {
     margin: 10px 20px 22px;
     padding: 20px;
+  }
+
+  .window-manager__preview--knowledge {
+    margin: 6px 8px 8px;
+    padding: 0;
   }
 
   .window-manager__resize-handle {

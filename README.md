@@ -30,6 +30,12 @@ npx wrangler secret put IP_HASH_SALT
 npm test
 ```
 
+## 知识库阅读
+
+桌面与顶部菜单的“知识库”入口都在本站窗口中打开目录。点击文章或“完整知识库”后，
+窗口内嵌入已发布的 GitHub Pages 内容，支持返回目录与窗口放大，主站地址保持不变。
+文章仍从 `ketitongxue/ai-era-html-docs` 加载，图片与交互沿用原文；新增文章无需重新部署主站。
+
 ## D1 个人 OS 内容管理
 
 个人 OS 的节点与连线使用 D1 保存不可变版本。公开页面访问
