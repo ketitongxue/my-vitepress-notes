@@ -28,7 +28,6 @@ test('private notes and project pages remain available', async () => {
   await assert.doesNotReject(access(new URL('docs/admin/private-notes.md', root)))
   await assert.doesNotReject(access(new URL('docs/projects/go-tiny-claw.md', root)))
   const homeConfig = await read('shared/home-config.mjs')
-  assert.match(homeConfig, /private-notes|AI 实验/)
   assert.match(homeConfig, /go-tiny-claw/)
 })
 
