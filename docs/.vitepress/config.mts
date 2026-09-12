@@ -47,7 +47,10 @@ export default defineConfig({
   appearance: 'dark',
   cleanUrls: true,
   lastUpdated: true,
-  head: [['script', {}, personalSiteAccessPreflight]],
+  head: [
+    ['script', {}, personalSiteAccessPreflight],
+    ['link', { rel: 'stylesheet', href: '/assets/reading-components.css' }],
+  ],
   transformPageData(pageData) {
     const updated = pageData.frontmatter.updated
     if (typeof updated === 'string' && Number.isFinite(Date.parse(updated))) {

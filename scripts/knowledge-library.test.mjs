@@ -1,8 +1,45 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { groupLibraryDocuments, isLibraryRootHref, libraryUrl, loadLibraryDocuments, observeEmbeddedFrameFocus } from '../docs/.vitepress/theme/components/knowledgeLibrary.mjs'
+import { getLibraryDirectoryView, groupLibraryDocuments, isLibraryRootHref, libraryUrl, loadLibraryDocuments, observeEmbeddedFrameFocus } from '../docs/.vitepress/theme/components/knowledgeLibrary.mjs'
 
 const blob = (path) => ({ path, type: 'blob', mode: '100644' })
+
+test('category filters show matching articles and keep a category named 全部 distinct from the all filter', () => {
+  const groups = groupLibraryDocuments({ tree: [
+    blob('docs/Agent/入门.html'), blob('docs/Agent/实践.html'),
+    blob('docs/工具与集成/示例.html'), blob('docs/全部/真实分类.html'),
+  ] })
+  const all = getLibraryDirectoryView(groups)
+  assert.equal(all.selectedCategory, null)
+  assert.equal(all.groups.length, 3)
+  assert.equal(all.total, 4)
+
+  const filtered = getLibraryDirectoryView(groups, 'Agent')
+  assert.deepEqual(filtered.groups.map((group) => group.title), ['Agent'])
+  assert.equal(filtered.total, 2)
+  assert.equal(filtered.selectedCategory, 'Agent')
+
+  const namedAll = getLibraryDirectoryView(groups, '全部')
+  assert.equal(namedAll.total, 1)
+  assert.equal(namedAll.groups[0].articles[0].title, '真实分类')
+  assert.equal(groups.length, 3)
+})
+
+test('directory refresh keeps valid category selection and returns to all when a category disappears', () => {
+  const before = groupLibraryDocuments({ tree: [blob('docs/Agent/旧文章.html')] })
+  const selection = getLibraryDirectoryView(before, 'Agent').selectedCategory
+  const updated = groupLibraryDocuments({ tree: [blob('docs/Agent/新文章.html'), blob('docs/工具/新增.html')] })
+  const retained = getLibraryDirectoryView(updated, selection)
+  assert.equal(retained.selectedCategory, 'Agent')
+  assert.equal(retained.groups[0].articles[0].title, '新文章')
+  assert.equal(retained.total, 1)
+
+  const removed = getLibraryDirectoryView(updated.filter((group) => group.title !== 'Agent'), selection)
+  assert.equal(removed.selectedCategory, null)
+  assert.equal(removed.groups[0].title, '工具')
+  assert.equal(removed.total, 1)
+  assert.deepEqual(getLibraryDirectoryView([], selection), { selectedCategory: null, groups: [], total: 0 })
+})
 
 test('loads the same-origin directory with cancellation and identifies a usable backup', async () => {
   const controller = new AbortController()

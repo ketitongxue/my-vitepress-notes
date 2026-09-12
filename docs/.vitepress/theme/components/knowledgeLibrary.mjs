@@ -1,6 +1,16 @@
 export const libraryUrl = 'https://ketitongxue.github.io/ai-era-html-docs/'
 export const libraryTreeUrl = '/api/knowledge/tree'
 
+export function getLibraryDirectoryView(groups, selectedCategory = null) {
+  const category = groups.some((group) => group.title === selectedCategory) ? selectedCategory : null
+  const visibleGroups = category === null ? groups : groups.filter((group) => group.title === category)
+  return {
+    selectedCategory: category,
+    groups: visibleGroups,
+    total: visibleGroups.reduce((count, group) => count + group.articles.length, 0),
+  }
+}
+
 export async function loadLibraryDocuments({ signal, fetchImpl = fetch } = {}) {
   const response = await fetchImpl(libraryTreeUrl, { signal })
   if (!response.ok) throw new Error('Library unavailable')

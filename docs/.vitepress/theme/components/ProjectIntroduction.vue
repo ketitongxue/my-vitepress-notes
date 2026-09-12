@@ -1,5 +1,6 @@
 <script setup>
 import { defineAsyncComponent, h, nextTick, ref, shallowRef } from 'vue'
+import { IconTerminal2 } from '@tabler/icons-vue'
 
 defineProps({
   summary: { type: String, default: '' },
@@ -40,13 +41,32 @@ async function returnToSummary() {
 <template>
   <div class="project-introduction">
     <div v-show="!isOpen" class="project-introduction__summary">
-      <p>{{ summary }}</p>
-      <button
-        ref="openButton"
-        class="project-introduction__open"
-        type="button"
-        @click="openIntroduction"
-      >{{ linkLabel }}</button>
+      <article class="project-card" aria-label="go-tiny-claw 项目">
+        <div class="project-card__heading">
+          <span class="project-card__icon" aria-hidden="true"><IconTerminal2 :size="26" :stroke="1.6" /></span>
+          <div>
+            <p class="project-card__eyebrow">个人项目 · 01</p>
+            <h2>go-tiny-claw</h2>
+          </div>
+        </div>
+        <p class="project-card__description">{{ summary }}</p>
+        <ul class="project-card__tags" aria-label="项目技术与主题">
+          <li>Go</li>
+          <li>Agent runtime</li>
+          <li>工具调用</li>
+          <li>执行追踪</li>
+        </ul>
+        <div class="project-card__focus">
+          <span>探索方向</span>
+          <p>执行循环、上下文管理与可验证的工程边界。</p>
+        </div>
+        <button
+          ref="openButton"
+          class="project-introduction__open"
+          type="button"
+          @click="openIntroduction"
+        >{{ linkLabel }}</button>
+      </article>
     </div>
 
     <section v-if="isOpen" class="project-introduction__reader" aria-label="go-tiny-claw 项目介绍">
@@ -79,21 +99,55 @@ async function returnToSummary() {
 }
 
 .project-introduction__summary p {
-  margin: 0 0 16px;
   white-space: pre-line;
 }
 
+.project-card {
+  padding: clamp(20px, 4vw, 32px);
+  border: 1px solid #d9e3ed;
+  border-radius: 16px;
+  background: #fffdf7;
+  box-shadow: 0 8px 24px rgb(40 90 135 / 5%);
+}
+
+.project-card__heading {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.project-card__heading > div { min-width: 0; }
+.project-card__heading h2 { margin: 4px 0 0; color: #1e2430; font-size: clamp(23px, 3vw, 28px); line-height: 1.3; letter-spacing: -0.02em; }
+.project-card__eyebrow { margin: 0; color: #69707d; font-size: 12px; letter-spacing: 0.08em; }
+.project-card__icon { display: grid; flex: 0 0 52px; height: 52px; place-items: center; border-radius: 12px; background: #edf3fa; color: #285a87; }
+.project-card__description { margin: 24px 0 18px; color: #485465; font-size: 15px; line-height: 1.85; }
+.project-card__tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.project-card__tags li { padding: 4px 10px; border: 1px solid #d9e3ed; border-radius: 999px; color: #285a87; background: #f3f7fb; font-size: 12px; line-height: 1.6; }
+.project-card__focus { margin: 24px 0; padding: 16px 0; border-top: 1px dashed #d9e3ed; border-bottom: 1px dashed #d9e3ed; }
+.project-card__focus > span { color: #69707d; font-size: 12px; }
+.project-card__focus p { margin: 4px 0 0; color: #485465; font-size: 14px; line-height: 1.7; }
+
 .project-introduction__open {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #1e4dc0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid #285a87;
+  border-radius: 8px;
+  background: #285a87;
+  color: #fffdf7;
   cursor: pointer;
   font: inherit;
+  font-size: 14px;
   text-align: left;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  line-height: 1.6;
+  transition: background-color 150ms ease;
 }
+
+.project-introduction__open:hover { background: #17447f; }
+@media (prefers-reduced-motion: reduce) { .project-introduction__open { transition: none; } }
 
 .project-introduction__reader {
   display: flex;
