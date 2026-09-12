@@ -16,6 +16,8 @@ export function openWindow(state, entry, bounds) {
   const offset = (state.cascade % 5) * 32
   const initialRect = entry.id === 'html-knowledge'
     ? { x: 16, y: 16, width: Math.min(1000, bounds.width - 32), height: Math.min(720, bounds.height - 32) }
+    : entry.id === 'projects'
+    ? { x: 48, y: 32, width: Math.min(860, bounds.width - 32), height: Math.min(640, bounds.height - 32) }
     : entry.id === 'ask'
     ? { x: 72, y: 40, width: 760, height: Math.min(640, Math.max(480, bounds.height - 120)) }
     : { x: 96 + offset, y: 72 + offset, width: 580, height: 360 }
