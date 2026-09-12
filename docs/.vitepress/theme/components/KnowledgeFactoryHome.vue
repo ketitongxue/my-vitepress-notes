@@ -195,7 +195,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.factory-home [data-os-view].is-visible {
+.factory-home [data-os-view="system"].is-visible {
   animation: os-view-in 350ms cubic-bezier(.16, 1, .3, 1);
 }
 
@@ -205,6 +205,6 @@ onBeforeUnmount(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .factory-home [data-os-view].is-visible { animation: none; }
+  .factory-home [data-os-view="system"].is-visible { animation: none; }
 }
 </style>
