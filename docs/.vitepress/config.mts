@@ -25,7 +25,7 @@ const personalSiteAccessPreflight = String.raw`(function () {
   }
   try {
     if (typeof window.matchMedia !== 'function') throw new Error('motion query unavailable')
-    var stored = window.sessionStorage.getItem('personal-site-accessed')
+    var stored = window.localStorage.getItem('personal-site-accessed')
     var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (stored === 'true' || reduced) root.dataset.personalSiteAccess = 'returning'
     else root.dataset.personalSiteAccess = 'pending'
@@ -47,15 +47,56 @@ export default defineConfig({
   appearance: 'dark',
   cleanUrls: true,
   lastUpdated: true,
+  sitemap: {
+    hostname: 'https://juzxailab.com',
+    transformItems: (items) => items.filter(({ url }) => !/^\/?admin(?:\/|$)/.test(url)),
+  },
   head: [
     ['script', {}, personalSiteAccessPreflight],
-    ['link', { rel: 'stylesheet', href: '/assets/reading-components.css' }],
   ],
   transformPageData(pageData) {
     const updated = pageData.frontmatter.updated
     if (typeof updated === 'string' && Number.isFinite(Date.parse(updated))) {
       pageData.lastUpdated = Date.parse(updated)
     }
+
+    if (/^(?:admin\/|404\.md$)/.test(pageData.relativePath)) return
+
+    const pathname = `/${pageData.relativePath.replace(/(^|\/)index\.md$/, '$1').replace(/\.md$/, '')}`
+    const head = Array.isArray(pageData.frontmatter.head) ? [...pageData.frontmatter.head] : []
+    const canonical = head.find(([tag, attrs]) => tag === 'link' && attrs.rel === 'canonical')?.[1].href
+      || new URL(pathname, 'https://juzxailab.com').href
+    const title = pageData.title && pageData.title !== 'AI 纪元' ? `${pageData.title} | AI 纪元` : 'AI 纪元'
+    const description = pageData.description || '探索智能时代的知识、工具与创造'
+    const image = 'https://juzxailab.com/og-cover.png'
+    const hasImage = head.some(([tag, attrs]) => tag === 'meta' && (attrs.property || attrs.name) === 'og:image')
+    const defaults: [string, Record<string, string>][] = [
+      ['link', { rel: 'canonical', href: canonical }],
+      ['meta', { property: 'og:type', content: pathname === '/' ? 'website' : 'article' }],
+      ['meta', { property: 'og:site_name', content: 'AI 纪元' }],
+      ['meta', { property: 'og:locale', content: 'zh_CN' }],
+      ['meta', { property: 'og:title', content: title }],
+      ['meta', { property: 'og:description', content: description }],
+      ['meta', { property: 'og:url', content: canonical }],
+      ['meta', { property: 'og:image', content: image }],
+      ...(!hasImage ? [
+        ['meta', { property: 'og:image:width', content: '1200' }],
+        ['meta', { property: 'og:image:height', content: '630' }],
+        ['meta', { property: 'og:image:alt', content: 'AI 纪元 · 探索智能时代的知识、工具与创造' }],
+      ] as [string, Record<string, string>][] : []),
+      ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+      ['meta', { name: 'twitter:title', content: title }],
+      ['meta', { name: 'twitter:description', content: description }],
+      ['meta', { name: 'twitter:image', content: head.find(([tag, attrs]) => tag === 'meta' && (attrs.property || attrs.name) === 'og:image')?.[1].content || image }],
+    ]
+    for (const [tag, attrs] of defaults) {
+      const key = attrs.name || attrs.property || attrs.rel
+      if (!head.some(([existingTag, existingAttrs]) => existingTag === tag
+        && (existingAttrs.name || existingAttrs.property || existingAttrs.rel) === key)) {
+        head.push([tag, attrs])
+      }
+    }
+    pageData.frontmatter.head = head
   },
   themeConfig: {
     nav: [],

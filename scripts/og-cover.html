@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<title>AI 纪元分享封面</title>
+<!-- Export this 1200 × 630 viewport as docs/public/og-cover.png. -->
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    color: #f6f7fb;
+    background: radial-gradient(ellipse at 20% 5%, #61a9e8, transparent 65%), linear-gradient(135deg, #388ede, #2266af);
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .card { position: relative; width: 1200px; height: 630px; padding: 64px 76px; }
+  .grid { position: absolute; inset: 0; opacity: .18; background-image: radial-gradient(#fff 1px, transparent 1px); background-size: 36px 36px; }
+  .content { position: relative; }
+  .eyebrow { color: #fff0a9; font-size: 21px; letter-spacing: 3px; }
+  h1 { margin: 54px 0 20px; font-size: 98px; font-weight: 700; letter-spacing: 3px; line-height: 1.15; }
+  .description { margin: 0; font-size: 26px; letter-spacing: 1px; }
+  .tags { display: flex; gap: 14px; margin-top: 35px; }
+  .tags span { border: 1px solid #ffffff66; border-radius: 6px; padding: 9px 18px; font-size: 18px; }
+  footer { position: absolute; bottom: 48px; left: 76px; right: 76px; border-top: 1px solid #ffffff55; padding-top: 23px; display: flex; justify-content: space-between; font-size: 18px; }
+  .terminal { position: absolute; width: 270px; right: 68px; top: 142px; transform: rotate(-5deg); border: 1px solid #a6c7e8; border-radius: 14px; background: #153753; box-shadow: 0 25px 55px #15375344; overflow: hidden; }
+  .bar { background: #e8f1f6; display: flex; align-items: center; gap: 7px; height: 37px; padding: 0 14px; }
+  .bar i { width: 10px; height: 10px; border-radius: 50%; background: #ed7468; }
+  .bar i:nth-child(2) { background: #e6c663; }
+  .bar i:nth-child(3) { background: #76bf91; }
+  pre { padding: 22px 23px; margin: 0; font: 18px/2.2 Menlo, Consolas, monospace; color: #dcecf8; }
+  .prompt { color: #f4d758; }
+</style>
+<main class="card">
+  <div class="grid"></div>
+  <div class="content">
+    <div class="eyebrow">AI · 产品 · 工程</div>
+    <h1>AI 纪元</h1>
+    <p class="description">探索智能时代的知识、工具与创造</p>
+    <div class="tags"><span>知识库</span><span>项目档案</span><span>个人实践</span></div>
+  </div>
+  <div class="terminal" aria-hidden="true"><div class="bar"><i></i><i></i><i></i></div><pre><span class="prompt">$</span> open ai-era
+<span class="prompt">›</span> knowledge
+<span class="prompt">›</span> projects
+<span class="prompt">›</span> explore <span class="prompt">_</span></pre></div>
+  <footer><span>juzxailab.com</span><span>持续记录，持续创造。</span></footer>
+</main>
+</html>

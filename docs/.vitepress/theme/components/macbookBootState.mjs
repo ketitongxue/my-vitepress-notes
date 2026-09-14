@@ -1,4 +1,5 @@
 export const MACBOOK_INTERACTIVE_SELECTOR = 'a,button,input,textarea,select,summary,[contenteditable]:not([contenteditable="false"]),[tabindex],audio[controls],video[controls],[role="button"],[role="link"]'
+export const MACBOOK_BOOT_TIMING = Object.freeze({ progressInterval: 20, progressSteps: 12, zoomDuration: 720 })
 
 export function transitionMacbookBoot(state, event) {
   if (event === 'SKIP') return 'desktop'
@@ -23,8 +24,8 @@ export function computeCoverTransform(screen, viewport) {
   }
 }
 
-export function getSessionStorage(browser) {
-  try { return browser?.sessionStorage } catch { return undefined }
+export function getLocalStorage(browser) {
+  try { return browser?.localStorage } catch { return undefined }
 }
 
 export function getReducedMotionPreference(browser) {
@@ -50,8 +51,8 @@ export function isMacbookInteractiveTarget(target) {
   return Boolean(target?.closest?.(MACBOOK_INTERACTIVE_SELECTOR))
 }
 
-export function shouldActivateMacbookFromEnter(event, state) {
-  return state === 'ready' && event?.key === 'Enter' && !event.repeat && !event.isComposing
+export function shouldSkipMacbookFromEnter(event, state) {
+  return state !== 'desktop' && event?.key === 'Enter' && !event.repeat && !event.isComposing
     && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey
     && !isMacbookInteractiveTarget(event.target)
 }
@@ -90,6 +91,18 @@ export function createMacbookBootRuntime(browser, handleKeydown, disabled = fals
       }
     },
   }
+}
+
+export function startMacbookBootSequence(runtime, { onProgress, onZoom, onComplete }) {
+  const { progressSteps, progressInterval, zoomDuration } = MACBOOK_BOOT_TIMING
+  // Use one start time: delayed progress callbacks must not extend the boot.
+  for (let progress = 1; progress <= progressSteps; progress += 1) {
+    runtime.schedule(() => {
+      onProgress(progress)
+      if (progress === progressSteps) onZoom()
+    }, progress * progressInterval)
+  }
+  runtime.schedule(onComplete, progressSteps * progressInterval + zoomDuration)
 }
 
 export function writeAccessed(storage) {

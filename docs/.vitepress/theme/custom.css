@@ -542,14 +542,8 @@ html[data-personal-site-access="pending"] .bottom-os-navigation {
   display: none !important;
 }
 
-html[data-personal-site-access="pending"] .factory-home {
-  visibility: hidden;
-  opacity: 0;
-}
-
-html:not([data-personal-site-access="pending"]) .factory-home {
-  visibility: visible;
-}
+/* Keep the server-rendered desktop readable until the client boot is mounted.
+   Once hydrated, the home component controls visibility during the animation. */
 
 html[data-personal-os-view="home"] .factory-home [data-os-view="knowledge"],
 html[data-personal-os-view="home"] .factory-home [data-os-view="system"],

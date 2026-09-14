@@ -22,6 +22,7 @@ const props = defineProps({
 })
 const desktopEntries = computed(() => props.configuration.desktop.entries)
 const knowledgeEntry = computed(() => desktopEntries.value.find((entry) => entry.id === 'html-knowledge'))
+const projectEntry = computed(() => desktopEntries.value.find((entry) => entry.id === 'projects' && entry.window.href))
 
 const surface = ref(null)
 const atmosphere = ref(null)
@@ -64,6 +65,12 @@ function constrainIconPositions(nextBounds) {
 
 function openEntry(entry) {
   windowState.value = openWindow(windowState.value, entry, bounds.value)
+}
+
+function openProject(event) {
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+  event.preventDefault()
+  openEntry(projectEntry.value)
 }
 
 function persistSession() {
@@ -155,6 +162,8 @@ onBeforeUnmount(() => {
     <header ref="menu" class="desktop-surface__menu">
       <a class="desktop-surface__brand is-active" href="#home" aria-current="page">{{ configuration.desktop.brand }}</a>
       <nav aria-label="AI 纪元菜单">
+        <!-- VitePress intercepts links in the capture phase; this link opens our window. -->
+        <a v-if="projectEntry" class="vp-raw" :href="projectEntry.window.href" @click="openProject">{{ projectEntry.label }}</a>
         <template v-for="link in configuration.desktop.menuLinks" :key="`${link.label}-${link.href}`">
           <button v-if="knowledgeEntry && isLibraryRootHref(link.href)" type="button" @click="openEntry(knowledgeEntry)">
             {{ link.label }}

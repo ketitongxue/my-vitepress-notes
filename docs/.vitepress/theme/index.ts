@@ -1,13 +1,16 @@
 import DefaultTheme from 'vitepress/theme'
-import KnowledgeFactoryHome from './components/KnowledgeFactoryHome.vue'
-import HomeAdmin from './components/HomeAdmin.vue'
-import PersonalOsAdmin from './components/PersonalOsAdmin.vue'
-import PrivateMarkdownAdmin from './components/PrivateMarkdownAdmin.vue'
-import ReadingInsight from './components/reading/ReadingInsight.vue'
-import ReadingSteps from './components/reading/ReadingSteps.vue'
-import ReadingComparison from './components/reading/ReadingComparison.vue'
-import ReadingCode from './components/reading/ReadingCode.vue'
+import { defineAsyncComponent } from 'vue'
 import './custom.css'
+import '../../public/assets/reading-components.css'
+
+const KnowledgeFactoryHome = defineAsyncComponent(() => import('./components/KnowledgeFactoryHome.vue'))
+const HomeAdmin = defineAsyncComponent(() => import('./components/HomeAdmin.vue'))
+const PersonalOsAdmin = defineAsyncComponent(() => import('./components/PersonalOsAdmin.vue'))
+const PrivateMarkdownAdmin = defineAsyncComponent(() => import('./components/PrivateMarkdownAdmin.vue'))
+const ReadingInsight = defineAsyncComponent(() => import('./components/reading/ReadingInsight.vue'))
+const ReadingSteps = defineAsyncComponent(() => import('./components/reading/ReadingSteps.vue'))
+const ReadingComparison = defineAsyncComponent(() => import('./components/reading/ReadingComparison.vue'))
+const ReadingCode = defineAsyncComponent(() => import('./components/reading/ReadingCode.vue'))
 
 export default {
   extends: DefaultTheme,

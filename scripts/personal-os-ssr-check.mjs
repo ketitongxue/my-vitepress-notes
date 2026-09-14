@@ -2,6 +2,10 @@ import { readFile } from 'node:fs/promises'
 
 const html = await readFile(new URL('../docs/.vitepress/dist/index.html', import.meta.url), 'utf8')
 
+if (/class="macbook-boot"/.test(html)) {
+  throw new Error('Boot must mount only on the client after checking persistent access and motion preferences')
+}
+
 for (const view of ['home', 'system']) {
   const landmark = new RegExp(`data-os-view="${view}" style=""`)
   if (!landmark.test(html)) throw new Error(`SSR ${view} landmark must remain visible before preflight selection`)
