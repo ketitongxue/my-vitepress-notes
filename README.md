@@ -35,4 +35,4 @@
 
 普通 `##` 标题保留目录锚点。组件按可用容器宽度排版，独立文章跟随主题，桌面窗口保持浅色。不要将步骤、对比和高亮同时用于每一段文字。
 
-共享样式位于 `docs/public/assets/reading-components.css`，可供独立 HTML 文章使用相同类名。知识库正文来自 `ai-era-html-docs` 的跨域页面，必须在该内容仓库中接入样式；修改本仓库的窗口 CSS 不会改变 iframe 内的文章。独立 HTML 的复制按钮使用渐进增强，脚本不可用时仍可阅读和手动复制代码。
+共享样式位于 `docs/public/assets/reading-components.css`，由主题导入并打包到带内容 hash 的 CSS 中，站内页面可使用长期缓存。原 `/assets/reading-components.css` 地址继续供独立 HTML 文章使用，并保留重新验证缓存，避免样式更新后长期失效；请勿把没有内容 hash 的公开资源纳入 `immutable` 规则。知识库正文来自 `ai-era-html-docs` 的跨域页面，必须在该内容仓库中接入样式；修改本仓库的窗口 CSS 不会改变 iframe 内的文章。独立 HTML 的复制按钮使用渐进增强，脚本不可用时仍可阅读和手动复制代码。

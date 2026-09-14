@@ -3,11 +3,13 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   computeCoverTransform,
   createMacbookBootRuntime,
+  MACBOOK_BOOT_TIMING,
   getReducedMotionPreference,
-  getSessionStorage,
+  getLocalStorage,
   progressCells,
-  shouldActivateMacbookFromEnter,
+  shouldSkipMacbookFromEnter,
   shouldSkipMacbookBoot,
+  startMacbookBootSequence,
   transitionMacbookBoot,
   writeAccessed,
 } from './macbookBootState.mjs'
@@ -19,31 +21,23 @@ const props = defineProps({
 })
 const emit = defineEmits(['entered'])
 const screen = ref(null)
-const terminal = ref(null)
-const launchButton = ref(null)
 const visible = ref(true)
 const state = ref('typing')
-const visibleLineCount = ref(0)
 const progress = ref(0)
-const zoomDuration = 1500
+const zoomDuration = MACBOOK_BOOT_TIMING.zoomDuration
 let storage
 let runtime
 let motionPreference
 let entered = false
 let started = false
 
-const bootLines = computed(() => props.configuration.boot.lines)
-const visibleLines = computed(() => bootLines.value.slice(0, visibleLineCount.value))
+const visibleLines = computed(() => props.configuration.boot.lines)
 const liveMessage = computed(() => {
   if (state.value === 'launching') return `正在启动 ${progress.value} / 12`
-  if (state.value === 'ready') return '系统已就绪，按 Enter 启动'
+  if (state.value === 'ready') return '系统已就绪，即将进入桌面'
   if (state.value === 'zooming') return '正在进入桌面'
   return visibleLines.value.at(-1) ?? '正在准备个人系统'
 })
-
-function schedule(callback, delay) {
-  return runtime?.schedule(callback, delay)
-}
 
 function clearPreflightFallback() {
   const timer = window['__personalSiteAccessFallback']
@@ -92,48 +86,30 @@ function beginZoom() {
   screen.value.style.setProperty('--boot-scale', String(transform.scale))
   screen.value.style.setProperty('--boot-x', `${transform.translateX}px`)
   screen.value.style.setProperty('--boot-y', `${transform.translateY}px`)
-  schedule(() => {
-    state.value = transitionMacbookBoot(state.value, 'ZOOM_COMPLETE')
-    void enterDesktop()
-  }, zoomDuration)
 }
 
 function handleMotionChange(event) {
   if (event.matches && !entered) void enterDesktop()
 }
 
-function advanceProgress() {
-  if (state.value !== 'launching') return
-  progress.value += 1
-  if (progress.value < 12) schedule(advanceProgress, 55)
-  else beginZoom()
-}
-
 function activate() {
   if (state.value !== 'ready') return
   state.value = transitionMacbookBoot(state.value, 'ACTIVATE')
   progress.value = 0
-  schedule(advanceProgress, 55)
+  startMacbookBootSequence(runtime, {
+    onProgress: (count) => { progress.value = count },
+    onZoom: beginZoom,
+    onComplete: () => {
+      state.value = transitionMacbookBoot(state.value, 'ZOOM_COMPLETE')
+      void enterDesktop()
+    },
+  })
 }
 
 function handleKeydown(event) {
-  if (!shouldActivateMacbookFromEnter(event, state.value)) return
+  if (!shouldSkipMacbookFromEnter(event, state.value)) return
   event.preventDefault()
-  activate()
-}
-
-function revealNextLine() {
-  if (state.value !== 'typing') return
-  visibleLineCount.value += 1
-  void nextTick(() => {
-    if (terminal.value) terminal.value.scrollTop = terminal.value.scrollHeight
-  })
-  if (visibleLineCount.value < bootLines.value.length) {
-    schedule(revealNextLine, 220)
-    return
-  }
-  state.value = transitionMacbookBoot(state.value, 'TYPING_COMPLETE')
-  void nextTick(() => launchButton.value?.focus({ preventScroll: true }))
+  void enterDesktop()
 }
 
 function startBoot() {
@@ -147,7 +123,7 @@ function startBoot() {
     return
   }
 
-  storage = getSessionStorage(window)
+  storage = getLocalStorage(window)
   const reduceMotion = getReducedMotionPreference(window)
   motionPreference = window.matchMedia?.('(prefers-reduced-motion: reduce)')
   motionPreference?.addEventListener('change', handleMotionChange)
@@ -157,13 +133,12 @@ function startBoot() {
   if (skipBoot) {
     state.value = transitionMacbookBoot(state.value, 'SKIP')
     document.documentElement.dataset.personalSiteAccess = 'returning'
-    schedule(() => void enterDesktop(), 80)
+    void enterDesktop()
     return
   }
 
-  visibleLineCount.value = 1
-  if (bootLines.value.length === 1) state.value = transitionMacbookBoot(state.value, 'TYPING_COMPLETE')
-  else schedule(revealNextLine, 220)
+  state.value = transitionMacbookBoot(state.value, 'TYPING_COMPLETE')
+  activate()
 }
 
 onMounted(startBoot)
@@ -192,7 +167,7 @@ onBeforeUnmount(() => {
   <section v-if="visible" class="macbook-boot" :data-state="state" :style="{ '--boot-zoom-duration': `${zoomDuration}ms` }" aria-label="个人系统启动页">
     <div class="macbook-boot__computer">
       <div ref="screen" class="macbook-boot__screen">
-        <div ref="terminal" class="macbook-boot__terminal" aria-hidden="true">
+        <div class="macbook-boot__terminal" aria-hidden="true">
           <div class="macbook-boot__terminal-bar">{{ configuration.desktop.brand }} ~ zsh</div>
           <p v-for="(line, index) in visibleLines" :key="`${index}-${line}`">{{ line }}</p>
           <p v-if="state === 'launching' || state === 'zooming'" class="macbook-boot__progress">
@@ -201,11 +176,9 @@ onBeforeUnmount(() => {
         </div>
         <p class="macbook-boot__status" aria-live="polite">{{ liveMessage }}</p>
         <button
-          v-if="state === 'ready'"
-          ref="launchButton"
           type="button"
           class="macbook-boot__launch"
-          @click="activate"
+          @click="enterDesktop"
         >
           {{ configuration.boot.launchLabel }}
         </button>
@@ -233,7 +206,7 @@ onBeforeUnmount(() => {
 
 .macbook-boot__computer {
   width: min(708px, calc(100vw - 56px));
-  animation: boot-arrive 650ms cubic-bezier(.16, 1, .3, 1) both;
+  animation: boot-arrive 180ms cubic-bezier(.16, 1, .3, 1) both;
 }
 
 .macbook-boot__screen {
@@ -265,7 +238,7 @@ onBeforeUnmount(() => {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  transition: opacity 800ms ease, transform 800ms cubic-bezier(.4, 0, .2, 1);
+  transition: opacity 320ms ease, transform 320ms cubic-bezier(.4, 0, .2, 1);
 }
 
 .macbook-boot[data-state="zooming"] .macbook-boot__terminal {
@@ -285,7 +258,7 @@ onBeforeUnmount(() => {
 .macbook-boot__terminal p {
   margin: 0 0 12px;
   overflow-wrap: anywhere;
-  animation: boot-line-in 320ms ease-out both;
+  animation: boot-line-in 180ms ease-out both;
 }
 
 .macbook-boot__progress {
@@ -327,7 +300,7 @@ onBeforeUnmount(() => {
   color: #1e2430;
   font: inherit;
   cursor: pointer;
-  animation: boot-line-in 350ms ease-out backwards;
+  animation: boot-line-in 180ms ease-out backwards;
   transition: transform 180ms ease, box-shadow 180ms ease;
 }
 

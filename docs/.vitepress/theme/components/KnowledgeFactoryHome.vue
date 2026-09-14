@@ -3,6 +3,7 @@ import { markRaw, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from '
 import BottomOsNavigation from './BottomOsNavigation.vue'
 import DesktopSurface from './DesktopSurface.vue'
 import MacbookBoot from './MacbookBoot.vue'
+import { getLocalStorage, getReducedMotionPreference, shouldSkipMacbookBoot } from './macbookBootState.mjs'
 import {
   hasCompletedHomeEntry, hashForOsView, initialOsView, normalizeOsHash,
 } from './personalOsRouter.mjs'
@@ -121,6 +122,7 @@ function retrySystem() {
 onMounted(() => {
   const accessState = document.documentElement.dataset.personalSiteAccess
   homeEntered.value = hasCompletedHomeEntry(accessState)
+    || shouldSkipMacbookBoot(getLocalStorage(window), getReducedMotionPreference(window))
   hydrated.value = true
   void requestHome()
   void applyHash({ scroll: false })
@@ -137,7 +139,7 @@ onBeforeUnmount(() => {
 
 <template>
   <MacbookBoot
-    v-if="!hydrated || (activeView === 'home' && !homeEntered)"
+    v-if="hydrated && activeView === 'home' && !homeEntered"
     :active="activeView === 'home'"
     :disabled="bootDisabled"
     :configuration="homeConfiguration.config"

@@ -1,0 +1,9 @@
+# Vite emits name.hash.ext files. Public assets with stable names revalidate.
+/assets/*.:hash.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*.:hash.css
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*.:hash.woff2
+  Cache-Control: public, max-age=31536000, immutable

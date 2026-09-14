@@ -1,4 +1,6 @@
 /* Shared by VitePress articles and independently hosted HTML articles.
+   The theme imports this source into its content-hashed stylesheet, while
+   the public URL stays available with revalidation for external articles.
    Add .reading-content to the article wrapper; no global element styles. */
 .reading-content {
   --reading-ink: #1e2430;

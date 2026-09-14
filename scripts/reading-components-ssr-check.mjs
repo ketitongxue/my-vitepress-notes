@@ -2,8 +2,35 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 
 const html = await readFile(new URL('../docs/.vitepress/dist/projects/go-tiny-claw.html', import.meta.url), 'utf8')
+const attribute = (tag, name) => tag.match(new RegExp(`\\b${name}="([^"]*)"`))?.[1]
+const hasRel = (tag, relation) => attribute(tag, 'rel')?.split(/\s+/).includes(relation)
 
-assert.match(html, /<link\b[^>]*href="\/assets\/reading-components\.css"/, 'the independent article loads the shared stylesheet')
+const stylesheets = [...html.matchAll(/<link\b[^>]*>/g)]
+  .map(([tag]) => hasRel(tag, 'stylesheet') ? attribute(tag, 'href') : null)
+  .filter((href) => href?.startsWith('/assets/'))
+assert.ok(stylesheets.length, 'the article loads its bundled stylesheets')
+for (const href of stylesheets) {
+  assert.match(href, /\.[\w-]{8,}\.css$/, 'bundled stylesheets use content hashes for immutable caching')
+}
+const styles = (await Promise.all(stylesheets.map((href) =>
+  readFile(new URL(`../docs/.vitepress/dist${href}`, import.meta.url), 'utf8')))).join('\n')
+for (const selector of ['.reading-content', '.reading-insight', '.reading-steps', '.reading-comparison__panel', '.reading-code__status', '.reading-mark']) {
+  assert.ok(styles.includes(selector), `the article stylesheet is missing ${selector}`)
+}
+
+const initialScripts = [...html.matchAll(/<(?:link|script)\b[^>]*>/g)]
+  .map(([tag]) => hasRel(tag, 'modulepreload') ? attribute(tag, 'href')
+    : attribute(tag, 'type') === 'module' ? attribute(tag, 'src') : null)
+  .filter((href) => href?.startsWith('/assets/') && href.endsWith('.js'))
+assert.ok(initialScripts.length, 'the article declares its initial JavaScript modules')
+const initialCode = (await Promise.all(initialScripts.map((href) =>
+  readFile(new URL(`../docs/.vitepress/dist${href}`, import.meta.url), 'utf8')))).join('\n')
+// Async import filenames legitimately remain in the theme; check implementation
+// markers so eager admin/desktop/parser code cannot silently return to it.
+for (const marker of ['desktop-surface__workspace', 'home-admin__workspace', 'os-admin__workspace', 'private-notes-admin__dropzone', 'Wrong `markdown-it` preset']) {
+  assert.ok(!initialCode.includes(marker), `the article eagerly loads unrelated code: ${marker}`)
+}
+
 assert.match(html, /<div\b[^>]*class="reading-content"/, 'the article provides the shared style scope')
 assert.doesNotMatch(html, /<\/?Reading(?:Insight|Steps|Comparison|Code)\b/, 'all article components render on the server')
 
