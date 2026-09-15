@@ -11,14 +11,23 @@ export function getLibraryDirectoryView(groups, selectedCategory = null) {
   }
 }
 
-export async function loadLibraryDocuments({ signal, fetchImpl = fetch } = {}) {
-  const response = await fetchImpl(libraryTreeUrl, { signal })
+export async function loadLibraryDocuments({ signal, refresh = false, fetchImpl = fetch } = {}) {
+  const response = await fetchImpl(refresh ? `${libraryTreeUrl}?refresh=1` : libraryTreeUrl, { signal, cache: 'no-store' })
   if (!response.ok) throw new Error('Library unavailable')
   const data = await response.json()
   return {
     groups: groupLibraryDocuments(data),
-    usingSnapshot: data.source === 'snapshot',
+    usingBackup: data.source === 'stale' || data.source === 'snapshot',
+    updatedAt: formatLibraryUpdatedAt(data.generatedAt ?? data.capturedOn),
   }
+}
+
+export function formatLibraryUpdatedAt(value) {
+  if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) return ''
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).format(new Date(value))
 }
 
 export function isLibraryRootHref(href) {
