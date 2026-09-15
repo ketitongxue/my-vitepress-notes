@@ -152,7 +152,8 @@ export function createKnowledgeTreeHandler({
       const upstream = await fetchImpl(UPSTREAM_URL, {
         method: 'GET',
         headers: { accept: 'application/json', 'cache-control': 'no-cache' },
-        redirect: 'error',
+        // Workers supports only manual/follow. A 3xx is rejected by the status check below.
+        redirect: 'manual',
         signal: controller.signal,
         cache: 'no-store',
       })

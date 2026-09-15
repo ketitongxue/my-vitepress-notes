@@ -46,7 +46,7 @@ test('reads the published manifest from one fixed upstream without forwarding vi
   const serve = handler({ fetchImpl: async (url, init) => {
     assert.equal(url, 'https://ketitongxue.github.io/ai-era-html-docs/docs/directory.json')
     assert.equal(init.method, 'GET')
-    assert.equal(init.redirect, 'error')
+    assert.equal(init.redirect, 'manual')
     assert.equal(init.cache, 'no-store')
     assert.deepEqual([...new Headers(init.headers)], [['accept', 'application/json'], ['cache-control', 'no-cache']])
     assert.equal(init.signal.aborted, false)
@@ -166,6 +166,7 @@ test('cache eviction and the old fixed-snapshot cache cannot restore removed art
 })
 
 for (const [label, fetchImpl, category] of [
+  ['redirect', async () => new Response('', { status: 302, headers: { location: 'https://other.example/directory.json' } }), 'upstream_http'],
   ['403', async () => new Response('private detail', { status: 403 }), 'upstream_http'],
   ['network failure', async () => { throw new TypeError('private detail with token') }, 'network'],
   ['non-JSON content type', async () => new Response('<html>private detail</html>'), 'content_type'],
