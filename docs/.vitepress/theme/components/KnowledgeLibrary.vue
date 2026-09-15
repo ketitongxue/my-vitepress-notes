@@ -6,7 +6,8 @@ const emit = defineEmits(['activate'])
 const groups = ref([])
 const loading = ref(true)
 const failed = ref(false)
-const usingSnapshot = ref(false)
+const usingBackup = ref(false)
+const updatedAt = ref('')
 const selectedCategory = ref(null)
 const collapsedCategories = ref(new Set())
 const directoryId = useId()
@@ -28,7 +29,7 @@ let stopFocusObserver
 let directoryScrollTop = 0
 let disposed = false
 
-async function load() {
+async function load(refresh = false) {
   controller?.abort()
   clearTimeout(timer)
   controller = new AbortController()
@@ -37,13 +38,14 @@ async function load() {
   failed.value = false
   timer = setTimeout(() => request.abort(), 15000)
   try {
-    const result = await loadLibraryDocuments({ signal: request.signal })
+    const result = await loadLibraryDocuments({ signal: request.signal, refresh })
     if (!disposed && request === controller) {
       groups.value = result.groups
       selectedCategory.value = getLibraryDirectoryView(result.groups, selectedCategory.value).selectedCategory
       const currentCategories = new Set(result.groups.map((group) => group.title))
       collapsedCategories.value = new Set([...collapsedCategories.value].filter((title) => currentCategories.has(title)))
-      usingSnapshot.value = result.usingSnapshot
+      usingBackup.value = result.usingBackup
+      updatedAt.value = result.updatedAt
     }
   } catch {
     if (!disposed && request === controller) failed.value = true
@@ -132,12 +134,16 @@ onBeforeUnmount(() => {
       <p v-if="loading" role="status">正在加载文章目录…</p>
       <div v-else-if="failed" role="status">
         <p>暂时无法加载目录，请重试或在窗口内打开完整知识库。</p>
-        <button type="button" @click="load">重新加载目录</button>
+        <button type="button" @click="load(true)">重新加载目录</button>
       </div>
-      <p v-else-if="!total">知识库暂时没有已发布的 HTML 文章。</p>
+      <div v-else-if="!total">
+        <p>知识库暂时没有已发布的 HTML 文章。</p>
+        <p v-if="usingBackup" class="knowledge-library__snapshot" role="status">目录暂时无法更新，已显示{{ updatedAt ? `截至 ${updatedAt} 的` : '最近一次可用的' }}文章目录。</p>
+        <button type="button" @click="load(true)">刷新目录</button>
+      </div>
       <template v-else>
-        <p class="knowledge-library__count">{{ groups.length }} 个分类 · {{ total }} 篇文章</p>
-        <p v-if="usingSnapshot" class="knowledge-library__snapshot" role="status">已显示可用目录，最新文章可能稍后更新。<button type="button" @click="load">刷新目录</button></p>
+        <p class="knowledge-library__count">{{ groups.length }} 个分类 · {{ total }} 篇文章 <button type="button" @click="load(true)">刷新目录</button></p>
+        <p v-if="usingBackup" class="knowledge-library__snapshot" role="status">目录暂时无法更新，已显示{{ updatedAt ? `截至 ${updatedAt} 的` : '最近一次可用的' }}文章目录。</p>
         <div class="knowledge-library__filters" role="group" aria-label="按文章分类筛选">
           <button type="button" class="knowledge-library__filter" :aria-pressed="selectedCategory === null" @click="selectedCategory = null">
             <span>全部</span><span class="knowledge-library__filter-count">{{ total }}</span>
@@ -207,7 +213,7 @@ onBeforeUnmount(() => {
 .knowledge-library { display: flex; flex: 1; min-width: 0; min-height: 0; overflow: hidden; overflow-wrap: anywhere; font-size: 14px; }
 .knowledge-library__directory { flex: 1; min-width: 0; min-height: 0; overflow: auto; padding: 20px 24px; }
 .knowledge-library__intro { color: #485465; }
-.knowledge-library__count { color: #69717e; font-size: 12px; }
+.knowledge-library__count { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: #69717e; font-size: 12px; }
 .knowledge-library__snapshot { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: #69717e; font-size: 12px; }
 .knowledge-library__filters { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; margin-top: 18px; }
 .knowledge-library__result { margin: 12px 0 0; color: #485465; font-size: 12px; }

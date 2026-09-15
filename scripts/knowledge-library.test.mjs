@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { getLibraryDirectoryView, groupLibraryDocuments, isLibraryRootHref, libraryUrl, loadLibraryDocuments, observeEmbeddedFrameFocus } from '../docs/.vitepress/theme/components/knowledgeLibrary.mjs'
+import { formatLibraryUpdatedAt, getLibraryDirectoryView, groupLibraryDocuments, isLibraryRootHref, libraryUrl, loadLibraryDocuments, observeEmbeddedFrameFocus } from '../docs/.vitepress/theme/components/knowledgeLibrary.mjs'
 
 const blob = (path) => ({ path, type: 'blob', mode: '100644' })
 
@@ -44,18 +44,33 @@ test('directory refresh keeps valid category selection and returns to all when a
 test('loads the same-origin directory with cancellation and identifies a usable backup', async () => {
   const controller = new AbortController()
   const document = blob('docs/Agent/中文文章.html')
-  for (const source of ['github', 'snapshot']) {
+  for (const source of ['live', 'stale', 'snapshot']) {
     const result = await loadLibraryDocuments({
       signal: controller.signal,
       fetchImpl: async (url, options) => {
         assert.equal(url, '/api/knowledge/tree')
         assert.equal(options.signal, controller.signal)
-        return Response.json({ source, tree: [document] })
+        assert.equal(options.cache, 'no-store')
+        return Response.json({ source, generatedAt: '2026-09-15T12:30:00Z', tree: [document] })
       },
     })
     assert.equal(result.groups[0].articles[0].title, '中文文章')
-    assert.equal(result.usingSnapshot, source === 'snapshot')
+    assert.equal(result.usingBackup, source !== 'live')
+    assert.match(result.updatedAt, /2026.*09.*15.*20:30/)
   }
+})
+
+test('explicit refresh requests an updated directory and does not reuse browser cache', async () => {
+  await loadLibraryDocuments({ refresh: true, fetchImpl: async (url, options) => {
+    assert.equal(url, '/api/knowledge/tree?refresh=1')
+    assert.equal(options.cache, 'no-store')
+    return Response.json({ source: 'live', tree: [] })
+  } })
+})
+
+test('backup dates use the site timezone and invalid dates are omitted', () => {
+  assert.match(formatLibraryUpdatedAt('2026-09-15T23:30:00Z'), /2026.*09.*16.*07:30/)
+  for (const value of [undefined, null, 42, '', 'not a date']) assert.equal(formatLibraryUpdatedAt(value), '')
 })
 
 test('unavailable, malformed and incomplete directory responses remain retryable errors', async () => {
