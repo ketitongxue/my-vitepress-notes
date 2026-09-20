@@ -1,5 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { IconHandMove, IconSparkles } from '@tabler/icons-vue'
+import DesktopAtmosphere from './DesktopAtmosphere.vue'
 import CanvasCard from './CanvasCard.vue'
 import CanvasConnections from './CanvasConnections.vue'
 import CanvasControls from './CanvasControls.vue'
@@ -16,12 +18,15 @@ import { loadCanvasLayout, saveCanvasLayout } from './canvasPersistence.mjs'
 
 const props = defineProps({
   configuration: { type: Object, required: true },
+  brand: { type: String, default: 'AI 纪元' },
+  active: { type: Boolean, default: false },
 })
 
 const SAVE_DELAY = 250
 const INITIAL_TRANSFORM = Object.freeze({ scale: 1, panX: 0, panY: 0 })
 const emit = defineEmits(['layout-change'])
 const viewport = ref(null)
+const atmosphere = ref(null)
 const sourceCards = props.configuration.config.cards
 const sourceConnections = props.configuration.config.connections
 const contentRevision = props.configuration.revision
@@ -31,6 +36,7 @@ const selectedCardId = ref(null)
 const stackingOrder = ref(cards.value.map((card) => card.id))
 const viewportSize = ref({ width: 1, height: 1 })
 const ready = ref(false)
+const visibleCount = computed(() => cards.value.filter((card) => card.visible !== false).length)
 
 const defaultLayout = {
   contentRevision,
@@ -372,7 +378,7 @@ function focusCard(id) {
   applyTransform(fitWorldBounds(
     { x: card.x, y: card.y, width: card.width, height: card.height },
     usableViewport.value,
-    64,
+    mobileViewport.value ? 8 : 32,
   ))
 }
 
@@ -397,9 +403,9 @@ function fitInitialLayout() {
   const firstFitBounds = computeWorldBounds(
     initialFitCards(cards.value, mobileViewport.value),
     canonicalBounds,
-    96,
+    mobileViewport.value ? 12 : 96,
   )
-  applyTransform(fitWorldBounds(firstFitBounds, usableViewport.value, 24))
+  applyTransform(fitWorldBounds(firstFitBounds, usableViewport.value, mobileViewport.value ? 8 : 24))
 }
 
 function undoCanvas() {
@@ -489,7 +495,19 @@ onBeforeUnmount(() => {
     :class="{ 'is-ready': ready }"
     aria-label="AI 纪元无限画布"
     aria-describedby="canvas-instructions"
+    @pointermove.passive="atmosphere?.movePointer($event)"
+    @pointerleave="atmosphere?.clearPointer()"
   >
+    <DesktopAtmosphere ref="atmosphere" :active="active" />
+    <header class="infinite-canvas__menu" data-canvas-control>
+      <a class="infinite-canvas__brand" href="#home">{{ brand }}</a>
+      <span class="infinite-canvas__menu-title">个人工作台</span>
+      <span class="infinite-canvas__count"><IconSparkles :size="13" aria-hidden="true" />{{ visibleCount }} 个节点</span>
+    </header>
+    <div class="infinite-canvas__intro">
+      <h1>我的 OS<span aria-hidden="true">✳</span></h1>
+      <p>把经历、方法与探索，连接成自己的系统。</p>
+    </div>
     <p id="canvas-instructions" class="infinite-canvas__instructions">
       拖动画布浏览，滚轮或双指缩放；也可通过图层聚焦节点，通过适应按钮恢复全局视图。
     </p>
@@ -522,6 +540,10 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
+    <p class="infinite-canvas__hint" aria-hidden="true">
+      <IconHandMove :size="16" />拖动探索<span>·</span>滚轮缩放<span>·</span>图层定位
+    </p>
+
     <CanvasLayers
       :cards="cards"
       :selected-card-id="selectedCardId"
@@ -550,8 +572,99 @@ onBeforeUnmount(() => {
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  background-color: #faf8f1;
-  color: #1e2430;
+  background: var(--os-wallpaper);
+  color: #fffdf7;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  isolation: isolate;
+}
+
+.infinite-canvas__menu {
+  position: absolute;
+  z-index: 20;
+  inset: 0 0 auto;
+  display: flex;
+  height: 40px;
+  align-items: center;
+  gap: 20px;
+  padding: 0 18px;
+  border-bottom: 1px solid rgb(255 255 255 / 12%);
+  background: rgb(47 131 214 / 88%);
+  font-size: 11px;
+}
+
+.infinite-canvas__menu .infinite-canvas__brand {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  color: #f4d758;
+  font: 700 15px/1 "Comic Sans MS", "Bradley Hand", "Segoe Print", cursive;
+  text-decoration: none;
+}
+
+.infinite-canvas__brand:focus-visible {
+  outline: 3px solid #f4d758;
+  outline-offset: -3px;
+}
+
+.infinite-canvas__menu-title {
+  border-left: 1px solid rgb(255 255 255 / 24%);
+  padding-left: 20px;
+}
+
+.infinite-canvas__count {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.infinite-canvas__count svg {
+  color: #f4d758;
+}
+
+.infinite-canvas__intro {
+  position: absolute;
+  z-index: 2;
+  top: 68px;
+  left: 26px;
+  pointer-events: none;
+}
+
+.infinite-canvas__intro h1 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -.04em;
+  line-height: 1.2;
+}
+
+.infinite-canvas__intro h1 span {
+  color: #f4d758;
+  font-size: 22px;
+}
+
+.infinite-canvas__intro p {
+  margin: 10px 0 0;
+  color: #f2f6fd;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.infinite-canvas__hint {
+  position: absolute;
+  bottom: 29px;
+  left: 26px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #f2f6fd;
+  font-size: 11px;
+  pointer-events: none;
 }
 
 .infinite-canvas__instructions {
@@ -564,13 +677,11 @@ onBeforeUnmount(() => {
 
 .infinite-canvas__viewport {
   position: absolute;
+  z-index: 1;
   inset: 0;
   overflow: hidden;
   cursor: grab;
   touch-action: none;
-  background-color: #faf8f1;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='%68%74%74%70%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='28' height='28' viewBox='0 0 28 28'%3E%3Ccircle cx='1.2' cy='1.2' r='1.2' fill='%235087BE' fill-opacity='.16'/%3E%3C/svg%3E");
-  background-size: 28px 28px;
 }
 
 .infinite-canvas__viewport:active {
@@ -604,6 +715,31 @@ onBeforeUnmount(() => {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+}
+
+@media (max-width: 1100px) {
+  .infinite-canvas__hint { display: none; }
+}
+
+@media (max-width: 767px) {
+  .infinite-canvas__menu {
+    height: 48px;
+    padding-inline: 12px;
+    gap: 12px;
+  }
+
+  .infinite-canvas__menu .infinite-canvas__brand { min-height: 44px; }
+  .infinite-canvas__menu-title { padding-left: 12px; }
+  .infinite-canvas__intro { top: 66px; left: 16px; }
+  .infinite-canvas__intro h1 { font-size: 24px; }
+  .infinite-canvas__intro p { margin-top: 6px; font-size: 11px; }
+}
+
+@media (max-height: 559px) and (orientation: landscape) {
+  .infinite-canvas__intro { top: 66px; }
+  .infinite-canvas__intro h1 { font-size: 22px; }
+  .infinite-canvas__intro p { display: none; }
+  .infinite-canvas__hint { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

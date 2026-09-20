@@ -1,5 +1,6 @@
 <script setup>
 import { onBeforeUnmount, ref } from 'vue'
+import { IconArrowUpRight, IconGripHorizontal } from '@tabler/icons-vue'
 import { resizeCardGeometry } from './canvasGeometry.mjs'
 
 const props = defineProps({
@@ -207,6 +208,7 @@ onBeforeUnmount(() => {
         <small>{{ card.kicker }}</small>
         <strong>{{ card.title }}</strong>
       </span>
+      <IconGripHorizontal class="canvas-card__grip" :size="17" :stroke="1.5" aria-hidden="true" />
     </button>
 
     <div
@@ -228,7 +230,10 @@ onBeforeUnmount(() => {
           :href="link.href"
           @pointerdown.stop
           @click.stop
-        >{{ link.label }}</a>
+        >
+          <span>{{ link.label }}</span>
+          <IconArrowUpRight :size="15" :stroke="1.7" aria-hidden="true" />
+        </a>
       </nav>
       <span v-if="card.status" class="canvas-card__status">
         <i aria-hidden="true"></i>{{ card.body }}
@@ -262,43 +267,46 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid rgb(50 105 180 / 65%);
-  border-radius: 10px;
-  background: #fffdf7;
-  box-shadow: 0 5px 14px rgb(35 75 120 / 10%);
-  color: #252b36;
-  font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  border: 1px solid rgb(40 90 135 / 35%);
+  border-radius: 18px;
+  background: linear-gradient(155deg, #fffdf6, #faf7ed);
+  box-shadow: 0 12px 30px rgb(20 65 110 / 22%), inset 0 1px rgb(255 255 255 / 80%);
+  color: #1e2430;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
   transition: border-color 180ms ease, box-shadow 180ms ease;
 }
 
 .canvas-card:hover {
-  border-color: rgb(43 91 157 / 82%);
-  box-shadow: 0 7px 18px rgb(35 75 120 / 15%);
+  border-color: rgb(40 90 135 / 62%);
+  box-shadow: 0 16px 34px rgb(20 65 110 / 28%), inset 0 1px rgb(255 255 255 / 80%);
 }
 
 .canvas-card.is-selected {
-  border-width: 2px;
-  border-color: #315efb;
-  box-shadow: 0 0 0 3px rgb(49 94 251 / 12%), 0 7px 18px rgb(35 75 120 / 15%);
+  border-color: #266ba9;
+  box-shadow: 0 0 0 3px rgb(247 221 118 / 80%), 0 16px 34px rgb(20 65 110 / 28%);
 }
 
 .canvas-card.is-resizing {
-  border-color: #315efb;
-  box-shadow: 0 0 0 2px rgb(49 94 251 / 18%), 0 7px 18px rgb(35 75 120 / 16%);
+  border-color: #266ba9;
+  box-shadow: 0 0 0 3px rgb(247 221 118 / 90%), 0 16px 34px rgb(20 65 110 / 28%);
   user-select: none;
 }
 
 .canvas-card__titlebar {
+  position: relative;
   display: grid;
+  flex: 0 0 auto;
   grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   width: 100%;
   min-height: 44px;
   align-items: center;
-  padding: 14px 16px 10px;
+  padding: 11px 38px 10px 16px;
   border: 0;
-  background: transparent;
+  border-bottom: 1px dashed rgb(64 125 180 / 27%);
+  background: rgb(255 253 246 / 76%);
   color: inherit;
+  font-family: inherit;
   text-align: left;
   cursor: move;
 }
@@ -306,78 +314,100 @@ onBeforeUnmount(() => {
 .canvas-card__titlebar:focus-visible,
 .canvas-card__resize-handle:focus-visible,
 .canvas-card a:focus-visible {
-  outline: 3px solid #315efb;
+  outline: 3px solid #2f83d6;
   outline-offset: -3px;
 }
 
 .canvas-card__heading {
   display: grid;
   min-width: 0;
-  gap: 4px;
+  gap: 3px;
 }
 
 .canvas-card__heading small {
-  color: #69707d;
+  color: #5c738c;
   font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .09em;
   line-height: 1.25;
 }
 
 .canvas-card__heading strong {
   overflow-wrap: anywhere;
   font-size: 17px;
+  font-weight: 650;
   line-height: 1.3;
+}
+
+.canvas-card__grip {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  color: #879aac;
+  transform: translateY(-50%);
 }
 
 .canvas-card__mark {
   display: grid;
-  width: 72px;
-  height: 72px;
+  width: 58px;
+  height: 58px;
   place-items: center;
-  border-radius: 14px;
-  background: #315efb;
-  color: #fffdf7;
-  font: 700 28px/1 "JetBrains Mono", "Fira Code", Consolas, monospace;
+  border: 1px solid rgb(36 103 169 / 36%);
+  border-radius: 16px;
+  background: linear-gradient(145deg, #59a5ed, #2f83d6);
+  box-shadow: inset 0 1px rgb(255 255 255 / 45%), 0 4px 10px rgb(47 131 214 / 18%);
+  color: #fff5c7;
+  font: 700 24px/1 "Comic Sans MS", "Bradley Hand", "Segoe Print", cursive;
+  transform: rotate(-4deg);
 }
 
 .canvas-card__body {
   flex: 1;
   min-height: 0;
-  padding: 4px 16px 16px;
+  padding: 10px 16px 14px;
   overflow: hidden;
   cursor: move;
 }
 
 .canvas-card__copy {
-  margin: 0 0 12px;
-  color: #454c59;
+  margin: 0 0 10px;
+  color: #485465;
   font-size: 14px;
-  line-height: 1.65;
+  line-height: 1.55;
   white-space: pre-line;
+}
+
+.canvas-card__copy:last-child {
+  margin-bottom: 0;
 }
 
 .canvas-card__links a {
   display: inline-flex;
   min-height: 44px;
   align-items: center;
-  border: 1px solid rgb(50 105 180 / 38%);
-  border-radius: 7px;
-  background: rgb(255 255 255 / 52%);
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid rgb(64 125 180 / 23%);
+  border-radius: 9px;
+  background: rgb(255 255 255 / 62%);
   padding: 8px 10px;
-  color: #315efb;
+  color: #1e5d9e;
   cursor: pointer;
-  font-weight: 700;
-  box-shadow: 0 2px 6px rgb(35 75 120 / 6%);
+  font-size: 13px;
+  font-weight: 600;
   text-decoration-thickness: 1px;
   text-underline-offset: 4px;
-  transition: border-color 170ms ease, box-shadow 170ms ease, transform 170ms ease;
+  transition: border-color 170ms ease, background-color 170ms ease, transform 170ms ease;
+}
+
+.canvas-card__links a svg {
+  flex: 0 0 auto;
 }
 
 .canvas-card__links a:hover {
-  border-color: #315efb;
-  box-shadow: 0 4px 10px rgb(35 75 120 / 12%);
+  border-color: #2f83d6;
+  background: #eef6ff;
   transform: translateY(-1px);
 }
 
@@ -391,12 +421,13 @@ onBeforeUnmount(() => {
 }
 
 .canvas-card__chips li {
-  border: 1px solid #315efb;
-  border-radius: 999px;
+  border: 1px solid rgb(64 125 180 / 22%);
+  border-radius: 8px;
+  background: #edf4fa;
   padding: 5px 9px;
-  color: #1e4bbb;
+  color: #2a5a83;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .canvas-card__links {
@@ -408,95 +439,89 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  color: #31516f;
-  font-weight: 700;
+  border: 1px solid rgb(48 116 89 / 18%);
+  border-radius: 999px;
+  background: #edf5ed;
+  padding: 5px 10px;
+  color: #306449;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .canvas-card__status i {
-  width: 9px;
-  height: 9px;
+  width: 7px;
+  height: 7px;
   flex: 0 0 auto;
   border-radius: 50%;
-  background: #3fae78;
+  background: #3f916b;
+  box-shadow: 0 0 0 3px rgb(63 145 107 / 10%);
 }
 
 .canvas-card--identity {
-  border: 2px solid #315efb;
-  border-radius: 16px;
+  border-color: rgb(40 90 135 / 48%);
+  border-radius: 20px;
 }
 
 .canvas-card--identity .canvas-card__titlebar {
-  grid-template-columns: 84px 1fr;
-  padding: 14px 20px 8px;
+  grid-template-columns: 58px 1fr;
+  gap: 16px;
+  padding: 16px 38px 14px 20px;
 }
 
 .canvas-card--identity .canvas-card__heading strong {
-  font-size: 24px;
+  color: #286eaf;
+  font-size: 27px;
 }
 
 .canvas-card--identity .canvas-card__body {
-  padding: 0 20px 16px;
+  padding: 14px 20px 16px;
 }
 
 .canvas-card--identity .canvas-card__copy {
   margin: 0;
   font-size: 13px;
-  line-height: 1.45;
-}
-
-.canvas-card--timeline {
-  border-left: 3px solid #315efb;
+  line-height: 1.55;
 }
 
 .canvas-card--timeline .canvas-card__heading small {
-  color: #315efb;
+  color: #286eaf;
 }
 
 .canvas-card--timeline .canvas-card__heading small::before {
   display: inline-block;
-  width: 8px;
-  height: 8px;
-  margin-right: 8px;
-  border: 2px solid #315efb;
+  width: 6px;
+  height: 6px;
+  margin-right: 7px;
   border-radius: 50%;
-  background: #f4d758;
+  background: #2f83d6;
   content: "";
 }
 
 .canvas-card--principle {
-  border-color: rgb(188 151 28 / 52%);
-  background: #fff9df;
+  background: linear-gradient(155deg, #fffbed, #fcf4d9);
+}
+
+.canvas-card--principle .canvas-card__titlebar {
+  background: rgb(247 221 118 / 18%);
 }
 
 .canvas-card--principle .canvas-card__copy {
-  color: #3f3b24;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.canvas-card--skills {
-  background: #fffdf7;
-}
-
-.canvas-card--project {
-  border-left: 6px solid #315efb;
+  color: #58513b;
+  font-size: 15px;
+  line-height: 1.6;
 }
 
 .canvas-card--project::before {
   position: absolute;
-  top: 8px;
-  right: 22px;
-  width: 54px;
-  height: 14px;
-  transform: rotate(1.5deg);
-  background: rgb(244 215 88 / 44%);
+  z-index: 1;
+  top: -4px;
+  right: 42px;
+  width: 48px;
+  height: 12px;
+  transform: rotate(2deg);
+  background: rgb(244 215 88 / 72%);
   content: "";
   pointer-events: none;
-}
-
-.canvas-card--project .canvas-card__links a {
-  border-color: transparent;
-  padding-inline: 0;
 }
 
 .canvas-card--knowledge .canvas-card__links {
@@ -504,21 +529,14 @@ onBeforeUnmount(() => {
   gap: 8px;
 }
 
-.canvas-card--knowledge .canvas-card__links a {
-  background: #fffdf7;
-}
-
-.canvas-card--status {
-  background: #eef4ff;
-}
-
-.canvas-card--next {
-  border-color: #ef7b45;
-  background: #fffaf6;
-}
-
 .canvas-card--next .canvas-card__heading small {
-  color: #b64a1c;
+  color: #806219;
+}
+
+.canvas-card--next .canvas-card__heading small::before {
+  margin-right: 5px;
+  color: #9a771e;
+  content: "✦";
 }
 
 .canvas-card__resize-handle {
@@ -593,7 +611,7 @@ onBeforeUnmount(() => {
 
 .canvas-card__resize-handle:hover::after,
 .canvas-card__resize-handle:focus-visible::after {
-  background: rgb(49 94 251 / 46%);
+  background: rgb(47 131 214 / 60%);
 }
 
 .canvas-card.is-selected .canvas-card__resize-handle--nw::after,
@@ -602,8 +620,8 @@ onBeforeUnmount(() => {
 .canvas-card.is-selected .canvas-card__resize-handle--sw::after {
   width: 5px;
   height: 5px;
-  border: 1px solid rgb(49 94 251 / 56%);
-  background: rgb(255 253 247 / 72%);
+  border: 1px solid rgb(47 131 214 / 76%);
+  background: #fffdf6;
 }
 
 .canvas-card.is-selected .canvas-card__resize-handle--nw::after { top: 1px; left: 1px; }

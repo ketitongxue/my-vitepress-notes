@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+import { IconArrowBackUp, IconDeviceFloppy, IconMaximize, IconMinus, IconPlus, IconRestore } from '@tabler/icons-vue'
 
 const { scale, canUndo } = defineProps({
   scale: { type: Number, default: 1 },
@@ -78,14 +79,29 @@ onBeforeUnmount(stopEscapeListener)
       <button ref="confirmButton" type="button" aria-label="确认恢复默认" @click="confirmReset">确认</button>
       <button type="button" aria-label="取消恢复默认" @click="cancelReset">取消</button>
     </div>
-    <div class="canvas-controls__actions">
-      <button type="button" aria-label="缩小画布" @click="emit('zoom-out')">−</button>
-      <output aria-label="当前画布缩放比例">{{ percentage }}</output>
-      <button type="button" aria-label="放大画布" @click="emit('zoom-in')">+</button>
-      <button class="canvas-controls__fit" type="button" aria-label="适应全部内容" @click="emit('fit')"><span>适应</span></button>
-      <button class="canvas-controls__undo" type="button" aria-label="撤销上一步" :disabled="!canUndo" @click="emit('undo')"><span>撤销</span></button>
-      <button class="canvas-controls__save" type="button" aria-label="保存画布布局" @click="emit('save')"><span>保存</span></button>
-      <button ref="resetButton" class="canvas-controls__reset" type="button" aria-label="恢复默认布局" @click="requestReset"><span>重置</span></button>
+    <div class="canvas-controls__scroll">
+      <div class="canvas-controls__actions">
+        <button type="button" aria-label="缩小画布" title="缩小画布" @click="emit('zoom-out')">
+          <IconMinus :size="18" :stroke-width="1.6" aria-hidden="true" />
+        </button>
+        <output aria-label="当前画布缩放比例">{{ percentage }}</output>
+        <button type="button" aria-label="放大画布" title="放大画布" @click="emit('zoom-in')">
+          <IconPlus :size="18" :stroke-width="1.6" aria-hidden="true" />
+        </button>
+        <span class="canvas-controls__divider" aria-hidden="true"></span>
+        <button class="canvas-controls__fit" type="button" aria-label="适应全部内容" title="适应全部内容" @click="emit('fit')">
+          <IconMaximize :size="18" :stroke-width="1.6" aria-hidden="true" />
+        </button>
+        <button class="canvas-controls__undo" type="button" aria-label="撤销上一步" title="撤销上一步" :disabled="!canUndo" @click="emit('undo')">
+          <IconArrowBackUp :size="18" :stroke-width="1.6" aria-hidden="true" />
+        </button>
+        <button class="canvas-controls__save" type="button" aria-label="保存画布布局" title="保存画布布局" @click="emit('save')">
+          <IconDeviceFloppy :size="18" :stroke-width="1.6" aria-hidden="true" />
+        </button>
+        <button ref="resetButton" class="canvas-controls__reset" type="button" aria-label="恢复默认布局" title="恢复默认布局" @click="requestReset">
+          <IconRestore :size="18" :stroke-width="1.6" aria-hidden="true" />
+        </button>
+      </div>
     </div>
   </aside>
 </template>
@@ -93,11 +109,31 @@ onBeforeUnmount(stopEscapeListener)
 <style scoped>
 .canvas-controls {
   position: fixed;
-  right: 18px;
-  bottom: max(76px, calc(env(safe-area-inset-bottom) + 68px));
+  right: 24px;
+  bottom: max(22px, calc(env(safe-area-inset-bottom) + 14px));
   z-index: 31;
-  color: #1e2430;
-  font: 12px/1 "JetBrains Mono", "Fira Code", Consolas, monospace;
+  max-width: calc(100vw - 48px);
+  color: #3c5266;
+  font: 12px/1.4 "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.canvas-controls__scroll,
+.canvas-controls__confirm {
+  border: 1px solid rgb(87 111 128 / 24%);
+  border-radius: 14px;
+  background: #fffdf6;
+  box-shadow: 0 8px 24px rgb(22 60 103 / 18%), inset 0 1px 0 rgb(255 255 255 / 85%);
+}
+
+.canvas-controls__scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.canvas-controls__scroll::-webkit-scrollbar {
+  display: none;
 }
 
 .canvas-controls__actions,
@@ -106,37 +142,49 @@ onBeforeUnmount(stopEscapeListener)
   align-items: center;
   gap: 0;
   padding: 4px;
-  border: 1px solid rgb(40 70 100 / 65%);
-  border-radius: 9px;
-  background: rgb(255 253 247 / 94%);
-  box-shadow: 0 6px 18px rgb(35 75 120 / 14%);
+}
+
+.canvas-controls__actions {
+  width: max-content;
+  min-width: 100%;
 }
 
 .canvas-controls__confirm {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
   width: max-content;
+  max-width: 100%;
   justify-content: flex-end;
-  margin-bottom: 6px;
-  margin-left: auto;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-left: 12px;
+}
+
+.canvas-controls__confirm > span {
+  margin-right: 6px;
 }
 
 .canvas-controls button {
+  display: inline-flex;
   min-width: 44px;
   min-height: 44px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
   padding: 0 10px;
   border: 0;
-  border-left: 1px solid rgb(40 70 100 / 16%);
+  border-radius: 9px;
   background: transparent;
   color: inherit;
+  font: inherit;
   cursor: pointer;
-  transition: background-color 170ms ease, opacity 170ms ease, transform 170ms ease;
-}
-
-.canvas-controls button:first-child {
-  border-left: 0;
+  transition: background-color 170ms ease, color 170ms ease, transform 170ms ease;
 }
 
 .canvas-controls button:hover:not(:disabled) {
-  background: #eaf3ff;
+  background: #e8f1fb;
+  color: #286bb0;
 }
 
 .canvas-controls button:active:not(:disabled) {
@@ -144,61 +192,66 @@ onBeforeUnmount(stopEscapeListener)
 }
 
 .canvas-controls button:disabled {
-  opacity: .42;
+  opacity: .36;
   cursor: not-allowed;
 }
 
 .canvas-controls button:focus-visible {
-  outline: 3px solid #315efb;
-  outline-offset: 2px;
+  outline: 3px solid #367bb8;
+  outline-offset: -2px;
+}
+
+.canvas-controls__confirm button:first-of-type {
+  background: #e8f1fb;
+  color: #286bb0;
+}
+
+.canvas-controls__actions .canvas-controls__save {
+  color: #286bb0;
 }
 
 .canvas-controls output {
-  min-width: 48px;
-  padding-inline: 7px;
-  color: #334a63;
+  min-width: 46px;
+  padding-inline: 5px;
+  color: #4f6478;
+  font: 11px/1 "JetBrains Mono", Consolas, monospace;
   text-align: center;
+}
+
+.canvas-controls__divider {
+  width: 1px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-inline: 4px;
+  background: rgb(87 111 128 / 20%);
+}
+
+@media (min-width: 768px) and (max-width: 1100px) {
+  .canvas-controls {
+    bottom: max(82px, calc(env(safe-area-inset-bottom) + 74px));
+  }
 }
 
 @media (max-width: 767px) {
   .canvas-controls {
-    left: 60px;
-    right: 8px;
+    right: 12px;
+    bottom: max(80px, calc(env(safe-area-inset-bottom) + 72px));
+    left: 12px;
     max-width: none;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-
-  .canvas-controls::-webkit-scrollbar {
-    display: none;
   }
 
   .canvas-controls__actions {
-    width: max-content;
+    justify-content: center;
   }
+}
 
-  .canvas-controls output {
-    min-width: 44px;
+@media (max-height: 559px) and (orientation: landscape) {
+  .canvas-controls {
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(12px, env(safe-area-inset-bottom));
+    left: auto;
+    width: min(366px, calc(100vw - 216px));
   }
-
-  .canvas-controls button {
-    min-width: 44px;
-    min-height: 44px;
-  }
-
-  .canvas-controls__actions button span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-  }
-
-  .canvas-controls__fit::after { content: "◎"; }
-  .canvas-controls__undo::after { content: "↶"; }
-  .canvas-controls__save::after { content: "↓"; }
-  .canvas-controls__reset::after { content: "↺"; }
 }
 
 @media (prefers-reduced-motion: reduce) {

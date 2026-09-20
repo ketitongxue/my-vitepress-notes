@@ -167,6 +167,8 @@ onBeforeUnmount(() => {
         v-if="InfiniteCanvas && systemConfiguration"
         :is="InfiniteCanvas"
         :configuration="systemConfiguration"
+        :brand="homeConfiguration.config.desktop.brand"
+        :active="hydrated && activeView === 'system'"
       />
       <div
         v-else-if="systemLoadState === 'loading'"
