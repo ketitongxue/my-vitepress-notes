@@ -1,8 +1,5 @@
 const MIN_SCALE = 0.15
 const MAX_SCALE = 3
-const PRIMARY_IDS = new Set([
-  'identity', 'growth-product', 'growth-ai',
-])
 
 export function clampScale(scale) {
   if (!Number.isFinite(scale)) return 1
@@ -66,7 +63,10 @@ export function fitWorldBounds(bounds, viewport, padding = 64) {
 }
 
 export function initialFitCards(cards, mobile) {
-  return cards.filter((card) => card.visible !== false && (!mobile || PRIMARY_IDS.has(card.id)))
+  const visibleCards = cards.filter((card) => card.visible !== false)
+  if (!mobile) return visibleCards
+  const firstCard = visibleCards.find((card) => card.id === 'identity') ?? visibleCards[0]
+  return firstCard ? [firstCard] : []
 }
 
 export function computeWorldBounds(cards, fallback, padding = 96) {
@@ -93,19 +93,24 @@ export function computeWorldBounds(cards, fallback, padding = 96) {
 }
 
 export function canvasUsableViewport(viewport, mobile) {
-  if (mobile) {
-    return {
-      x: 16,
-      y: 16,
-      width: Math.max(1, viewport.width - 32),
-      height: Math.max(1, viewport.height - 176),
-    }
-  }
+  const width = Math.max(1, Number.isFinite(viewport.width) ? viewport.width : 1)
+  const height = Math.max(1, Number.isFinite(viewport.height) ? viewport.height : 1)
+  const sideInset = mobile ? 16 : 24
+  // On a short landscape display the introduction occupies the left of the
+  // desktop. Fit beside it instead of shrinking all content into a thin strip.
+  const compactLandscape = height < 560 && width > height
+  const desiredLeft = compactLandscape ? Math.min(320, Math.round(width * .4)) : sideInset
+  const desiredTop = compactLandscape ? (mobile ? 64 : 56) : (mobile ? 192 : 202)
+  const x = Math.min(desiredLeft, width - 1)
+  const y = Math.min(desiredTop, height - 1)
+  const rightInset = Math.min(sideInset, width - x - 1)
+  const desiredBottom = compactLandscape ? 84 : (mobile ? 160 : 108)
+  const bottomInset = Math.min(desiredBottom, height - y - 1)
   return {
-    x: 72,
-    y: 24,
-    width: Math.max(1, viewport.width - 96),
-    height: Math.max(1, viewport.height - 120),
+    x,
+    y,
+    width: width - x - rightInset,
+    height: height - y - bottomInset,
   }
 }
 

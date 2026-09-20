@@ -1,5 +1,6 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { IconEye, IconEyeOff, IconStack2, IconX } from '@tabler/icons-vue'
 
 const props = defineProps({
   cards: { type: Array, required: true },
@@ -8,36 +9,52 @@ const props = defineProps({
 
 const emit = defineEmits(['focus', 'visibility'])
 const expanded = ref(false)
+const layersRoot = ref(null)
 const layersToggle = ref(null)
 const visibleCount = computed(() => props.cards.filter((card) => card.visible !== false).length)
+
+function focusLayer(id) {
+  closePanel()
+  emit('focus', id)
+}
 
 function closePanel() {
   layersToggle.value?.focus()
   expanded.value = false
 }
+
+function closeOnOutsidePointer(event) {
+  if (expanded.value && !layersRoot.value?.contains(event.target)) expanded.value = false
+}
+
+onMounted(() => document.addEventListener('pointerdown', closeOnOutsidePointer, true))
+onBeforeUnmount(() => document.removeEventListener('pointerdown', closeOnOutsidePointer, true))
 </script>
 
 <template>
   <aside
+    ref="layersRoot"
     class="canvas-layers"
     :class="{ 'is-open': expanded }"
     aria-label="画布图层"
     data-canvas-control
     @pointerdown.stop
     @wheel.stop
+    @keydown.esc.stop.prevent="closePanel"
   >
-    <div class="canvas-layers__rail">
-      <button
-        ref="layersToggle"
-        type="button"
-        class="canvas-layers__toggle"
-        :aria-expanded="expanded"
-        aria-controls="canvas-layers-panel"
-        aria-label="展开或收起画布图层"
-        @click="expanded = !expanded"
-      >图层</button>
-      <output :aria-label="`当前显示 ${visibleCount} 个图层`">{{ visibleCount }}</output>
-    </div>
+    <button
+      ref="layersToggle"
+      type="button"
+      class="canvas-layers__toggle"
+      :aria-expanded="expanded"
+      aria-controls="canvas-layers-panel"
+      :aria-label="`${expanded ? '收起' : '展开'}画布图层，当前显示 ${visibleCount} 个图层`"
+      @click="expanded = !expanded"
+    >
+      <IconStack2 :size="18" :stroke-width="1.6" aria-hidden="true" />
+      <span>图层</span>
+      <span class="canvas-layers__count" aria-hidden="true">{{ visibleCount }}</span>
+    </button>
 
     <div
       id="canvas-layers-panel"
@@ -46,8 +63,13 @@ function closePanel() {
       :inert="!expanded || undefined"
     >
       <header class="canvas-layers__header">
-        <strong>LAYERS</strong>
-        <button type="button" aria-label="收起画布图层" @click="closePanel">×</button>
+        <div>
+          <span>WORKSPACE</span>
+          <strong>画布图层</strong>
+        </div>
+        <button type="button" aria-label="收起画布图层" title="收起图层" @click="closePanel">
+          <IconX :size="18" :stroke-width="1.6" aria-hidden="true" />
+        </button>
       </header>
 
       <ol class="canvas-layers__list">
@@ -58,7 +80,7 @@ function closePanel() {
             :disabled="card.visible === false"
             :aria-current="selectedCardId === card.id ? 'true' : undefined"
             :aria-label="`聚焦 ${card.title}`"
-            @click="emit('focus', card.id)"
+            @click="focusLayer(card.id)"
           >{{ card.title }}</button>
           <button
             type="button"
@@ -66,10 +88,11 @@ function closePanel() {
             :aria-label="`${card.visible !== false ? '隐藏' : '显示'} ${card.title}`"
             :aria-pressed="card.visible !== false"
             @click="emit('visibility', { id: card.id, visible: card.visible === false })"
-          ><span aria-hidden="true">{{ card.visible !== false ? '●' : '○' }}</span></button>
+          >
+            <component :is="card.visible !== false ? IconEye : IconEyeOff" :size="18" :stroke-width="1.6" aria-hidden="true" />
+          </button>
         </li>
       </ol>
-
     </div>
   </aside>
 </template>
@@ -77,75 +100,72 @@ function closePanel() {
 <style scoped>
 .canvas-layers {
   position: fixed;
-  inset: 0 auto 0 0;
+  top: 146px;
+  left: 24px;
   z-index: 30;
-  width: 48px;
-  color: #1e2430;
-  font: 12px/1.35 "JetBrains Mono", "Fira Code", Consolas, monospace;
+  color: #344353;
+  font: 12px/1.45 "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
-.canvas-layers__rail {
-  display: flex;
-  width: 48px;
-  height: 100%;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 2px;
-  border-right: 1px solid rgb(50 105 180 / 28%);
-  background: rgb(255 253 247 / 94%);
+.canvas-layers.is-open {
+  z-index: 32;
 }
 
-.canvas-layers__toggle,
-.canvas-layers__header button,
-.canvas-layers__focus,
-.canvas-layers__visibility {
+.canvas-layers :where(button) {
   color: inherit;
   font: inherit;
 }
 
 .canvas-layers__toggle {
   display: inline-flex;
-  min-width: 44px;
   min-height: 44px;
   align-items: center;
   justify-content: center;
-  padding: 4px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
+  gap: 8px;
+  padding: 6px 11px;
+  border: 1px solid rgb(87 111 128 / 24%);
+  border-radius: 13px;
+  background: #fffdf6;
+  box-shadow: 0 5px 18px rgb(22 60 103 / 15%), inset 0 1px 0 rgb(255 255 255 / 85%);
   cursor: pointer;
-  writing-mode: vertical-rl;
+  transition: background-color 180ms ease, box-shadow 180ms ease;
 }
 
 .canvas-layers__toggle:hover,
 .canvas-layers__toggle[aria-expanded="true"] {
-  border-color: rgb(50 105 180 / 38%);
-  background: #eaf3ff;
+  background: #f1f6fd;
+  box-shadow: 0 7px 20px rgb(22 60 103 / 20%);
 }
 
-.canvas-layers__rail output {
+.canvas-layers__toggle > svg {
+  color: #3676af;
+}
+
+.canvas-layers__count {
   display: inline-grid;
-  width: 28px;
-  height: 28px;
+  min-width: 24px;
+  height: 24px;
+  padding-inline: 5px;
   place-items: center;
-  border: 1px solid rgb(49 94 251 / 48%);
-  border-radius: 50%;
-  color: #315efb;
-  font-weight: 700;
+  border-radius: 7px;
+  background: #e7eef4;
+  color: #356b98;
+  font: 600 11px/1 "JetBrains Mono", Consolas, monospace;
 }
 
 .canvas-layers__panel {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 48px;
+  top: 54px;
+  left: 0;
   display: flex;
-  width: 220px;
+  width: 248px;
+  max-height: min(480px, calc(100dvh - 288px));
   flex-direction: column;
-  overflow: auto;
-  border-right: 1px solid rgb(50 105 180 / 28%);
-  background: rgb(255 253 247 / 96%);
+  overflow: hidden;
+  border: 1px solid rgb(87 111 128 / 28%);
+  border-radius: 16px;
+  background: #fffdf6;
+  box-shadow: 0 14px 36px rgb(17 53 92 / 22%), inset 0 1px 0 rgb(255 255 255 / 85%);
 }
 
 .canvas-layers:not(.is-open) .canvas-layers__panel {
@@ -155,46 +175,70 @@ function closePanel() {
 
 .canvas-layers__header {
   display: flex;
-  min-height: 48px;
+  min-height: 64px;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px 8px 14px;
-  border-bottom: 1px solid rgb(50 105 180 / 18%);
-  letter-spacing: .08em;
+  padding: 7px 8px 7px 17px;
+  border-bottom: 1px solid rgb(87 111 128 / 15%);
 }
 
-.canvas-layers__header button {
+.canvas-layers__header > div {
+  display: grid;
+  gap: 2px;
+}
+
+.canvas-layers__header span {
+  color: #76818b;
+  font: 9px/1.4 "JetBrains Mono", Consolas, monospace;
+  letter-spacing: .12em;
+}
+
+.canvas-layers__header strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.canvas-layers__header button,
+.canvas-layers__visibility {
   display: inline-grid;
-  min-width: 44px;
+  width: 44px;
   min-height: 44px;
   place-items: center;
   border: 0;
-  border-radius: 6px;
+  border-radius: 9px;
   background: transparent;
-  font-size: 18px;
   cursor: pointer;
 }
 
 .canvas-layers__list {
-  flex: 1 0 auto;
+  min-height: 0;
   margin: 0;
-  padding: 0 10px;
+  padding: 8px;
+  overflow-y: auto;
   list-style: none;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 
 .canvas-layers__row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 44px;
   align-items: center;
-  border-bottom: 1px solid rgb(50 105 180 / 14%);
+  gap: 2px;
+}
+
+.canvas-layers__row + .canvas-layers__row {
+  margin-top: 2px;
 }
 
 .canvas-layers__focus {
   min-width: 0;
   min-height: 44px;
-  padding: 8px 4px;
+  padding: 9px;
   overflow: hidden;
   border: 0;
+  border-radius: 9px;
   background: transparent;
   text-align: left;
   text-overflow: ellipsis;
@@ -203,105 +247,75 @@ function closePanel() {
 }
 
 .canvas-layers__focus[aria-current="true"] {
-  color: #315efb;
-  font-weight: 700;
+  background: #e8f1fb;
+  color: #286bb0;
+  font-weight: 600;
 }
 
+.canvas-layers__header button:hover,
 .canvas-layers__focus:hover:not(:disabled),
 .canvas-layers__visibility:hover {
-  background: #edf4ff;
+  background: #eaf1f9;
 }
 
 .canvas-layers__focus:disabled {
-  color: #69707d;
+  color: #7b858f;
   cursor: not-allowed;
 }
 
 .canvas-layers__visibility {
-  display: inline-grid;
-  min-width: 44px;
-  min-height: 44px;
-  place-items: center;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: #315efb;
-  cursor: pointer;
+  color: #3676af;
 }
 
 .canvas-layers__visibility[aria-pressed="false"] {
-  color: #69707d;
+  color: #7b858f;
 }
 
-.canvas-layers__toggle:focus-visible,
-.canvas-layers__header button:focus-visible,
-.canvas-layers__focus:focus-visible,
-.canvas-layers__visibility:focus-visible {
-  outline: 3px solid #315efb;
-  outline-offset: 2px;
+.canvas-layers button:focus-visible {
+  outline: 3px solid #367bb8;
+  outline-offset: 1px;
 }
 
 @media (max-width: 767px) {
   .canvas-layers {
-    position: fixed;
-    inset: auto 0 max(64px, calc(env(safe-area-inset-bottom) + 56px));
-    bottom: max(64px, calc(env(safe-area-inset-bottom) + 56px));
-    width: 100%;
-    height: 44px;
-    pointer-events: none;
-  }
-
-  .canvas-layers.is-open {
-    z-index: 32;
-  }
-
-  .canvas-layers__rail {
-    width: 100%;
-    height: 44px;
-    align-items: flex-start;
-    padding: 0 max(10px, env(safe-area-inset-left));
-    border: 0;
-    background: transparent;
-    pointer-events: none;
-  }
-
-  .canvas-layers.is-open .canvas-layers__rail {
-    background: rgb(255 253 247 / 96%);
-    pointer-events: auto;
-  }
-
-  .canvas-layers__toggle {
-    min-width: 44px;
-    min-height: 44px;
-    border: 1px solid rgb(40 70 100 / 65%);
-    background: #fffdf7;
-    pointer-events: auto;
-    writing-mode: horizontal-tb;
-  }
-
-  .canvas-layers__rail output {
-    display: none;
+    top: 132px;
+    left: 16px;
   }
 
   .canvas-layers__panel {
-    position: absolute;
-    right: 0;
-    bottom: 44px;
-    left: 0;
-    top: auto;
-    width: 100%;
-    max-height: min(62vh, 520px);
-    max-height: min(62dvh, 520px);
-    padding-bottom: env(safe-area-inset-bottom);
-    overflow: auto;
-    border: 1px solid rgb(50 105 180 / 32%);
-    border-radius: 16px 16px 0 0;
-    background: rgb(255 253 247 / 98%);
-    pointer-events: auto;
+    width: min(280px, calc(100vw - 32px));
+    max-height: min(400px, calc(100dvh - 340px));
+  }
+}
+
+@media (max-height: 559px) and (orientation: landscape) {
+  .canvas-layers__panel {
+    position: fixed;
+    top: 64px;
+    bottom: 84px;
+    left: 24px;
+    width: min(280px, calc(100vw - 32px));
+    max-height: none;
+  }
+
+  .canvas-layers__header {
+    min-height: 48px;
+    padding: 0 8px 0 14px;
+  }
+
+  .canvas-layers__header span {
+    display: none;
   }
 
   .canvas-layers__list {
-    flex: 0 0 auto;
+    flex: 1;
+  }
+}
+
+@media (min-width: 480px) and (max-width: 767px) and (max-height: 559px) and (orientation: landscape) {
+  .canvas-layers__panel {
+    top: 56px;
+    left: 16px;
   }
 }
 
