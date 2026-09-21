@@ -149,6 +149,20 @@
   box-sizing: border-box;
 }
 
+/* Pinch zoom moves the visual viewport without moving fixed elements.
+   Keep the system canvas and its fixed controls in one visible frame. */
+html[data-personal-os-view="system"] .factory-home {
+  position: fixed;
+  top: var(--os-viewport-top, 0px);
+  left: var(--os-viewport-left, 0px);
+  width: var(--os-viewport-width, 100vw);
+  height: var(--os-viewport-height, 100dvh);
+  min-height: 0;
+  overflow: hidden;
+  contain: layout;
+  container: personal-os / size;
+}
+
 .factory-home a {
   color: inherit;
 }
@@ -374,7 +388,7 @@
 .factory-home .personal-system-view__error {
   position: absolute;
   inset: 50% auto auto 50%;
-  width: min(420px, calc(100vw - 32px));
+  width: min(420px, calc(100% - 32px));
   transform: translate(-50%, -50%);
   border: 1px solid rgb(255 255 255 / 62%);
   border-radius: 20px;
@@ -435,8 +449,7 @@ html.personal-os-system-active .VPFooter {
 .factory-home .infinite-canvas {
   width: 100%;
   max-width: 100vw;
-  height: 100vh;
-  height: 100dvh;
+  height: 100%;
   overflow: hidden;
   background: var(--os-wallpaper);
 }
@@ -575,7 +588,27 @@ html[data-personal-os-view="system"] .factory-home .bottom-os-navigation::before
   transform: translateX(calc(100% + 4px));
 }
 
-@media (max-height: 559px) and (orientation: landscape) {
+@container personal-os (max-width: 767px) {
+  .factory-home .bottom-os-navigation {
+    bottom: max(10px, env(safe-area-inset-bottom));
+    max-width: calc(100% - 24px);
+  }
+
+  .factory-home .bottom-os-navigation button {
+    min-width: 44px;
+    padding: 0 12px;
+    white-space: nowrap;
+  }
+}
+
+@container personal-os (max-width: 359px) {
+  .factory-home .bottom-os-navigation button {
+    padding: 0 8px;
+    font-size: 10px;
+  }
+}
+
+@container personal-os (max-height: 559px) and (orientation: landscape) {
   html[data-personal-os-view="system"] .factory-home .bottom-os-navigation {
     right: auto;
     left: max(16px, env(safe-area-inset-left));

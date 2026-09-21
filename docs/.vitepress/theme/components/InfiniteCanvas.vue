@@ -570,8 +570,7 @@ onBeforeUnmount(() => {
   inset: 0;
   width: 100%;
   max-width: 100vw;
-  height: 100vh;
-  height: 100dvh;
+  height: 100%;
   overflow: hidden;
   background: var(--os-wallpaper);
   color: #fffdf7;
@@ -718,11 +717,11 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 1100px) {
+@container personal-os (max-width: 1100px) {
   .infinite-canvas__hint { display: none; }
 }
 
-@media (max-width: 767px) {
+@container personal-os (max-width: 767px) {
   .infinite-canvas__menu {
     height: 48px;
     padding-inline: 12px;
@@ -736,7 +735,7 @@ onBeforeUnmount(() => {
   .infinite-canvas__intro p { margin-top: 6px; font-size: 11px; }
 }
 
-@media (max-height: 559px) and (orientation: landscape) {
+@container personal-os (max-height: 559px) and (orientation: landscape) {
   .infinite-canvas__intro { top: 66px; }
   .infinite-canvas__intro h1 { font-size: 22px; }
   .infinite-canvas__intro p { display: none; }

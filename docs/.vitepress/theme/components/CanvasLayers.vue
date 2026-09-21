@@ -159,7 +159,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeOnOutside
   left: 0;
   display: flex;
   width: 248px;
-  max-height: min(480px, calc(100dvh - 288px));
+  max-height: min(480px, calc(var(--os-viewport-height, 100dvh) - 288px));
   flex-direction: column;
   overflow: hidden;
   border: 1px solid rgb(87 111 128 / 28%);
@@ -276,25 +276,25 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeOnOutside
   outline-offset: 1px;
 }
 
-@media (max-width: 767px) {
+@container personal-os (max-width: 767px) {
   .canvas-layers {
     top: 132px;
     left: 16px;
   }
 
   .canvas-layers__panel {
-    width: min(280px, calc(100vw - 32px));
-    max-height: min(400px, calc(100dvh - 340px));
+    width: min(280px, calc(var(--os-viewport-width, 100vw) - 32px));
+    max-height: min(400px, calc(var(--os-viewport-height, 100dvh) - 340px));
   }
 }
 
-@media (max-height: 559px) and (orientation: landscape) {
+@container personal-os (max-height: 559px) and (orientation: landscape) {
   .canvas-layers__panel {
     position: fixed;
     top: 64px;
     bottom: 84px;
     left: 24px;
-    width: min(280px, calc(100vw - 32px));
+    width: min(280px, calc(var(--os-viewport-width, 100vw) - 32px));
     max-height: none;
   }
 
@@ -312,7 +312,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeOnOutside
   }
 }
 
-@media (min-width: 480px) and (max-width: 767px) and (max-height: 559px) and (orientation: landscape) {
+@container personal-os (min-width: 480px) and (max-width: 767px) and (max-height: 559px) and (orientation: landscape) {
   .canvas-layers__panel {
     top: 56px;
     left: 16px;
