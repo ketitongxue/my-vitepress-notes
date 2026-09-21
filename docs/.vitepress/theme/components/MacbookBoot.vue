@@ -72,16 +72,17 @@ function beginZoom() {
   if (state.value !== 'launching' || !screen.value) return
   state.value = transitionMacbookBoot(state.value, 'PROGRESS_COMPLETE')
   const bounds = screen.value.getBoundingClientRect()
+  const viewport = window.visualViewport
   // Cover with the display itself so the bezel never remains at the viewport edge.
   const border = Number.parseFloat(getComputedStyle(screen.value).borderLeftWidth) || 0
   const transform = computeCoverTransform({
-    left: bounds.left + border,
-    top: bounds.top + border,
+    left: bounds.left - (viewport?.offsetLeft ?? 0) + border,
+    top: bounds.top - (viewport?.offsetTop ?? 0) + border,
     width: bounds.width - border * 2,
     height: bounds.height - border * 2,
   }, {
-    width: window.innerWidth,
-    height: window.innerHeight,
+    width: viewport?.width ?? window.innerWidth,
+    height: viewport?.height ?? window.innerHeight,
   })
   screen.value.style.setProperty('--boot-scale', String(transform.scale))
   screen.value.style.setProperty('--boot-x', `${transform.translateX}px`)
@@ -195,8 +196,8 @@ onBeforeUnmount(() => {
   z-index: 1000;
   inset: 0;
   display: grid;
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100%;
+  min-height: 0;
   place-items: center;
   overflow: hidden;
   background: #f7f4ec;
@@ -205,7 +206,7 @@ onBeforeUnmount(() => {
 }
 
 .macbook-boot__computer {
-  width: min(708px, calc(100vw - 56px));
+  width: min(708px, calc(100% - 56px));
   animation: boot-arrive 180ms cubic-bezier(.16, 1, .3, 1) both;
 }
 
@@ -216,8 +217,8 @@ onBeforeUnmount(() => {
   position: relative;
   display: flex;
   flex-direction: column;
-  height: min(470px, 68dvh);
-  min-height: 300px;
+  height: min(470px, 68cqh);
+  min-height: min(300px, calc(100cqh - 80px));
   padding: clamp(20px, 3vw, 32px);
   overflow: hidden;
   border: 10px solid #192232;
@@ -374,14 +375,14 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 767px) {
+@container personal-os (max-width: 767px) {
   .macbook-boot__computer {
-    width: calc(100vw - 40px);
+    width: calc(100% - 40px);
   }
 
   .macbook-boot__screen {
-    height: min(390px, 64dvh);
-    min-height: 280px;
+    height: min(390px, 64cqh);
+    min-height: min(280px, calc(100cqh - 80px));
     padding: 24px 20px;
     border-width: 8px;
     border-radius: 14px 14px 6px 6px;

@@ -51,10 +51,9 @@ function validTheme() {
 .factory-home .macbook-boot { background: #F7F4EC; color: #1E2430; }
 .factory-home .desktop-surface { overflow: hidden; background: linear-gradient(145deg, #3B91E1, #2F83D6 46%, #2875C5); }
 .factory-home .desktop-surface__menu { height: 40px; color: #F4D758; }
-.factory-home .desktop-surface__workspace { height: calc(100vh - 40px); }
-.factory-home .desktop-surface__workspace { height: calc(100dvh - 40px); }
+.factory-home .desktop-surface__workspace { height: calc(100% - 40px); }
 .factory-home .desktop-icon { color: #FFFDF7; }
-.factory-home .window-manager__window { min-width: 360px; min-height: 260px; background: #FFFDF7; }
+.factory-home .window-manager__window { min-width: min(360px, 100%); min-height: min(260px, 100%); background: #FFFDF7; }
 .factory-home .bottom-os-navigation { border-color: #69707D; }
 .factory-home .knowledge-portfolio { max-width: 72ch; color: #1E2430; }
 .factory-home .infinite-canvas { overflow: hidden; background: #F7F4EC; }
@@ -92,9 +91,9 @@ expectFailure(valid.replace('--factory-focus: #123456;', ''), 'factory tokens re
 
 expectFailure(valid.replaceAll('#2F83D6', '#275DAD'), 'desktop blue is exact', /palette must include #2F83D6/)
 expectFailure(valid.replace('height: 40px;', 'height: 32px;'), 'menu height is exact', /menu must be exactly 40px/)
-expectFailure(valid.replace('.factory-home .desktop-surface__workspace { height: calc(100dvh - 40px); }', ''), 'dvh pair is required', /100vh and 100dvh geometry/)
-expectFailure(valid.replace('min-width: 360px;', 'min-width: 340px;'), 'window width minimum is fixed', /360 x 260 desktop minimum/)
-expectFailure(valid.replace('min-height: 260px;', 'min-height: 240px;'), 'window height minimum is fixed', /360 x 260 desktop minimum/)
+expectFailure(valid.replace('height: calc(100% - 40px);', 'height: calc(100dvh - 40px);'), 'workspace must follow its visible container', /visible desktop height/)
+expectFailure(valid.replace('min-width: min(360px, 100%);', 'min-width: 340px;'), 'window width minimum must fit visible bounds', /360 x 260 desktop minimum/)
+expectFailure(valid.replace('min-height: min(260px, 100%);', 'min-height: 240px;'), 'window height minimum must fit visible bounds', /360 x 260 desktop minimum/)
 expectFailure(valid.replace('@media (max-width: 767px)', '@media (max-width: 700px)'), 'mobile query is exact', /max-width: 767px/)
 expectFailure(valid.replace('min-width: 44px;', 'min-width: 40px;'), 'mobile hit width is fixed', /44px hit area/)
 expectFailure(valid.replace('animation: none !important;', 'animation: fade 1s;'), 'reduced motion is required', /reduced-motion coverage/)

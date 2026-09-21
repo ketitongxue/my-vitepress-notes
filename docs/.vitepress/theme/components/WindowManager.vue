@@ -321,8 +321,8 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-rows: 54px 1fr;
   overflow: hidden;
-  min-width: 360px;
-  min-height: 260px;
+  min-width: min(360px, 100%);
+  min-height: min(260px, 100%);
   border: 1px solid rgb(40 90 135 / 35%);
   border-radius: 20px;
   background:
@@ -613,14 +613,15 @@ button.window-manager__traffic-control {
   outline-offset: -3px;
 }
 
-@media (max-width: 767px) {
+@container personal-os (max-width: 767px) {
   .window-manager__window {
     grid-template-rows: 46px 1fr;
     left: 16px !important;
-    width: calc(100vw - 32px) !important;
+    width: calc(100% - 32px) !important;
     min-width: 0;
-    max-width: calc(100vw - 32px);
-    max-height: calc(100dvh - 46px);
+    min-height: min(220px, 100%);
+    max-width: calc(100% - 32px);
+    max-height: 100%;
     border-radius: 18px;
   }
 

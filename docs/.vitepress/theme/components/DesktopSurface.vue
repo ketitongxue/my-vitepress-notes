@@ -138,6 +138,10 @@ watch(desktopEntries, (entries) => {
   void nextTick(measureSurface)
 })
 
+watch(() => props.active, (active) => {
+  if (active) void nextTick(measureSurface)
+})
+
 watch(iconPositions, scheduleSessionPersistence, { deep: true })
 watch(windowState, scheduleSessionPersistence, { deep: true })
 
@@ -195,8 +199,8 @@ onBeforeUnmount(() => {
 <style scoped>
 .desktop-surface {
   position: relative;
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
   background:
     radial-gradient(circle at 28% 18%, rgb(86 170 239 / 58%) 0, transparent 28%),
@@ -313,8 +317,7 @@ onBeforeUnmount(() => {
   position: absolute;
   z-index: 1;
   inset: 40px 0 0;
-  height: calc(100vh - 40px);
-  height: calc(100dvh - 40px);
+  height: auto;
   overflow: hidden;
 }
 
@@ -323,7 +326,7 @@ onBeforeUnmount(() => {
   font: 10px/1 "JetBrains Mono", "Fira Code", Consolas, monospace;
 }
 
-@media (max-width: 767px) {
+@container personal-os (max-width: 767px) {
   .desktop-surface::before {
     opacity: .14;
     background-size: 130px 130px, 180px 180px, 220px 220px;
@@ -338,7 +341,7 @@ onBeforeUnmount(() => {
 
   .desktop-surface__menu nav {
     justify-content: center;
-    gap: clamp(7px, 3vw, 14px);
+    gap: clamp(7px, 3cqw, 14px);
   }
 
   .desktop-surface__menu time {
@@ -348,8 +351,6 @@ onBeforeUnmount(() => {
 
   .desktop-surface__workspace {
     inset: 48px 0 0;
-    height: calc(100vh - 48px);
-    height: calc(100dvh - 48px);
   }
 }
 

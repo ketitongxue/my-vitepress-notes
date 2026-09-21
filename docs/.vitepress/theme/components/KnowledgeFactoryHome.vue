@@ -25,7 +25,7 @@ const systemLoadState = ref('idle')
 const InfiniteCanvas = shallowRef(null)
 const systemConfiguration = shallowRef(null)
 const homeConfiguration = shallowRef(staticHomeConfiguration())
-const systemViewportStyle = shallowRef({})
+const viewportStyle = shallowRef({})
 let stopObservingViewport
 const systemImporters = Object.freeze({
   initial: () => import('./InfiniteCanvas.vue'),
@@ -124,7 +124,7 @@ function retrySystem() {
 
 onMounted(() => {
   stopObservingViewport = observeVisualViewport(window, (style) => {
-    systemViewportStyle.value = style
+    viewportStyle.value = style
   })
   const accessState = document.documentElement.dataset.personalSiteAccess
   homeEntered.value = hasCompletedHomeEntry(accessState)
@@ -145,17 +145,17 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <MacbookBoot
-    v-if="hydrated && activeView === 'home' && !homeEntered"
-    :active="activeView === 'home'"
-    :disabled="bootDisabled"
-    :configuration="homeConfiguration.config"
-    @entered="handleHomeEntered"
-  />
   <div
     class="factory-home"
-    :style="activeView === 'system' ? systemViewportStyle : undefined"
+    :style="viewportStyle"
   >
+    <MacbookBoot
+      v-if="hydrated && activeView === 'home' && !homeEntered"
+      :active="activeView === 'home'"
+      :disabled="bootDisabled"
+      :configuration="homeConfiguration.config"
+      @entered="handleHomeEntered"
+    />
     <main
       v-show="!hydrated || (activeView === 'home' && homeEntered)"
       id="personal-os-home"

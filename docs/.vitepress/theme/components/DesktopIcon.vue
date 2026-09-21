@@ -280,7 +280,7 @@ function handleKeydown(event) {
   text-shadow: 0 1px 2px rgb(25 34 50 / 72%);
 }
 
-@media (max-width: 767px) {
+@container personal-os (max-width: 767px) {
   .desktop-icon {
     width: 68px;
     min-height: 86px;

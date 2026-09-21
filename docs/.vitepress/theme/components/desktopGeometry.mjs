@@ -23,7 +23,8 @@ export function consumeIconDoubleClick(state, timeStamp) {
   }
 }
 
-const DEFAULT_ICON_SIZE = { width: 88, height: 76 }
+// Include the label and padding so resizing never clamps an icon below the edge.
+const DEFAULT_ICON_SIZE = { width: 88, height: 92 }
 
 const clamp = (value, maximum) => Math.max(0, Math.min(value, Math.max(0, maximum)))
 

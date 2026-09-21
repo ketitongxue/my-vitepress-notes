@@ -167,14 +167,13 @@ export function validateThemeCss(source) {
   const menu = parseDeclarations(requireRule(osRules, '.factory-home .desktop-surface__menu').body)
   if (menu.get('height') !== '40px') throw new Error('Personal OS menu must be exactly 40px high')
 
-  if (!includesDeclaration(osRules, '.factory-home .desktop-surface__workspace', 'height', 'calc(100vh - 40px)')
-    || !includesDeclaration(osRules, '.factory-home .desktop-surface__workspace', 'height', 'calc(100dvh - 40px)')) {
-    throw new Error('Personal OS workspace must include 100vh and 100dvh geometry')
+  if (!includesDeclaration(osRules, '.factory-home .desktop-surface__workspace', 'height', 'calc(100% - 40px)')) {
+    throw new Error('Personal OS workspace must follow the visible desktop height')
   }
 
   const window = parseDeclarations(requireRule(osRules, '.factory-home .window-manager__window').body)
-  if (window.get('min-width') !== '360px' || window.get('min-height') !== '260px') {
-    throw new Error('Personal OS windows must keep the 360 x 260 desktop minimum')
+  if (window.get('min-width') !== 'min(360px, 100%)' || window.get('min-height') !== 'min(260px, 100%)') {
+    throw new Error('Personal OS windows must keep the 360 x 260 desktop minimum within the visible bounds')
   }
 
   const mobileRoot = parseDeclarations(requireRule(osRules, '.factory-home', mobileMedia).body)
