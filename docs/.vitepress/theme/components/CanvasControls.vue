@@ -112,7 +112,7 @@ onBeforeUnmount(stopEscapeListener)
   right: 24px;
   bottom: max(22px, calc(env(safe-area-inset-bottom) + 14px));
   z-index: 31;
-  max-width: calc(100vw - 48px);
+  max-width: calc(var(--os-viewport-width, 100vw) - 48px);
   color: #3c5266;
   font: 12px/1.4 "PingFang SC", "Microsoft YaHei", sans-serif;
 }
@@ -226,13 +226,13 @@ onBeforeUnmount(stopEscapeListener)
   background: rgb(87 111 128 / 20%);
 }
 
-@media (min-width: 768px) and (max-width: 1100px) {
+@container personal-os (min-width: 768px) and (max-width: 1100px) {
   .canvas-controls {
     bottom: max(82px, calc(env(safe-area-inset-bottom) + 74px));
   }
 }
 
-@media (max-width: 767px) {
+@container personal-os (max-width: 767px) {
   .canvas-controls {
     right: 12px;
     bottom: max(80px, calc(env(safe-area-inset-bottom) + 72px));
@@ -245,12 +245,12 @@ onBeforeUnmount(stopEscapeListener)
   }
 }
 
-@media (max-height: 559px) and (orientation: landscape) {
+@container personal-os (max-height: 559px) and (orientation: landscape) {
   .canvas-controls {
     right: max(12px, env(safe-area-inset-right));
     bottom: max(12px, env(safe-area-inset-bottom));
     left: auto;
-    width: min(366px, calc(100vw - 216px));
+    width: min(366px, calc(var(--os-viewport-width, 100vw) - 216px));
   }
 }
 

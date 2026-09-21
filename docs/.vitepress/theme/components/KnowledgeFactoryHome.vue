@@ -10,6 +10,7 @@ import {
 import { loadSystemCanvasModule } from './systemCanvasLoader.mjs'
 import { loadPersonalOsConfiguration } from './personalOsConfigClient.mjs'
 import { loadHomeConfiguration, staticHomeConfiguration } from './homeConfigClient.mjs'
+import { observeVisualViewport } from './visualViewport.mjs'
 
 const SYSTEM_ACTIVE_CLASS = 'personal-os-system-active'
 const claimedView = typeof document === 'undefined'
@@ -24,6 +25,8 @@ const systemLoadState = ref('idle')
 const InfiniteCanvas = shallowRef(null)
 const systemConfiguration = shallowRef(null)
 const homeConfiguration = shallowRef(staticHomeConfiguration())
+const systemViewportStyle = shallowRef({})
+let stopObservingViewport
 const systemImporters = Object.freeze({
   initial: () => import('./InfiniteCanvas.vue'),
   retry: () => import('./InfiniteCanvas.vue?retry=1'),
@@ -120,6 +123,9 @@ function retrySystem() {
 }
 
 onMounted(() => {
+  stopObservingViewport = observeVisualViewport(window, (style) => {
+    systemViewportStyle.value = style
+  })
   const accessState = document.documentElement.dataset.personalSiteAccess
   homeEntered.value = hasCompletedHomeEntry(accessState)
     || shouldSkipMacbookBoot(getLocalStorage(window), getReducedMotionPreference(window))
@@ -130,6 +136,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  stopObservingViewport?.()
   requestId += 1
   homeRequestId += 1
   setSystemChromeIsolation(false)
@@ -145,7 +152,10 @@ onBeforeUnmount(() => {
     :configuration="homeConfiguration.config"
     @entered="handleHomeEntered"
   />
-  <div class="factory-home">
+  <div
+    class="factory-home"
+    :style="activeView === 'system' ? systemViewportStyle : undefined"
+  >
     <main
       v-show="!hydrated || (activeView === 'home' && homeEntered)"
       id="personal-os-home"
