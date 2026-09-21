@@ -23,6 +23,7 @@ const props = defineProps({
 })
 
 const SAVE_DELAY = 250
+const DESKTOP_FIT_PADDING = 48
 const INITIAL_TRANSFORM = Object.freeze({ scale: 1, panX: 0, panY: 0 })
 const emit = defineEmits(['layout-change'])
 const viewport = ref(null)
@@ -48,9 +49,9 @@ const history = ref(createHistory(defaultLayout))
 const canonicalBounds = Object.freeze(computeWorldBounds(
   defaultLayout.cards,
   { x: 0, y: 0, width: 2400, height: 1200 },
-  96,
+  DESKTOP_FIT_PADDING,
 ))
-const worldBounds = computed(() => computeWorldBounds(cards.value, canonicalBounds, 96))
+const worldBounds = computed(() => computeWorldBounds(cards.value, canonicalBounds, DESKTOP_FIT_PADDING))
 const mobileViewport = computed(() => viewportSize.value.width < 768)
 const usableViewport = computed(() => canvasUsableViewport(viewportSize.value, mobileViewport.value))
 let pointerGesture = null
@@ -403,7 +404,7 @@ function fitInitialLayout() {
   const firstFitBounds = computeWorldBounds(
     initialFitCards(cards.value, mobileViewport.value),
     canonicalBounds,
-    mobileViewport.value ? 12 : 96,
+    mobileViewport.value ? 12 : DESKTOP_FIT_PADDING,
   )
   applyTransform(fitWorldBounds(firstFitBounds, usableViewport.value, mobileViewport.value ? 8 : 24))
 }
