@@ -106,10 +106,17 @@ test('repair does not supersede a newer administrator draft or publication', asy
 
 const compactPositions = {
   identity: { x: 120, y: 320 },
-  'growth-devops': { x: 600, y: 220 },
-  'growth-pm': { x: 1000, y: 220 },
-  'core-story': { x: 550, y: 480 },
-  'next-direction': { x: 980, y: 490 },
+  'growth-devops': { x: 560, y: 220 },
+  'growth-pm': { x: 900, y: 215 },
+  'core-story': { x: 510, y: 490 },
+  'next-direction': { x: 1260, y: 490 },
+}
+
+const agentCard = {
+  id: 'growth-agent', type: 'timeline', kicker: '03', title: 'AI Agent',
+  body: '探索 AI Agent 的工具调用、知识检索与任务协作，让想法变成可执行的工作流。',
+  x: 1260, y: 210, width: 300, height: 180, minWidth: 260, minHeight: 160,
+  visible: true, accent: 'blue', items: [], links: [],
 }
 
 function legacyFiveCardConfig() {
@@ -143,11 +150,12 @@ async function fiveCardDatabase(t, config = legacyFiveCardConfig(), publishedAt 
   return db
 }
 
-test('compact layout publishes only new positions and preserves content, ordering, history and homepage', async (t) => {
+test('compact layout adds AI Agent while preserving existing content, ordering, history and homepage', async (t) => {
   const original = legacyFiveCardConfig()
   // The migration must preserve administrator ordering, including noncanonical order.
   original.cards.reverse()
   original.cards[0].visible = false
+  original.connections.push({ from: 'core-story', to: 'next-direction' })
   const db = await fiveCardDatabase(t, original)
   const history = db.prepare('SELECT * FROM personal_os_config_versions ORDER BY revision').all()
   const home = db.prepare('SELECT * FROM home_config_versions ORDER BY revision').all()
@@ -161,7 +169,16 @@ test('compact layout publishes only new positions and preserves content, orderin
   assert.deepEqual(normalizePersonalOsConfig(config), config)
   assert.deepEqual(config, {
     ...original,
-    cards: original.cards.map((card) => ({ ...card, ...compactPositions[card.id] })),
+    cards: original.cards.flatMap((card) => {
+      const positioned = { ...card, ...compactPositions[card.id] }
+      return card.id === 'growth-pm' ? [positioned, agentCard] : [positioned]
+    }),
+    connections: [
+      ...original.connections.map((edge) => edge.from === 'growth-pm' && edge.to === 'next-direction'
+        ? { from: 'growth-pm', to: 'growth-agent' }
+        : edge),
+      { from: 'growth-agent', to: 'next-direction' },
+    ],
   })
   assert.deepEqual(db.prepare('SELECT * FROM personal_os_config_versions WHERE revision < 6 ORDER BY revision').all(), history)
   assert.deepEqual(db.prepare('SELECT * FROM home_config_versions ORDER BY revision').all(), home)
@@ -195,12 +212,15 @@ test('compact layout does not supersede newer drafts or publications, or publish
   assert.deepEqual(db.prepare('SELECT * FROM personal_os_config_versions ORDER BY revision').all(), before)
 })
 
-test('compact layout requires exactly the known five cards and all their legacy geometry', async (t) => {
+test('compact layout requires the known five cards, their legacy geometry and the career continuation edge', async (t) => {
   const variants = [
     (config) => config.cards.pop(),
     (config) => config.cards.push({ ...config.cards[0], id: 'extra-card' }),
     (config) => { config.cards[0] = { ...config.cards[1] } },
     (config) => { config.cards[0].id = 'renamed-identity' },
+    (config) => {
+      config.connections = config.connections.filter(({ from, to }) => from !== 'growth-pm' || to !== 'next-direction')
+    },
   ]
   for (let index = 0; index < 5; index += 1) {
     for (const key of ['x', 'y', 'width', 'height']) {
@@ -217,11 +237,22 @@ test('compact layout requires exactly the known five cards and all their legacy 
   }
 })
 
-test('published compact cards do not overlap and fit above desktop controls at a readable scale', async (t) => {
+test('published six-card layout follows the career path and fits above desktop controls at a readable scale', async (t) => {
   const db = await fiveCardDatabase(t)
   db.exec(compact)
   const { config_json } = db.prepare('SELECT config_json FROM personal_os_config_versions ORDER BY revision DESC LIMIT 1').get()
-  const { cards } = JSON.parse(config_json)
+  const { cards, connections } = JSON.parse(config_json)
+  assert.equal(cards.length, 6)
+  assert.deepEqual(cards.map(({ id }) => id), [
+    'identity', 'growth-devops', 'growth-pm', 'growth-agent', 'core-story', 'next-direction',
+  ])
+  const careerPath = ['identity', 'growth-devops', 'growth-pm', 'growth-agent', 'next-direction']
+  for (let index = 0; index < careerPath.length - 1; index += 1) {
+    assert.ok(connections.some(({ from, to }) => from === careerPath[index] && to === careerPath[index + 1]),
+      `${careerPath[index]} should lead to ${careerPath[index + 1]}`)
+  }
+  assert.ok(!connections.some(({ from, to }) => from === 'growth-pm' && to === 'next-direction'),
+    'the career path should include AI Agent before continuing to next steps')
   for (let index = 0; index < cards.length; index += 1) {
     const card = cards[index]
     for (const other of cards.slice(index + 1)) {
@@ -235,7 +266,7 @@ test('published compact cards do not overlap and fit above desktop controls at a
   const usable = canvasUsableViewport(viewport, false)
   const bounds = computeWorldBounds(cards, {}, 48)
   const transform = fitWorldBounds(bounds, usable, 24)
-  assert.ok(transform.scale >= .9, 'all five cards should remain readable together on desktop')
+  assert.ok(transform.scale >= .8, 'all six cards should remain readable together on desktop')
   for (const card of cards) {
     const left = card.x * transform.scale + transform.panX
     const top = card.y * transform.scale + transform.panY
