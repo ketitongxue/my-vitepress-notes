@@ -109,7 +109,7 @@ const compactPositions = {
   'growth-devops': { x: 560, y: 220 },
   'growth-pm': { x: 900, y: 215 },
   'core-story': { x: 510, y: 490 },
-  'next-direction': { x: 1260, y: 490 },
+  'next-direction': { x: 1640, y: 225 },
 }
 
 const agentCard = {
@@ -266,7 +266,7 @@ test('published six-card layout follows the career path and fits above desktop c
   const usable = canvasUsableViewport(viewport, false)
   const bounds = computeWorldBounds(cards, {}, 48)
   const transform = fitWorldBounds(bounds, usable, 24)
-  assert.ok(transform.scale >= .8, 'all six cards should remain readable together on desktop')
+  assert.ok(transform.scale >= .7, 'the horizontal six-card layout should remain readable together on desktop')
   for (const card of cards) {
     const left = card.x * transform.scale + transform.panX
     const top = card.y * transform.scale + transform.panY

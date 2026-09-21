@@ -12,7 +12,7 @@ WITH latest AS (
     ('growth-devops', 860, 280, 240, 160, 560, 220),
     ('growth-pm', 1500, 270, 260, 170, 900, 215),
     ('core-story', 780, 570, 340, 190, 510, 490),
-    ('next-direction', 1900, 240, 300, 150, 1260, 490)
+    ('next-direction', 1900, 240, 300, 150, 1640, 225)
 ), eligible AS (
   SELECT *
   FROM latest
