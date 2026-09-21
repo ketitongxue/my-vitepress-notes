@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { observeVisualViewport } from '../docs/.vitepress/theme/components/visualViewport.mjs'
+import { constrainIconPosition } from '../docs/.vitepress/theme/components/desktopGeometry.mjs'
 
 function browserWithViewport(viewport) {
   return Object.assign(new EventTarget(), {
@@ -16,6 +17,13 @@ const zoomedViewport = Object.freeze({
   width: 2203.114,
   height: 634.649,
   scale: 1.1565,
+})
+
+test('short visible desktops retain the complete icon and label within their bounds', () => {
+  const bounds = { width: 568, height: 272 }
+  const position = constrainIconPosition({ anchor: 'right', x: 80, y: 300 }, bounds)
+  assert.ok(position.y + 92 <= bounds.height)
+  assert.ok(position.x + 88 <= bounds.width)
 })
 
 test('initial pinch-zoom viewport uses visible CSS coordinates without cancelling native zoom', () => {
