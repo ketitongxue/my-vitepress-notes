@@ -119,6 +119,10 @@ test('recognizes only canonical library root variants for opening the in-site kn
     `${libraryUrl}index.html`,
     `${libraryUrl}?view=all#articles`,
     `${libraryUrl}index.html#articles`,
+    'https://KNOWLEDGE.juzxailab.com:443/',
+    'https://ketitongxue.github.io/ai-era-html-docs',
+    'https://ketitongxue.github.io/ai-era-html-docs/',
+    'https://ketitongxue.github.io/ai-era-html-docs/index.html?view=all#articles',
     'https://KETITONGXUE.github.io:443/ai-era-html-docs/',
   ]) assert.equal(isLibraryRootHref(href), true, href)
 })
@@ -139,11 +143,28 @@ test('does not route unrelated, credential-bearing, article, or unsafe URLs into
     'https://@ketitongxue.github.io/ai-era-html-docs/',
     'https://ketitongxue.github.io/other-repo/',
     'https://ketitongxue.github.io/ai-era-html-docs-other/',
+    'http://knowledge.juzxailab.com/',
+    '//knowledge.juzxailab.com/',
+    'https:knowledge.juzxailab.com/',
+    'https:////knowledge.juzxailab.com/',
+    'https://knowledge.juzxailab.com.evil.example/',
+    'https://knowledge.juzxailab.com:444/',
+    'https://owner@knowledge.juzxailab.com/',
+    'https://owner:password@knowledge.juzxailab.com/',
+    'https://@knowledge.juzxailab.com/',
+    'https://%6bnowledge.juzxailab.com/',
+    'https://knowledge.juzxailab.com./',
+    'https://knowledge.juzxailab.com/ai-era-html-docs/',
+    'https://knowledge.juzxailab.com/docs/../',
+    'https://knowledge.juzxailab.com/docs/%2e%2e/',
+    'https://ketitongxue.github.io/ai-era-html-docs/docs/../',
     `${libraryUrl}docs/article.html`,
     `${libraryUrl}index.html/extra`,
     `${libraryUrl}docs/`,
     'https://ketitongxue.github.io\\ai-era-html-docs\\',
     'https://ketitongxue.github.io/ai-era-html-docs/\n',
+    'https://knowledge.juzxailab.com\\',
+    'https://knowledge.juzxailab.com/\n',
   ]) assert.equal(isLibraryRootHref(href), false, String(href))
 })
 
@@ -153,11 +174,12 @@ test('article URLs preserve relative content roots and encoded filenames without
   const [article] = group.articles
   const url = new URL(article.href)
   assert.equal(url.origin, new URL(libraryUrl).origin)
-  assert.equal(decodeURIComponent(url.pathname), `/ai-era-html-docs/${path}`)
+  assert.equal(decodeURIComponent(url.pathname), `/${path}`)
   assert.equal(url.hash, '')
   assert.equal(url.search, '')
   assert.equal(isLibraryRootHref(article.href), false)
-  assert.equal(new URL('./assets/diagram.png', article.href).pathname, '/ai-era-html-docs/docs/Claude%20Code/assets/diagram.png')
+  assert.equal(new URL('./assets/diagram.png', article.href).pathname, '/docs/Claude%20Code/assets/diagram.png')
+  assert.equal(new URL('../../assets/diagram.png', article.href).href, 'https://knowledge.juzxailab.com/assets/diagram.png')
 })
 
 test('embedded frame activation waits for focus to settle, ignores unrelated blur, and cleans up', () => {

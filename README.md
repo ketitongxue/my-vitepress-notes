@@ -4,7 +4,7 @@
 
 **AI 纪元**是 JuZX 的个人网站，记录 AI、产品与工程实践，关注工业数字化，以及如何把 AI 工具和 Agent 融入日常工作。这里汇集学习笔记、项目探索与个人思考，把真实问题中的经验逐步整理成可复用的知识。
 
-[访问网站](https://juzxailab.com/) · [阅读知识库](https://ketitongxue.github.io/ai-era-html-docs/)
+[访问网站](https://juzxailab.com/) · [阅读知识库](https://knowledge.juzxailab.com/)
 
 ## 网站内容
 

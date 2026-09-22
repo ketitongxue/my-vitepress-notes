@@ -6,7 +6,7 @@ import { Miniflare } from 'miniflare'
 const source = await readFile(new URL('./knowledge-library.mjs', import.meta.url), 'utf8')
 const config = await readFile(new URL('../wrangler.jsonc', import.meta.url), 'utf8')
 const compatibilityDate = config.match(/"compatibility_date"\s*:\s*"([^"]+)"/)[1]
-const upstreamURL = 'https://ketitongxue.github.io/ai-era-html-docs/docs/directory.json'
+const upstreamURL = 'https://knowledge.juzxailab.com/docs/directory.json'
 const manifest = {
   schemaVersion: 1,
   sha: 'b'.repeat(40),
