@@ -1,8 +1,8 @@
-const UPSTREAM_URL = 'https://ketitongxue.github.io/ai-era-html-docs/docs/directory.json'
+const UPSTREAM_URL = 'https://knowledge.juzxailab.com/docs/directory.json'
 const MAX_TREE_BYTES = 2 * 1024 * 1024
 const FRESH_SECONDS = 60
 const LAST_SUCCESS_SECONDS = 7 * 24 * 60 * 60
-const CACHE_PATH = '/api/knowledge/tree/__published_v1/'
+const CACHE_PATH = '/api/knowledge/tree/__cloudflare_v2/'
 const FETCHED_AT_HEADER = 'x-knowledge-fetched-at'
 const PUBLIC_HEADERS = {
   'cache-control': 'no-store',

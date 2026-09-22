@@ -25,6 +25,8 @@ test('static home configuration is normalized, immutable, and complete', () => {
     ],
   )
   assert.equal(DEFAULT_HOME_CONFIG.desktop.menuLinks.some(({ href }) => href === '/about'), false)
+  assert.equal(DEFAULT_HOME_CONFIG.desktop.menuLinks.find(({ label }) => label === '知识库').href, 'https://knowledge.juzxailab.com/')
+  assert.equal(DEFAULT_HOME_CONFIG.desktop.entries.find(({ id }) => id === 'html-knowledge').window.href, 'https://knowledge.juzxailab.com/')
   assert.equal(DEFAULT_HOME_CONFIG.desktop.entries.some(({ id }) => id === 'contact'), false)
   const about = DEFAULT_HOME_CONFIG.desktop.entries.find(({ id }) => id === 'about')
   assert.equal(about.window.href, 'https://github.com/ketitongxue')
@@ -77,4 +79,24 @@ test('home configuration client validates D1 data and falls back to static conte
   })
   assert.deepEqual(fallback, staticHomeConfiguration())
   assert.equal(fallback.source, 'static')
+})
+
+test('published legacy library roots resolve to Cloudflare for readers without changing saved content or unrelated links', async () => {
+  const saved = structuredClone(DEFAULT_HOME_CONFIG)
+  saved.desktop.menuLinks = [
+    { label: '知识库', href: 'https://ketitongxue.github.io/ai-era-html-docs/index.html?view=all#articles' },
+    { label: '文章', href: 'https://ketitongxue.github.io/ai-era-html-docs/docs/Agent/article.html' },
+    { label: '其他', href: 'https://knowledge.juzxailab.com.example/index.html' },
+  ]
+  saved.desktop.entries.find(({ id }) => id === 'html-knowledge').window.href = 'https://ketitongxue.github.io/ai-era-html-docs/'
+  const before = structuredClone(saved)
+  const remote = await loadHomeConfiguration({ fetchImpl: async () => ({
+    ok: true,
+    json: async () => ({ revision: 7, config: saved }),
+  }) })
+  assert.equal(remote.source, 'd1')
+  assert.equal(remote.config.desktop.menuLinks[0].href, 'https://knowledge.juzxailab.com/?view=all#articles')
+  assert.equal(remote.config.desktop.entries.find(({ id }) => id === 'html-knowledge').window.href, 'https://knowledge.juzxailab.com/')
+  assert.deepEqual(remote.config.desktop.menuLinks.slice(1), saved.desktop.menuLinks.slice(1))
+  assert.deepEqual(saved, before)
 })

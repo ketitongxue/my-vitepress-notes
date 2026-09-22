@@ -1,4 +1,4 @@
-export const libraryUrl = 'https://ketitongxue.github.io/ai-era-html-docs/'
+export const libraryUrl = 'https://knowledge.juzxailab.com/'
 export const libraryTreeUrl = '/api/knowledge/tree'
 
 export function getLibraryDirectoryView(groups, selectedCategory = null) {
@@ -32,12 +32,16 @@ export function formatLibraryUpdatedAt(value) {
 
 export function isLibraryRootHref(href) {
   if (typeof href !== 'string' || /[\\\u0000-\u0020]/.test(href)) return false
-  if (!/^https:\/\/[^/?#@]+(?:[/?#]|$)/i.test(href)) return false
+  const match = /^https:\/\/(knowledge\.juzxailab\.com|ketitongxue\.github\.io)(?::443)?(\/[^?#]*)?(?:[?#]|$)/i.exec(href)
+  if (!match) return false
   try {
     const url = new URL(href)
-    return url.origin === 'https://ketitongxue.github.io'
-      && !url.username && !url.password
-      && ['/ai-era-html-docs', '/ai-era-html-docs/', '/ai-era-html-docs/index.html'].includes(url.pathname)
+    // Existing published home configurations can still contain the GitHub root URL.
+    const roots = url.origin === 'https://knowledge.juzxailab.com'
+      ? ['/', '/index.html']
+      : ['/ai-era-html-docs', '/ai-era-html-docs/', '/ai-era-html-docs/index.html']
+    // Match the original path too, so URL normalization cannot turn an article path into a root.
+    return !url.username && !url.password && roots.includes(match[2] || '/') && roots.includes(url.pathname)
   } catch {
     return false
   }

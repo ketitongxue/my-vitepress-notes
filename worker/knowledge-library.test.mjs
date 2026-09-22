@@ -13,8 +13,8 @@ const liveTree = () => ({
 })
 const request = (suffix = '', options) => new Request(`https://example.com/api/knowledge/tree${suffix}`, options)
 const handler = (options) => createKnowledgeTreeHandler({ getCache: () => undefined, warn: () => {}, ...options })
-const freshURL = 'https://example.com/api/knowledge/tree/__published_v1/fresh'
-const successURL = 'https://example.com/api/knowledge/tree/__published_v1/last-success'
+const freshURL = 'https://example.com/api/knowledge/tree/__cloudflare_v2/fresh'
+const successURL = 'https://example.com/api/knowledge/tree/__cloudflare_v2/last-success'
 
 function memoryCache() {
   const entries = new Map()
@@ -44,7 +44,7 @@ function assertPublic(response) {
 
 test('reads the published manifest from one fixed upstream without forwarding visitor credentials', async () => {
   const serve = handler({ fetchImpl: async (url, init) => {
-    assert.equal(url, 'https://ketitongxue.github.io/ai-era-html-docs/docs/directory.json')
+    assert.equal(url, 'https://knowledge.juzxailab.com/docs/directory.json')
     assert.equal(init.method, 'GET')
     assert.equal(init.redirect, 'manual')
     assert.equal(init.cache, 'no-store')
@@ -155,9 +155,14 @@ test('uses only the last successful manifest on failure without overwriting or e
   assert.deepEqual(await expired.json(), { error: 'KNOWLEDGE_DIRECTORY_UNAVAILABLE' })
 })
 
-test('cache eviction and the old fixed-snapshot cache cannot restore removed articles', async () => {
+test('cache eviction and old GitHub manifest caches cannot restore removed articles', async () => {
   const cache = memoryCache()
   cache.entries.set('https://example.com/api/knowledge/tree', Response.json({ sha: 'f'.repeat(40), source: 'snapshot' }))
+  for (const variant of ['fresh', 'last-success']) {
+    cache.entries.set(`https://example.com/api/knowledge/tree/__published_v1/${variant}`, Response.json(liveTree(), {
+      headers: { 'x-knowledge-fetched-at': String(Date.now()) },
+    }))
+  }
   const response = await handler({ getCache: () => cache, fetchImpl: async () => new Response('', { status: 404 }) })(request())
   assert.equal(response.status, 503)
   assertPublic(response)
