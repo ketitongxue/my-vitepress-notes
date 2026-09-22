@@ -200,7 +200,8 @@ html[data-personal-os-view="system"] .factory-home {
 }
 
 .factory-home .desktop-surface__workspace {
-  height: calc(100% - 40px);
+  height: auto;
+  bottom: var(--desktop-dock-inset, 0px);
 }
 
 .factory-home .desktop-icon {
@@ -497,10 +498,6 @@ html.personal-os-system-active .VPFooter {
     height: 48px;
   }
 
-  .factory-home .desktop-surface__workspace {
-    height: calc(100% - 48px);
-  }
-
   .factory-home .window-manager__window {
     min-width: 0;
     min-height: min(220px, 100%);
@@ -595,10 +592,6 @@ html[data-personal-os-view="system"] .factory-home .bottom-os-navigation::before
 @container personal-os (max-width: 767px) {
   .factory-home .desktop-surface__menu {
     height: 48px;
-  }
-
-  .factory-home .desktop-surface__workspace {
-    height: calc(100% - 48px);
   }
 
   .factory-home .desktop-icon {

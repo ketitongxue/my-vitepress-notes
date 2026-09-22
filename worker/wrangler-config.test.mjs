@@ -12,6 +12,14 @@ test('Wrangler schema and assets directory use explicit relative paths', async (
   assert.equal(config.durable_objects, undefined)
 })
 
+test('static 404 handling keeps the complete API namespace routed to the Worker', async () => {
+  const config = JSON.parse(await readFile(new URL('../wrangler.jsonc', import.meta.url)))
+
+  assert.equal(config.assets.not_found_handling, '404-page')
+  // The /api/* wildcard does not match /api itself; both must retain JSON errors.
+  assert.deepEqual(config.assets.run_worker_first, ['/api', '/api/*'])
+})
+
 test('main test script runs Worker tests and Wrangler is pinned', async () => {
   const packageJson = JSON.parse(
     await readFile(new URL('../package.json', import.meta.url)),

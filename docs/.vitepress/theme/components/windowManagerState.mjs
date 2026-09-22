@@ -3,6 +3,8 @@ import { constrainWindow, minimumWindowSize } from './desktopGeometry.mjs'
 export const createWindowState = () => ({ windows: [], nextZ: 10, cascade: 0 })
 
 export function focusWindow(state, id) {
+  const item = state.windows.find((window) => window.id === id)
+  if (!item || state.windows.every((window) => window.z <= item.z)) return state
   const nextZ = state.nextZ + 1
   return {
     ...state,
