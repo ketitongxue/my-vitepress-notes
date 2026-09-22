@@ -116,6 +116,11 @@
   padding: 0;
 }
 
+/* The custom desktop supplies its own navigation, including on mobile. */
+.knowledge-factory-page .VPLocalNav {
+  display: none;
+}
+
 .factory-home {
   --os-boot: #F7F4EC;
   --os-surface: #FFFDF7;
