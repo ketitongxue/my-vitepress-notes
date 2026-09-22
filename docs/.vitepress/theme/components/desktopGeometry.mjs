@@ -28,12 +28,20 @@ const DEFAULT_ICON_SIZE = { width: 88, height: 92 }
 
 const clamp = (value, maximum) => Math.max(0, Math.min(value, Math.max(0, maximum)))
 
-export function resolveSurfaceBounds(currentBounds, width, height, inset = 0) {
+export function resolveDockInset(height, bottom, gap = 8) {
+  const dockHeight = Number(height)
+  if (!Number.isFinite(dockHeight) || dockHeight <= 0) return 0
+  const offset = Number.parseFloat(bottom)
+  return dockHeight + Math.max(0, Number.isFinite(offset) ? offset : 0) + gap
+}
+
+export function resolveSurfaceBounds(currentBounds, width, height, inset = 0, bottomInset = 0) {
   const nextWidth = Number(width)
-  const nextHeight = Number(height) - Number(inset)
+  const nextHeight = Number(height) - Number(inset) - Number(bottomInset)
   if (!Number.isFinite(nextWidth) || !Number.isFinite(nextHeight) || nextWidth <= 0 || nextHeight <= 0) {
     return currentBounds
   }
+  if (currentBounds.width === nextWidth && currentBounds.height === nextHeight) return currentBounds
   return { width: nextWidth, height: nextHeight }
 }
 

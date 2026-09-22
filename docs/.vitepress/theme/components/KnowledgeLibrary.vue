@@ -73,7 +73,7 @@ function startReaderAttempt() {
   readerVersion.value += 1
   readerTimer = setTimeout(() => {
     readerLoading.value = false
-    readerNotice.value = '加载时间较长。如果内容没有显示，可以重新加载。'
+    readerNotice.value = '加载时间较长。可以重新加载，或在新标签页打开。'
   }, 15000)
 }
 
@@ -95,7 +95,7 @@ function finishReaderAttempt(event) {
   clearTimeout(readerTimer)
   readerLoading.value = false
   // Cross-origin iframe load events cannot verify the response status or content.
-  readerNotice.value = event.type === 'error' ? '内容暂时无法显示，可以重新加载。' : ''
+  readerNotice.value = event.type === 'error' ? '内容暂时无法显示，可以重新加载，或在新标签页打开。' : ''
 }
 
 async function returnToDirectory() {
@@ -190,6 +190,13 @@ onBeforeUnmount(() => {
         <button type="button" @click="returnToDirectory">← 返回目录</button>
         <h2 ref="readerHeading" tabindex="-1">{{ selectedArticle.title }}</h2>
         <button type="button" @click="startReaderAttempt">重新加载</button>
+        <a
+          class="knowledge-library__open-external"
+          :href="selectedArticle.href"
+          target="_blank"
+          rel="noopener noreferrer"
+          :aria-label="`在新标签页打开${selectedArticle.title}`"
+        >新标签页打开 ↗</a>
       </header>
       <p v-if="readerLoading" class="knowledge-library__reader-status" role="status">正在加载内容…</p>
       <p v-else-if="readerNotice" class="knowledge-library__reader-status" role="status">{{ readerNotice }}</p>
@@ -199,7 +206,7 @@ onBeforeUnmount(() => {
         class="knowledge-library__frame"
         :src="selectedArticle.href"
         :title="`${selectedArticle.title} · 知识库阅读内容`"
-        sandbox="allow-scripts allow-same-origin allow-downloads"
+        sandbox="allow-scripts allow-same-origin allow-downloads allow-popups allow-popups-to-escape-sandbox"
         allow="clipboard-write"
         referrerpolicy="no-referrer"
         @load="finishReaderAttempt"
@@ -236,9 +243,12 @@ onBeforeUnmount(() => {
 .knowledge-library__chevron { flex-shrink: 0; width: 18px; text-align: center; font-size: 18px; font-weight: normal; }
 .knowledge-library footer { margin-top: 20px; padding-top: 12px; border-top: 1px dashed #c8d9e8; }
 .knowledge-library__reader { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
-.knowledge-library__reader-toolbar { display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid #d9e3ed; background: #fffdf7; }
+.knowledge-library__reader-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid #d9e3ed; background: #fffdf7; }
 .knowledge-library__reader-toolbar h2 { flex: 1; min-width: 0; margin: 0; font-size: 14px; line-height: 1.5; }
-.knowledge-library__reader-toolbar button { flex-shrink: 0; }
+.knowledge-library__reader-toolbar button { flex-shrink: 0; min-height: 44px; }
+.knowledge-library__open-external { display: inline-flex; flex-shrink: 0; align-items: center; min-height: 44px; padding: 6px 10px; border: 1px solid #89abd0; border-radius: 6px; color: #285a87; line-height: 1.5; text-decoration: none; }
+.knowledge-library__open-external:hover { background: #edf3fa; }
+.knowledge-library__open-external:focus-visible { outline: 2px solid #315efb; outline-offset: 3px; }
 .knowledge-library__reader-status { margin: 0; padding: 8px 12px; background: #edf3fa; color: #485465; font-size: 12px; }
 .knowledge-library__frame { display: block; flex: 1; width: 100%; min-height: 0; border: 0; background: #fff; }
 @media (max-width: 600px) {

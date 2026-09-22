@@ -49,11 +49,17 @@ export default defineConfig({
   lastUpdated: true,
   sitemap: {
     hostname: 'https://juzxailab.com',
-    transformItems: (items) => items.filter(({ url }) => !/^\/?admin(?:\/|$)/.test(url)),
+    transformItems: (items) => items.filter(({ url }) => !/^\/?(?:admin(?:\/|$)|404(?:\.html)?$)/.test(url)),
   },
   head: [
     ['script', {}, personalSiteAccessPreflight],
   ],
+  transformHtml(html, _path, { page, content }) {
+    if (page !== '404.md') return html
+    // VitePress leaves the 404 app empty for client routing. Reuse its rendered
+    // default layout so visitors without JavaScript can still return home.
+    return html.replace('<div id="app"></div>', `<div id="app"></div><noscript>${content}</noscript>`)
+  },
   transformPageData(pageData) {
     const updated = pageData.frontmatter.updated
     if (typeof updated === 'string' && Number.isFinite(Date.parse(updated))) {
@@ -101,6 +107,12 @@ export default defineConfig({
   themeConfig: {
     nav: [],
     sidebar: {},
+    notFound: {
+      title: '页面未找到',
+      quote: '这个页面可能已移动或不存在。你可以返回首页继续浏览。',
+      linkLabel: '返回 AI 纪元首页',
+      linkText: '返回首页',
+    },
     search: {
       provider: 'local',
       options: {
