@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { IconFileText, IconFolder, IconTerminal2, IconWorld } from '@tabler/icons-vue'
+import { IconBrandGithub, IconFileText, IconFolder, IconTerminal2, IconWorld } from '@tabler/icons-vue'
 import {
   consumeIconDoubleClick,
   createIconActivationState,
@@ -24,6 +24,7 @@ const iconComponents = Object.freeze({
   file: IconFileText,
   terminal: IconTerminal2,
   world: IconWorld,
+  github: IconBrandGithub,
 })
 const iconComponent = computed(() => iconComponents[props.entry.icon] ?? IconFileText)
 const isDragging = ref(false)
@@ -246,7 +247,8 @@ function handleKeydown(event) {
   content: "";
 }
 
-.desktop-icon[data-icon-kind="terminal"] .desktop-icon__tile {
+.desktop-icon[data-icon-kind="terminal"] .desktop-icon__tile,
+.desktop-icon[data-icon-kind="github"] .desktop-icon__tile {
   border-color: rgb(255 255 255 / 34%);
   background: linear-gradient(155deg, #263858, #192232);
   color: #f3f7fd;
