@@ -104,6 +104,13 @@ onBeforeUnmount(() => {
   top: calc(var(--os-viewport-top, 0px) + var(--os-viewport-height, 100dvh) - max(148px, calc(env(safe-area-inset-bottom) + 140px)));
 }
 
+@media (max-width: 767px) and (max-height: 720px) {
+  .crisp-contact--home {
+    left: calc(var(--os-viewport-left, 0px) + max(16px, env(safe-area-inset-left)));
+    transform: translateY(-100%);
+  }
+}
+
 .crisp-contact__button {
   display: flex;
   align-items: center;

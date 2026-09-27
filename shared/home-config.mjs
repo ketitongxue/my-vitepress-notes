@@ -1,4 +1,4 @@
-const ICONS = new Set(['folder', 'file', 'terminal', 'world'])
+const ICONS = new Set(['folder', 'file', 'terminal', 'world', 'github'])
 const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const MAX_BOOT_LINES = 12
 const MAX_MENU_LINKS = 8
@@ -162,7 +162,8 @@ export const DEFAULT_HOME_CONFIG = deepFreeze(normalizeHomeConfig({
     entries: [
       { id: 'projects', label: '项目档案', icon: 'folder', position: { x: 80, y: 84 }, window: { title: '项目档案', summary: '记录我把 AI Agent、工具调用与工程化实践做成可运行系统的过程。', href: '/projects/go-tiny-claw', linkLabel: '查看 go-tiny-claw 项目介绍 →' } },
       { id: 'html-knowledge', label: '知识库', icon: 'folder', position: { x: 80, y: 192 }, window: { title: '知识库', summary: 'AI 与实践的 HTML 文档，持续整理与更新。', href: 'https://knowledge.juzxailab.com/', linkLabel: '打开知识库 →' } },
-      { id: 'about', label: '关于我', icon: 'file', position: { x: 80, y: 300 }, window: { title: '关于我', summary: 'JuZX 的角色、关注方向与当前实践。联系方式已整合至此处。', href: 'https://github.com/ketitongxue', linkLabel: 'Github:ketitongxue' } },
+      { id: 'site-repository', label: '网站源码', icon: 'github', position: { x: 80, y: 300 }, window: { title: '网站源码', summary: 'AI 纪元的 GitHub 仓库，记录这个个人网站的页面、交互与持续迭代。\n\n基于 VitePress、Vue 与 Cloudflare 构建，包含个人桌面、知识库阅读窗口和 Personal OS 画布。欢迎查看源码与提交记录。', href: 'https://github.com/ketitongxue/my-vitepress-notes', linkLabel: '访问 GitHub 仓库 →' } },
+      { id: 'about', label: '关于我', icon: 'file', position: { x: 80, y: 408 }, window: { title: '关于我', summary: 'JuZX 的角色、关注方向与当前实践。联系方式已整合至此处。', href: 'https://github.com/ketitongxue', linkLabel: 'Github:ketitongxue' } },
     ],
   },
   exit: {

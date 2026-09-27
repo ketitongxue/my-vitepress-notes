@@ -11,10 +11,10 @@ test('static home configuration is normalized, immutable, and complete', () => {
   assert.equal(DEFAULT_HOME_CONFIG.boot.lines[3], '$ open ai-era')
   assert.equal(DEFAULT_HOME_CONFIG.boot.launchLabel, '启动 AI 纪元')
   assert.equal(DEFAULT_HOME_CONFIG.desktop.brand, 'AI 纪元')
-  assert.equal(DEFAULT_HOME_CONFIG.desktop.entries.length, 3)
+  assert.equal(DEFAULT_HOME_CONFIG.desktop.entries.length, 4)
   assert.deepEqual(
     DEFAULT_HOME_CONFIG.desktop.entries.map(({ id }) => id),
-    ['projects', 'html-knowledge', 'about'],
+    ['projects', 'html-knowledge', 'site-repository', 'about'],
   )
   assert.deepEqual(
     DEFAULT_HOME_CONFIG.desktop.entries.map(({ position }) => position),
@@ -22,12 +22,18 @@ test('static home configuration is normalized, immutable, and complete', () => {
       { x: 80, y: 84 },
       { x: 80, y: 192 },
       { x: 80, y: 300 },
+      { x: 80, y: 408 },
     ],
   )
   assert.equal(DEFAULT_HOME_CONFIG.desktop.menuLinks.some(({ href }) => href === '/about'), false)
   assert.equal(DEFAULT_HOME_CONFIG.desktop.menuLinks.find(({ label }) => label === '知识库').href, 'https://knowledge.juzxailab.com/')
   assert.equal(DEFAULT_HOME_CONFIG.desktop.entries.find(({ id }) => id === 'html-knowledge').window.href, 'https://knowledge.juzxailab.com/')
   assert.equal(DEFAULT_HOME_CONFIG.desktop.entries.some(({ id }) => id === 'contact'), false)
+  const repository = DEFAULT_HOME_CONFIG.desktop.entries.find(({ id }) => id === 'site-repository')
+  assert.equal(repository.label, '网站源码')
+  assert.equal(repository.icon, 'github')
+  assert.equal(repository.window.href, 'https://github.com/ketitongxue/my-vitepress-notes')
+  assert.equal(repository.window.linkLabel, '访问 GitHub 仓库 →')
   const about = DEFAULT_HOME_CONFIG.desktop.entries.find(({ id }) => id === 'about')
   assert.equal(about.window.href, 'https://github.com/ketitongxue')
   assert.equal(about.window.linkLabel, 'Github:ketitongxue')
