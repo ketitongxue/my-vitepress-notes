@@ -1,5 +1,8 @@
 import DefaultTheme from 'vitepress/theme'
-import { defineAsyncComponent } from 'vue'
+import { defineAsyncComponent, h } from 'vue'
+import CrispChat from './components/CrispChat.vue'
+import { installCrispRouteGuard, isCrispConfigured } from './components/crispChatClient.mjs'
+import { crispConfig } from './crispConfig.mjs'
 import './custom.css'
 import '../../public/assets/reading-components.css'
 
@@ -14,7 +17,13 @@ const ReadingCode = defineAsyncComponent(() => import('./components/reading/Read
 
 export default {
   extends: DefaultTheme,
-  enhanceApp({ app }) {
+  Layout() {
+    return h(DefaultTheme.Layout, null, { 'layout-bottom': () => h(CrispChat) })
+  },
+  enhanceApp({ app, router }) {
+    if (typeof window !== 'undefined' && isCrispConfigured(crispConfig)) {
+      installCrispRouteGuard(router, window)
+    }
     app.component('KnowledgeFactoryHome', KnowledgeFactoryHome)
     app.component('HomeAdmin', HomeAdmin)
     app.component('PersonalOsAdmin', PersonalOsAdmin)
