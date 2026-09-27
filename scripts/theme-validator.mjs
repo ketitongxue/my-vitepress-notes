@@ -167,8 +167,9 @@ export function validateThemeCss(source) {
   const menu = parseDeclarations(requireRule(osRules, '.factory-home .desktop-surface__menu').body)
   if (menu.get('height') !== '40px') throw new Error('Personal OS menu must be exactly 40px high')
 
-  if (!includesDeclaration(osRules, '.factory-home .desktop-surface__workspace', 'height', 'calc(100% - 40px)')) {
-    throw new Error('Personal OS workspace must follow the visible desktop height')
+  if (!includesDeclaration(osRules, '.factory-home .desktop-surface__workspace', 'height', 'auto')
+    || !includesDeclaration(osRules, '.factory-home .desktop-surface__workspace', 'bottom', 'var(--desktop-dock-inset, 0px)')) {
+    throw new Error('Personal OS workspace must reserve the measured navigation dock inset')
   }
 
   const window = parseDeclarations(requireRule(osRules, '.factory-home .window-manager__window').body)

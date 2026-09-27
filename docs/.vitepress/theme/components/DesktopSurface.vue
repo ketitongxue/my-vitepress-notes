@@ -4,7 +4,7 @@ import DesktopAtmosphere from './DesktopAtmosphere.vue'
 import DesktopIcon from './DesktopIcon.vue'
 import WindowManager from './WindowManager.vue'
 import { isLibraryRootHref } from './knowledgeLibrary.mjs'
-import { constrainIconPosition, resolveSurfaceBounds } from './desktopGeometry.mjs'
+import { constrainIconPosition, resolveDockInset, resolveSurfaceBounds } from './desktopGeometry.mjs'
 import {
   getDesktopSessionStorage,
   loadDesktopSession,
@@ -27,11 +27,15 @@ const projectEntry = computed(() => desktopEntries.value.find((entry) => entry.i
 const surface = ref(null)
 const atmosphere = ref(null)
 const menu = ref(null)
+const windowManager = ref(null)
+const menuInset = ref(40)
+const dockInset = ref(0)
 const iconPositions = ref(createIconPositions())
 const windowState = ref(createWindowState())
 const bounds = ref({ width: 1280, height: 690 })
 const clock = ref('00:00')
 let resizeObserver
+let navigationDock
 let clockTimer
 let persistTimer
 let storage
@@ -64,7 +68,9 @@ function constrainIconPositions(nextBounds) {
 }
 
 function openEntry(entry) {
+  const opener = surface.value?.ownerDocument.activeElement
   windowState.value = openWindow(windowState.value, entry, bounds.value)
+  windowManager.value?.focusOpenedWindow(entry.id, opener)
 }
 
 function openProject(event) {
@@ -101,11 +107,19 @@ function constrainOpenWindows(nextBounds) {
 
 function measureSurface() {
   if (!surface.value) return
+  // Layout dimensions ignore the dock's entrance transform. The computed bottom
+  // already includes its responsive offset and the device's safe-area inset.
+  menuInset.value = menu.value?.offsetHeight ?? 40
+  dockInset.value = resolveDockInset(
+    navigationDock?.offsetHeight,
+    navigationDock ? window.getComputedStyle(navigationDock).bottom : 0,
+  )
   const nextBounds = resolveSurfaceBounds(
     bounds.value,
     surface.value.clientWidth,
     surface.value.clientHeight,
-    menu.value?.offsetHeight ?? 40,
+    menuInset.value,
+    dockInset.value,
   )
   if (nextBounds === bounds.value) return
   bounds.value = nextBounds
@@ -119,6 +133,7 @@ function updateClock() {
 }
 
 onMounted(() => {
+  navigationDock = surface.value?.closest('.factory-home')?.querySelector('.bottom-os-navigation')
   measureSurface()
   storage = getDesktopSessionStorage(window)
   restoreSession()
@@ -127,6 +142,8 @@ onMounted(() => {
   if (typeof ResizeObserver === 'function') {
     resizeObserver = new ResizeObserver(measureSurface)
     resizeObserver.observe(surface.value)
+    if (menu.value) resizeObserver.observe(menu.value)
+    if (navigationDock) resizeObserver.observe(navigationDock)
   }
   window.addEventListener('resize', measureSurface)
 })
@@ -158,6 +175,7 @@ onBeforeUnmount(() => {
     ref="surface"
     class="desktop-surface"
     :class="{ 'is-active': active }"
+    :style="{ '--desktop-menu-inset': `${menuInset}px`, '--desktop-dock-inset': `${dockInset}px` }"
     aria-label="AI 纪元桌面"
     @pointermove.passive="atmosphere?.movePointer($event)"
     @pointerleave="atmosphere?.clearPointer()"
@@ -191,7 +209,7 @@ onBeforeUnmount(() => {
         @move="updateIconPosition"
         @open="openEntry"
       />
-      <WindowManager v-model:state="windowState" :bounds="bounds" />
+      <WindowManager ref="windowManager" v-model:state="windowState" :bounds="bounds" />
     </div>
   </section>
 </template>
@@ -316,7 +334,7 @@ onBeforeUnmount(() => {
 .desktop-surface__workspace {
   position: absolute;
   z-index: 1;
-  inset: 40px 0 0;
+  inset: var(--desktop-menu-inset, 40px) 0 var(--desktop-dock-inset, 0px);
   height: auto;
   overflow: hidden;
 }
@@ -349,9 +367,6 @@ onBeforeUnmount(() => {
     text-align: right;
   }
 
-  .desktop-surface__workspace {
-    inset: 48px 0 0;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

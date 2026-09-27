@@ -1,7 +1,8 @@
 <script setup>
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 import KnowledgeLibrary from './KnowledgeLibrary.vue'
 import ProjectIntroduction from './ProjectIntroduction.vue'
+import { createWindowFocusManager } from './windowFocus.mjs'
 import {
   closeWindow,
   focusWindow,
@@ -18,6 +19,12 @@ const props = defineProps({
 const emit = defineEmits(['update:state'])
 const manipulation = ref(null)
 const isManipulating = computed(() => Boolean(manipulation.value))
+const windowElements = new Map()
+const windowFocus = createWindowFocusManager({
+  getWindowElement: (id) => windowElements.get(id),
+  getTopWindowId: () => props.state.windows.reduce((front, item) => !front || item.z > front.z ? item : front, null)?.id,
+  getFallbackElement: (id) => windowElements.get(id)?.closest('.desktop-surface')?.querySelector('.desktop-surface__brand'),
+})
 let pendingPoint = null
 let frameId = null
 
@@ -48,16 +55,32 @@ function hasInlineProject(href) {
 }
 
 function updateState(state) {
+  if (state === props.state) return
   emit('update:state', state)
 }
 
-function focus(id) {
+function setWindowElement(id, element) {
+  if (element) windowElements.set(id, element)
+  else windowElements.delete(id)
+}
+
+function focus(id, event) {
+  if (event?.type === 'focusin') windowFocus.recordFocus(id, event.target)
   updateState(focusWindow(props.state, id))
 }
 
-function close(id) {
-  updateState(closeWindow(props.state, id))
+function focusOpenedWindow(id, opener) {
+  windowFocus.rememberOpener(id, opener)
+  void nextTick(() => windowFocus.focusOpenedWindow(id))
 }
+
+function close(id) {
+  const restoreFocus = windowFocus.prepareClose(id)
+  updateState(closeWindow(props.state, id))
+  void nextTick(restoreFocus)
+}
+
+defineExpose({ focusOpenedWindow })
 
 function toggleMaximize(id) {
   updateState(toggleMaximizeWindow(props.state, id, props.bounds))
@@ -215,7 +238,10 @@ onBeforeUnmount(() => {
     <article
       v-for="item in state.windows"
       :key="item.id"
+      :ref="(element) => setWindowElement(item.id, element)"
       class="window-manager__window"
+      tabindex="-1"
+      :aria-labelledby="`desktop-window-title-${item.id}`"
       :class="{
         'window-manager__window--project': item.id === 'projects',
         'is-maximized': item.maximized,
@@ -229,6 +255,7 @@ onBeforeUnmount(() => {
         zIndex: item.z,
       }"
       @pointerdown="focus(item.id)"
+      @focusin="focus(item.id, $event)"
     >
       <header
         class="window-manager__titlebar"
@@ -254,7 +281,7 @@ onBeforeUnmount(() => {
             @click="toggleMaximize(item.id)"
           ><span aria-hidden="true">{{ item.maximized ? '↙' : '＋' }}</span></button>
         </span>
-        <strong>{{ titleFor(item) }}</strong>
+        <strong :id="`desktop-window-title-${item.id}`">{{ titleFor(item) }}</strong>
       </header>
 
       <span class="window-manager__tape" aria-hidden="true"></span>
@@ -336,6 +363,11 @@ onBeforeUnmount(() => {
 .window-manager__window.is-maximized {
   border-radius: 0;
   box-shadow: none;
+}
+
+.window-manager__window:focus-visible {
+  outline: 3px solid #315efb;
+  outline-offset: -3px;
 }
 
 .window-pop-enter-active {

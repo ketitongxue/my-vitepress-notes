@@ -3,9 +3,10 @@ import { readFile } from 'node:fs/promises'
 
 const output = new URL('../docs/.vitepress/dist/', import.meta.url)
 const read = (path) => readFile(new URL(path, output), 'utf8')
-const [home, article, sitemap, robots, cover] = await Promise.all([
+const [home, article, notFound, sitemap, robots, cover] = await Promise.all([
   read('index.html'),
   read('projects/go-tiny-claw.html'),
+  read('404.html'),
   read('sitemap.xml'),
   read('robots.txt'),
   readFile(new URL('og-cover.png', output)),
@@ -48,6 +49,14 @@ const sitemapUrls = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map(([, url]) =>
 assert.ok(sitemapUrls.includes('https://juzxailab.com/'), 'the sitemap must include the homepage')
 assert.ok(sitemapUrls.includes('https://juzxailab.com/projects/go-tiny-claw'), 'the sitemap must include the public article')
 assert.ok(sitemapUrls.every((url) => !/^\/admin(?:\/|$)/.test(new URL(url).pathname)), 'admin pages must stay out of the sitemap')
+assert.ok(sitemapUrls.every((url) => !/^\/404(?:\.html)?$/.test(new URL(url).pathname)), 'the 404 page must stay out of the sitemap')
+// HTTP 404 handles indexing. SSR-only robots tags would outlive the error page
+// because VitePress cannot manage them during client-side navigation home.
+assert.doesNotMatch(notFound, /<meta\b[^>]*name="robots"/, 'the 404 page must not leak robots metadata into public pages after navigation')
+const noScript404 = notFound.match(/<noscript>([\s\S]*?)<\/noscript>/)?.[1]
+assert.ok(noScript404, 'the 404 page must remain usable without JavaScript')
+assert.match(noScript404, /<h1\b[^>]*>页面未找到<\/h1>/, 'the no-JavaScript 404 must explain the missing page')
+assert.match(noScript404, /<a\b[^>]*href="\/"[^>]*>返回首页<\/a>/, 'the no-JavaScript 404 must expose a real homepage link')
 assert.match(robots, /^Sitemap: https:\/\/juzxailab\.com\/sitemap\.xml$/m)
 assert.doesNotMatch(robots, /^Disallow:\s*\/admin/m, 'robots.txt must not prevent crawlers from observing admin noindex metadata')
 
@@ -60,4 +69,4 @@ assert.equal(cover.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', 'the soci
 assert.equal(cover.readUInt32BE(16), 1200, 'social cover width must match its metadata')
 assert.equal(cover.readUInt32BE(20), 630, 'social cover height must match its metadata')
 
-console.log('SEO SSR checks passed: page metadata, public sitemap, robots, crawlable article link and social cover.')
+console.log('SEO SSR checks passed: page metadata, public sitemap, robots, no-JavaScript 404 recovery, crawlable article link and social cover.')
