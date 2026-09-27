@@ -4,35 +4,34 @@
 
 **AI 纪元**是 JuZX 的个人网站，记录 AI、产品与工程实践，关注工业数字化，以及如何把 AI 工具和 Agent 融入日常工作。这里汇集学习笔记、项目探索与个人思考，把真实问题中的经验逐步整理成可复用的知识。
 
-[访问网站](https://juzxailab.com/) · [阅读知识库](https://knowledge.juzxailab.com/)
+[访问网站](https://juzxailab.com/) · [阅读知识库](https://knowledge.juzxailab.com/) · [我的 OS](https://juzxailab.com/#system) · [GitHub](https://github.com/ketitongxue)
 
 ## 网站内容
 
-- **知识库**：持续整理 AI 工具、开发工作流与实践相关的文章，按主题浏览和阅读。
-- **项目档案**：记录个人项目的探索过程。目前收录 [go-tiny-claw](https://juzxailab.com/projects/go-tiny-claw)，围绕 Agent 执行循环、工具调用、上下文管理与执行记录，分享实现思路、实验边界和实践体会。
-- **Personal OS**：用相互连接的卡片呈现个人关注方向、能力方法与当前实践，串联产品规划、工业数字化、知识工程和 AI 工作流。可从 [Now](https://juzxailab.com/#system) 进入。
-- **关于我**：了解 JuZX 的角色与关注方向，并通过 [GitHub](https://github.com/ketitongxue) 查看公开项目与提交记录。
+- **知识库**：持续整理 AI 工具、Agent、开发工作流与工程实践相关的文章，按主题分类浏览。可以在首页窗口内阅读，也可以直接进入[完整知识库](https://knowledge.juzxailab.com/)。
+- **项目档案**：记录个人项目的探索过程。目前收录 [go-tiny-claw](https://juzxailab.com/projects/go-tiny-claw)，围绕 Agent 执行循环、工具调用、上下文管理、模型适配与执行记录，分享实现思路、实验边界和实践体会。
+- **我的 OS（Personal OS）**：用相互连接的卡片呈现个人关注方向、能力方法与当前实践，串联产品规划、工业数字化、知识工程和 AI 工作流。通过页面底部的「02 我的 OS」或顶部的「Now」进入。
+- **关于我**：了解 JuZX 的角色与关注方向，并查看 GitHub 上的公开项目与提交记录。
 
 ## 阅读与探索
 
-首页以个人桌面的形式组织内容，点击图标即可打开相应窗口。知识库支持在站内浏览目录、打开文章、返回目录和放大窗口，也可以直接访问完整知识库。
+### 个人桌面
 
-切换到 Personal OS 后，可以拖动画布、缩放视图，沿着卡片之间的连接了解不同实践的关系。
+首页以个人桌面的形式组织「项目档案」「知识库」「关于我」三个入口。点击图标打开窗口，可以拖动、调整大小、放大与还原，在同一桌面上切换阅读内容。项目介绍既能在窗口内打开，也有独立的文章页面。
 
-## 阅读组件
+### 知识库阅读
 
-知识库窗口支持分类筛选与折叠，阅读后返回目录会保留筛选、折叠和滚动位置。项目档案用项目卡呈现技术主题与阅读入口。
+- 按分类筛选文章，展开或折叠目录，查看分类与文章数量。
+- 在窗口内打开文章，返回目录时保留本次浏览的筛选、折叠状态和滚动位置。
+- 手动刷新目录；内容加载较慢时，可以重新加载文章。
+- 目录暂时无法更新时，若有可用的备份目录，会展示备份并标明时间。
 
-本仓库的 Markdown 文章可在 `<div class="reading-content">` 内使用以下组件，参见 `docs/projects/go-tiny-claw.md`：
+知识库正文在独立的 [ai-era-html-docs 内容仓库](https://github.com/ketitongxue/ai-era-html-docs)中维护，通过 [knowledge.juzxailab.com](https://knowledge.juzxailab.com/) 提供阅读；本仓库承载个人网站、知识库阅读窗口和项目介绍。
 
-| 组件 | 用法 |
-| --- | --- |
-| `ReadingInsight` | `title` 指定提示标题，`tone="warning"` 用于注意事项；正文放默认插槽 |
-| `ReadingSteps` | `label` 描述流程，默认插槽放有序的 `<li>` 步骤 |
-| `ReadingComparison` | `before-title`、`after-title` 指定两栏标题，内容分别放 `#before`、`#after` 插槽 |
-| `ReadingCode` | `filename`、`language` 描述代码；默认插槽保留 Markdown 代码围栏，复用 VitePress 高亮和单一按钮，补充复制失败反馈 |
-| 静态重点 | `<mark class="reading-mark">重点短语</mark>` |
+### Personal OS 画布
 
-普通 `##` 标题保留目录锚点。组件按可用容器宽度排版，独立文章跟随主题，桌面窗口保持浅色。不要将步骤、对比和高亮同时用于每一段文字。
+在无限画布上拖动与缩放，沿着卡片之间的连接探索不同实践的关系。通过图层列表定位、显示或隐藏卡片，也可以调整卡片位置和大小、适应全部内容、撤销调整或恢复默认布局。布局保存在当前浏览器中，方便下次继续探索；移动端支持触摸拖动与双指缩放。
 
-共享样式位于 `docs/public/assets/reading-components.css`，由主题导入并打包到带内容 hash 的 CSS 中，站内页面可使用长期缓存。原 `/assets/reading-components.css` 地址继续供独立 HTML 文章使用，并保留重新验证缓存，避免样式更新后长期失效；请勿把没有内容 hash 的公开资源纳入 `immutable` 规则。知识库正文来自 `ai-era-html-docs` 的跨域页面，必须在该内容仓库中接入样式；修改本仓库的窗口 CSS 不会改变 iframe 内的文章。独立 HTML 的复制按钮使用渐进增强，脚本不可用时仍可阅读和手动复制代码。
+## 联系与交流
+
+点击网站右侧的「联系我」打开在线聊天，交流文章、项目或实践中的问题。聊天服务在点击后加载。也可以通过 [GitHub](https://github.com/ketitongxue) 查看项目与提交记录。
