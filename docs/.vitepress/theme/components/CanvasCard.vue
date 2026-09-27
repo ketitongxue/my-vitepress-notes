@@ -274,7 +274,7 @@ onBeforeUnmount(() => {
   border: 1px dashed var(--card-border);
   border-radius: 12px;
   background: #fffefa;
-  box-shadow: 0 3px 9px rgb(76 67 43 / 7%), 0 1px 2px rgb(76 67 43 / 4%);
+  box-shadow: 0 5px 16px rgb(76 67 43 / 12%), 0 2px 4px rgb(76 67 43 / 8%);
   color: var(--card-ink);
   font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
   transition: border-color 180ms ease, box-shadow 180ms ease;
@@ -282,18 +282,18 @@ onBeforeUnmount(() => {
 
 .canvas-card:hover {
   border-color: #a5aea6;
-  box-shadow: 0 5px 14px rgb(76 67 43 / 10%), 0 1px 2px rgb(76 67 43 / 5%);
+  box-shadow: 0 8px 22px rgb(76 67 43 / 15%), 0 3px 6px rgb(76 67 43 / 9%);
 }
 
 .canvas-card.is-selected {
   border-color: var(--card-focus);
   border-style: solid;
-  box-shadow: 0 0 0 3px rgb(237 216 148 / 62%), 0 5px 14px rgb(76 67 43 / 10%);
+  box-shadow: 0 0 0 3px rgb(237 216 148 / 62%), 0 8px 22px rgb(76 67 43 / 15%), 0 3px 6px rgb(76 67 43 / 9%);
 }
 
 .canvas-card.is-resizing {
   border-color: var(--card-focus);
-  box-shadow: 0 0 0 3px rgb(237 216 148 / 82%), 0 5px 14px rgb(76 67 43 / 10%);
+  box-shadow: 0 0 0 3px rgb(237 216 148 / 82%), 0 8px 22px rgb(76 67 43 / 15%), 0 3px 6px rgb(76 67 43 / 9%);
   user-select: none;
 }
 
