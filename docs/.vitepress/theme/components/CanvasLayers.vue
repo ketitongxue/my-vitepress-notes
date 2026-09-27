@@ -103,7 +103,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeOnOutside
   top: 146px;
   left: 24px;
   z-index: 30;
-  color: #344353;
+  color: #4f534c;
   font: 12px/1.45 "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
@@ -123,22 +123,22 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeOnOutside
   justify-content: center;
   gap: 8px;
   padding: 6px 11px;
-  border: 1px solid rgb(87 111 128 / 24%);
+  border: 1px dashed #cec8bb;
   border-radius: 13px;
-  background: #fffdf6;
-  box-shadow: 0 5px 18px rgb(22 60 103 / 15%), inset 0 1px 0 rgb(255 255 255 / 85%);
+  background: #fffcf5;
+  box-shadow: 0 3px 12px rgb(70 65 51 / 7%), inset 0 1px 0 rgb(255 255 255 / 85%);
   cursor: pointer;
   transition: background-color 180ms ease, box-shadow 180ms ease;
 }
 
 .canvas-layers__toggle:hover,
 .canvas-layers__toggle[aria-expanded="true"] {
-  background: #f1f6fd;
-  box-shadow: 0 7px 20px rgb(22 60 103 / 20%);
+  background: #f6f0de;
+  box-shadow: 0 4px 14px rgb(70 65 51 / 10%);
 }
 
 .canvas-layers__toggle > svg {
-  color: #3676af;
+  color: #716849;
 }
 
 .canvas-layers__count {
@@ -148,8 +148,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeOnOutside
   padding-inline: 5px;
   place-items: center;
   border-radius: 7px;
-  background: #e7eef4;
-  color: #356b98;
+  background: #f0e7c6;
+  color: #625a3f;
   font: 600 11px/1 "JetBrains Mono", Consolas, monospace;
 }
 
@@ -162,10 +162,10 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeOnOutside
   max-height: min(480px, calc(var(--os-viewport-height, 100dvh) - 288px));
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid rgb(87 111 128 / 28%);
+  border: 1px solid #d8d3c7;
   border-radius: 16px;
-  background: #fffdf6;
-  box-shadow: 0 14px 36px rgb(17 53 92 / 22%), inset 0 1px 0 rgb(255 255 255 / 85%);
+  background: #fffcf5;
+  box-shadow: 0 8px 24px rgb(70 65 51 / 10%), inset 0 1px 0 rgb(255 255 255 / 85%);
 }
 
 .canvas-layers:not(.is-open) .canvas-layers__panel {
@@ -180,7 +180,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeOnOutside
   align-items: center;
   justify-content: space-between;
   padding: 7px 8px 7px 17px;
-  border-bottom: 1px solid rgb(87 111 128 / 15%);
+  border-bottom: 1px dashed #ded9cd;
 }
 
 .canvas-layers__header > div {
@@ -189,7 +189,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeOnOutside
 }
 
 .canvas-layers__header span {
-  color: #76818b;
+  color: #707367;
   font: 9px/1.4 "JetBrains Mono", Consolas, monospace;
   letter-spacing: .12em;
 }
@@ -247,32 +247,32 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeOnOutside
 }
 
 .canvas-layers__focus[aria-current="true"] {
-  background: #e8f1fb;
-  color: #286bb0;
+  background: #efe2a9;
+  color: #57513d;
   font-weight: 600;
 }
 
 .canvas-layers__header button:hover,
 .canvas-layers__focus:hover:not(:disabled),
 .canvas-layers__visibility:hover {
-  background: #eaf1f9;
+  background: #f3eedf;
 }
 
 .canvas-layers__focus:disabled {
-  color: #7b858f;
+  color: #7a7c72;
   cursor: not-allowed;
 }
 
 .canvas-layers__visibility {
-  color: #3676af;
+  color: #716849;
 }
 
 .canvas-layers__visibility[aria-pressed="false"] {
-  color: #7b858f;
+  color: #7a7c72;
 }
 
 .canvas-layers button:focus-visible {
-  outline: 3px solid #367bb8;
+  outline: 3px solid #817756;
   outline-offset: 1px;
 }
 

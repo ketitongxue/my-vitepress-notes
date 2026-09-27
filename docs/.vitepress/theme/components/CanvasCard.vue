@@ -263,32 +263,37 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .canvas-card {
+  --card-ink: #343934;
+  --card-ink-muted: #6b6b61;
+  --card-border: #cbd0c9;
+  --card-focus: #75623c;
   position: absolute;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid rgb(40 90 135 / 35%);
-  border-radius: 18px;
-  background: linear-gradient(155deg, #fffdf6, #faf7ed);
-  box-shadow: 0 12px 30px rgb(20 65 110 / 22%), inset 0 1px rgb(255 255 255 / 80%);
-  color: #1e2430;
+  border: 1px dashed var(--card-border);
+  border-radius: 12px;
+  background: #fffefa;
+  box-shadow: 0 3px 9px rgb(76 67 43 / 7%), 0 1px 2px rgb(76 67 43 / 4%);
+  color: var(--card-ink);
   font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
   transition: border-color 180ms ease, box-shadow 180ms ease;
 }
 
 .canvas-card:hover {
-  border-color: rgb(40 90 135 / 62%);
-  box-shadow: 0 16px 34px rgb(20 65 110 / 28%), inset 0 1px rgb(255 255 255 / 80%);
+  border-color: #a5aea6;
+  box-shadow: 0 5px 14px rgb(76 67 43 / 10%), 0 1px 2px rgb(76 67 43 / 5%);
 }
 
 .canvas-card.is-selected {
-  border-color: #266ba9;
-  box-shadow: 0 0 0 3px rgb(247 221 118 / 80%), 0 16px 34px rgb(20 65 110 / 28%);
+  border-color: var(--card-focus);
+  border-style: solid;
+  box-shadow: 0 0 0 3px rgb(237 216 148 / 62%), 0 5px 14px rgb(76 67 43 / 10%);
 }
 
 .canvas-card.is-resizing {
-  border-color: #266ba9;
-  box-shadow: 0 0 0 3px rgb(247 221 118 / 90%), 0 16px 34px rgb(20 65 110 / 28%);
+  border-color: var(--card-focus);
+  box-shadow: 0 0 0 3px rgb(237 216 148 / 82%), 0 5px 14px rgb(76 67 43 / 10%);
   user-select: none;
 }
 
@@ -303,8 +308,8 @@ onBeforeUnmount(() => {
   align-items: center;
   padding: 11px 38px 10px 16px;
   border: 0;
-  border-bottom: 1px dashed rgb(64 125 180 / 27%);
-  background: rgb(255 253 246 / 76%);
+  border-bottom: 1px dashed #d9dcd2;
+  background: #fffdf7;
   color: inherit;
   font-family: inherit;
   text-align: left;
@@ -314,7 +319,7 @@ onBeforeUnmount(() => {
 .canvas-card__titlebar:focus-visible,
 .canvas-card__resize-handle:focus-visible,
 .canvas-card a:focus-visible {
-  outline: 3px solid #2f83d6;
+  outline: 3px solid var(--card-focus);
   outline-offset: -3px;
 }
 
@@ -325,7 +330,7 @@ onBeforeUnmount(() => {
 }
 
 .canvas-card__heading small {
-  color: #5c738c;
+  color: var(--card-ink-muted);
   font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
   font-size: 10px;
   font-weight: 600;
@@ -344,7 +349,7 @@ onBeforeUnmount(() => {
   position: absolute;
   top: 50%;
   right: 14px;
-  color: #879aac;
+  color: #989b90;
   transform: translateY(-50%);
 }
 
@@ -353,11 +358,11 @@ onBeforeUnmount(() => {
   width: 58px;
   height: 58px;
   place-items: center;
-  border: 1px solid rgb(36 103 169 / 36%);
-  border-radius: 16px;
-  background: linear-gradient(145deg, #59a5ed, #2f83d6);
-  box-shadow: inset 0 1px rgb(255 255 255 / 45%), 0 4px 10px rgb(47 131 214 / 18%);
-  color: #fff5c7;
+  border: 1px solid #e0d59e;
+  border-radius: 12px;
+  background: #f7edba;
+  box-shadow: 0 2px 4px rgb(76 67 43 / 6%);
+  color: #66572f;
   font: 700 24px/1 "Comic Sans MS", "Bradley Hand", "Segoe Print", cursive;
   transform: rotate(-4deg);
 }
@@ -372,7 +377,7 @@ onBeforeUnmount(() => {
 
 .canvas-card__copy {
   margin: 0 0 10px;
-  color: #485465;
+  color: #57594f;
   font-size: 14px;
   line-height: 1.55;
   white-space: pre-line;
@@ -388,11 +393,11 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  border: 1px solid rgb(64 125 180 / 23%);
+  border: 1px dashed #ced4cd;
   border-radius: 9px;
-  background: rgb(255 255 255 / 62%);
+  background: #fffefa;
   padding: 8px 10px;
-  color: #1e5d9e;
+  color: #4c6570;
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
@@ -406,8 +411,8 @@ onBeforeUnmount(() => {
 }
 
 .canvas-card__links a:hover {
-  border-color: #2f83d6;
-  background: #eef6ff;
+  border-color: #929f94;
+  background: #f3f3e9;
   transform: translateY(-1px);
 }
 
@@ -421,11 +426,11 @@ onBeforeUnmount(() => {
 }
 
 .canvas-card__chips li {
-  border: 1px solid rgb(64 125 180 / 22%);
+  border: 1px dashed #d5d6c8;
   border-radius: 8px;
-  background: #edf4fa;
+  background: #f5f3e9;
   padding: 5px 9px;
-  color: #2a5a83;
+  color: #626552;
   font-size: 12px;
   font-weight: 600;
 }
@@ -458,8 +463,8 @@ onBeforeUnmount(() => {
 }
 
 .canvas-card--identity {
-  border-color: rgb(40 90 135 / 48%);
-  border-radius: 20px;
+  border-color: #bfc7bd;
+  border-radius: 12px;
 }
 
 .canvas-card--identity .canvas-card__titlebar {
@@ -469,7 +474,7 @@ onBeforeUnmount(() => {
 }
 
 .canvas-card--identity .canvas-card__heading strong {
-  color: #286eaf;
+  color: var(--card-ink);
   font-size: 27px;
 }
 
@@ -484,7 +489,7 @@ onBeforeUnmount(() => {
 }
 
 .canvas-card--timeline .canvas-card__heading small {
-  color: #286eaf;
+  color: #66765e;
 }
 
 .canvas-card--timeline .canvas-card__heading small::before {
@@ -493,16 +498,18 @@ onBeforeUnmount(() => {
   height: 6px;
   margin-right: 7px;
   border-radius: 50%;
-  background: #2f83d6;
+  background: #859b76;
   content: "";
 }
 
 .canvas-card--principle {
-  background: linear-gradient(155deg, #fffbed, #fcf4d9);
+  border-color: #ded19c;
+  background: #fff8dc;
 }
 
 .canvas-card--principle .canvas-card__titlebar {
-  background: rgb(247 221 118 / 18%);
+  border-bottom-color: #e5d9ac;
+  background: #fcf4d4;
 }
 
 .canvas-card--principle .canvas-card__copy {
@@ -519,7 +526,7 @@ onBeforeUnmount(() => {
   width: 48px;
   height: 12px;
   transform: rotate(2deg);
-  background: rgb(244 215 88 / 72%);
+  background: rgb(230 207 125 / 62%);
   content: "";
   pointer-events: none;
 }
@@ -611,7 +618,7 @@ onBeforeUnmount(() => {
 
 .canvas-card__resize-handle:hover::after,
 .canvas-card__resize-handle:focus-visible::after {
-  background: rgb(47 131 214 / 60%);
+  background: var(--card-focus);
 }
 
 .canvas-card.is-selected .canvas-card__resize-handle--nw::after,
@@ -620,8 +627,8 @@ onBeforeUnmount(() => {
 .canvas-card.is-selected .canvas-card__resize-handle--sw::after {
   width: 5px;
   height: 5px;
-  border: 1px solid rgb(47 131 214 / 76%);
-  background: #fffdf6;
+  border: 1px solid var(--card-focus);
+  background: #fffefa;
 }
 
 .canvas-card.is-selected .canvas-card__resize-handle--nw::after { top: 1px; left: 1px; }

@@ -113,16 +113,16 @@ onBeforeUnmount(stopEscapeListener)
   bottom: max(22px, calc(env(safe-area-inset-bottom) + 14px));
   z-index: 31;
   max-width: calc(var(--os-viewport-width, 100vw) - 48px);
-  color: #3c5266;
+  color: #5f625c;
   font: 12px/1.4 "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
 .canvas-controls__scroll,
 .canvas-controls__confirm {
-  border: 1px solid rgb(87 111 128 / 24%);
+  border: 1px solid #d8d3c7;
   border-radius: 14px;
-  background: #fffdf6;
-  box-shadow: 0 8px 24px rgb(22 60 103 / 18%), inset 0 1px 0 rgb(255 255 255 / 85%);
+  background: #fffcf5;
+  box-shadow: 0 4px 14px rgb(70 65 51 / 8%), inset 0 1px 0 rgb(255 255 255 / 85%);
 }
 
 .canvas-controls__scroll {
@@ -183,8 +183,8 @@ onBeforeUnmount(stopEscapeListener)
 }
 
 .canvas-controls button:hover:not(:disabled) {
-  background: #e8f1fb;
-  color: #286bb0;
+  background: #f3eddb;
+  color: #5c5743;
 }
 
 .canvas-controls button:active:not(:disabled) {
@@ -197,23 +197,23 @@ onBeforeUnmount(stopEscapeListener)
 }
 
 .canvas-controls button:focus-visible {
-  outline: 3px solid #367bb8;
+  outline: 3px solid #817756;
   outline-offset: -2px;
 }
 
 .canvas-controls__confirm button:first-of-type {
-  background: #e8f1fb;
-  color: #286bb0;
+  background: #f3eddb;
+  color: #5c5743;
 }
 
 .canvas-controls__actions .canvas-controls__save {
-  color: #286bb0;
+  color: #5c5743;
 }
 
 .canvas-controls output {
   min-width: 46px;
   padding-inline: 5px;
-  color: #4f6478;
+  color: #66685f;
   font: 11px/1 "JetBrains Mono", Consolas, monospace;
   text-align: center;
 }
@@ -223,7 +223,7 @@ onBeforeUnmount(stopEscapeListener)
   height: 20px;
   flex-shrink: 0;
   margin-inline: 4px;
-  background: rgb(87 111 128 / 20%);
+  background: #ded9cd;
 }
 
 @container personal-os (min-width: 768px) and (max-width: 1100px) {

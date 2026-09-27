@@ -1,7 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { IconHandMove, IconSparkles } from '@tabler/icons-vue'
-import DesktopAtmosphere from './DesktopAtmosphere.vue'
 import CanvasCard from './CanvasCard.vue'
 import CanvasConnections from './CanvasConnections.vue'
 import CanvasControls from './CanvasControls.vue'
@@ -27,7 +26,6 @@ const DESKTOP_FIT_PADDING = 48
 const INITIAL_TRANSFORM = Object.freeze({ scale: 1, panX: 0, panY: 0 })
 const emit = defineEmits(['layout-change'])
 const viewport = ref(null)
-const atmosphere = ref(null)
 const sourceCards = props.configuration.config.cards
 const sourceConnections = props.configuration.config.connections
 const contentRevision = props.configuration.revision
@@ -496,10 +494,7 @@ onBeforeUnmount(() => {
     :class="{ 'is-ready': ready }"
     aria-label="AI 纪元无限画布"
     aria-describedby="canvas-instructions"
-    @pointermove.passive="atmosphere?.movePointer($event)"
-    @pointerleave="atmosphere?.clearPointer()"
   >
-    <DesktopAtmosphere ref="atmosphere" :active="active" />
     <header class="infinite-canvas__menu" data-canvas-control>
       <a class="infinite-canvas__brand" href="#home">{{ brand }}</a>
       <span class="infinite-canvas__menu-title">个人工作台</span>
@@ -572,8 +567,8 @@ onBeforeUnmount(() => {
   max-width: 100vw;
   height: 100%;
   overflow: hidden;
-  background: var(--os-wallpaper);
-  color: #fffdf7;
+  background-color: var(--os-paper);
+  color: #383d39;
   font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
   isolation: isolate;
 }
@@ -587,8 +582,8 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 20px;
   padding: 0 18px;
-  border-bottom: 1px solid rgb(255 255 255 / 12%);
-  background: rgb(47 131 214 / 88%);
+  border-bottom: 1px dashed #d8d6ca;
+  background: #fefcf6;
   font-size: 11px;
 }
 
@@ -596,18 +591,18 @@ onBeforeUnmount(() => {
   display: inline-flex;
   min-height: 40px;
   align-items: center;
-  color: #f4d758;
+  color: #827044;
   font: 700 15px/1 "Comic Sans MS", "Bradley Hand", "Segoe Print", cursive;
   text-decoration: none;
 }
 
 .infinite-canvas__brand:focus-visible {
-  outline: 3px solid #f4d758;
+  outline: 3px solid #827044;
   outline-offset: -3px;
 }
 
 .infinite-canvas__menu-title {
-  border-left: 1px solid rgb(255 255 255 / 24%);
+  border-left: 1px solid #ddd8cb;
   padding-left: 20px;
 }
 
@@ -620,7 +615,7 @@ onBeforeUnmount(() => {
 }
 
 .infinite-canvas__count svg {
-  color: #f4d758;
+  color: #827044;
 }
 
 .infinite-canvas__intro {
@@ -628,6 +623,9 @@ onBeforeUnmount(() => {
   z-index: 2;
   top: 68px;
   left: 26px;
+  border-radius: 4px;
+  background: var(--os-paper);
+  box-shadow: 0 0 0 8px var(--os-paper);
   pointer-events: none;
 }
 
@@ -643,13 +641,13 @@ onBeforeUnmount(() => {
 }
 
 .infinite-canvas__intro h1 span {
-  color: #f4d758;
+  color: #827044;
   font-size: 22px;
 }
 
 .infinite-canvas__intro p {
   margin: 10px 0 0;
-  color: #f2f6fd;
+  color: #6c6f65;
   font-size: 12px;
   line-height: 1.6;
 }
@@ -662,7 +660,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   margin: 0;
-  color: #f2f6fd;
+  color: #6c6f65;
   font-size: 11px;
   pointer-events: none;
 }
