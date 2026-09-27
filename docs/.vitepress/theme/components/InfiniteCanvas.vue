@@ -520,7 +520,7 @@ onBeforeUnmount(() => {
       @lostpointercapture.capture="cancelCardGesture"
     >
       <div class="infinite-canvas__world" :style="worldStyle">
-        <CanvasConnections :cards="cards" :connections="sourceConnections" />
+        <CanvasConnections :cards="cards" :connections="sourceConnections" :scale="transform.scale" />
         <CanvasCard
           v-for="(card, index) in cards"
           :key="card.id"
