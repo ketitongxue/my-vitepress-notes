@@ -119,9 +119,15 @@ test('entering an admin page during the dynamic import prevents SDK configuratio
   client.dispose()
 })
 
-test('a permission change while loading prevents the ready chat from opening', async () => {
+test('a permission change while loading delays opening but retains the ready session for retry', async () => {
   const mock = sdkMock()
   let permitted = true
+  let loadedSubscriptions = 0
+  const onLoaded = mock.Crisp.session.onLoaded
+  mock.Crisp.session.onLoaded = (callback) => {
+    loadedSubscriptions++
+    onLoaded(callback)
+  }
   const client = createCrispChatClient({ config, isAllowed: () => permitted, importSdk: async () => mock })
   try {
     const opening = client.open()
@@ -131,6 +137,13 @@ test('a permission change while loading prevents the ready chat from opening', a
     assert.equal(await opening, false)
     assert.equal(mock.count('show'), 0)
     assert.equal(mock.count('open'), 0)
+    permitted = true
+    assert.equal(await client.open(), true)
+    assert.equal(mock.count('configure'), 1)
+    assert.equal(mock.count('load'), 1)
+    assert.equal(loadedSubscriptions, 1)
+    assert.equal(mock.count('show'), 1)
+    assert.equal(mock.count('open'), 1)
   } finally {
     client.dispose()
   }

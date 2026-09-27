@@ -85,7 +85,9 @@ export function createCrispChatClient({
         finish(error)
       }
     })
-    return allowed() ? Crisp : null
+    // Keep a loaded session even if the current page temporarily hides chat.
+    // open() checks eligibility; session:loaded need not fire a second time.
+    return Crisp
   }
 
   return {
